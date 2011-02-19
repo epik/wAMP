@@ -1,0 +1,170 @@
+﻿body.palm-default {
+    background: url(../images/background.png);
+    -webkit-background-size: cover;
+}
+
+.myname {
+    color: #FFFFFF;
+    font-size: 14pt;
+    font-style: oblique;
+    font-weight: bold;
+    margin-top: 25px;
+}
+
+.mypath {
+    color: #858585;
+    font-size: 10pt;
+}
+
+.mymarquee {
+    color: #6DC686;
+    font-size: 10pt;
+}
+
+.myLname {
+    color: #FFFFFF;
+    font-size: 12pt;
+    font-style: oblique;
+    font-weight: bold;
+    margin: 10px;
+}
+
+.myLpath {
+    color: #858585;
+    font-size: 8pt;
+}
+
+.myLnotice {
+    color: #858585;
+    font-size: 12pt;
+    font-style: oblique;
+    font-weight: bold;
+    margin: 10px;
+}
+
+.myprevious .palm-button {
+   -webkit-border-image: none;
+    background-image: url(../images/prev.png);
+    position: fixed;
+    bottom: 0px;
+    left: 71px;
+    height: 42px;
+    width: 57px;
+}
+
+.myplay .palm-button {
+   -webkit-border-image: none;
+    background-image: url(../images/play.png);
+    position: fixed;
+    bottom: 0px;
+    left: 128px;
+    height: 42px;
+    width: 50px;
+}
+
+.mypause .palm-button {
+   -webkit-border-image: none;
+    background-image: url(../images/pause.png);
+    position: fixed;
+    bottom: 0px;
+    left: 128px;
+    height: 42px;
+    width: 50px;
+}
+
+.myforward .palm-button {
+   -webkit-border-image: none;
+    background-image: url(../images/next.png);
+    position: fixed;
+    bottom: 0px;
+    left: 178px;
+    height: 42px;
+    width: 57px;
+}
+
+.myspeedlabel {
+    color: #858585;
+    font-size: 10pt;
+    position: fixed;
+    bottom: 280px;
+    right: 32px;
+}
+
+.myspeed {
+    display: block;
+    width: 250px;
+    position: fixed;
+    bottom: 270px;
+    left: 12px;
+}
+
+.myvolumelabel {
+    color: #858585;
+    font-size: 10pt;
+    position: fixed;
+    bottom: 230px;
+    right: 32px;
+}
+
+.myvolume {
+    display: block;
+    width: 250px;
+    position: fixed;
+    bottom: 220px;
+    left: 12px;
+}
+
+.mytreblelabel {
+    color: #858585;
+    font-size: 10pt;
+    position: fixed;
+    bottom: 180px;
+    right: 32px;
+}
+
+.mytreble {
+    display: block;
+    width: 250px;
+    position: fixed;
+    bottom: 170px;
+    left: 12px;
+}
+
+.mybasslabel {
+    color: #858585;
+    font-size: 10pt;
+    position: fixed;
+    bottom: 130px;
+    right: 32px;
+}
+
+.mybass {
+    display: block;
+    width: 250px;
+    position: fixed;
+    bottom: 120px;
+    left: 12px;
+}
+
+.myscrublabel {
+    color: #FFFFFF;
+    font-size: 12pt;
+    position: fixed;
+    bottom: 80px;
+    right: 32px;
+}
+
+.myscrub {
+    display: block;
+    width: 250px;
+    position: fixed;
+    bottom: 70px;
+    left: 12px;
+}
+
+.mySongProgress {
+    display: block;
+    position: fixed;
+    bottom: 43px;
+	width: 100%;
+}

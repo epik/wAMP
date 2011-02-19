@@ -1,0 +1,16 @@
+[
+    {
+        "source": "app/controllers/app-assistant.js"
+    },
+    {
+        "source": "app/models/wAMP.js"
+    },
+    {
+        "source": "app/controllers/home-assistant.js",
+        "scenes": "home"
+    },
+    {
+        "source": "app/controllers/playit-assistant.js",
+        "scenes": "playit"
+    }
+]
