@@ -28,6 +28,7 @@
 #include "libavcodec/get_bits.h"
 #include "libavcodec/bytestream.h"
 #include "avformat.h"
+#include "internal.h"
 #include "oggdec.h"
 #include "vorbiscomment.h"
 
@@ -221,6 +222,7 @@ vorbis_header (AVFormatContext * s, int idx)
     if (os->buf[os->pstart] == 1) {
         const uint8_t *p = os->buf + os->pstart + 7; /* skip "\001vorbis" tag */
         unsigned blocksize, bs0, bs1;
+        int srate;
 
         if (os->psize != 30)
             return -1;
@@ -229,7 +231,7 @@ vorbis_header (AVFormatContext * s, int idx)
             return -1;
 
         st->codec->channels = bytestream_get_byte(&p);
-        st->codec->sample_rate = bytestream_get_le32(&p);
+        srate = bytestream_get_le32(&p);
         p += 4; // skip maximum bitrate
         st->codec->bit_rate = bytestream_get_le32(&p); // nominal bitrate
         p += 4; // skip minimum bitrate
@@ -249,11 +251,21 @@ vorbis_header (AVFormatContext * s, int idx)
         st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
         st->codec->codec_id = CODEC_ID_VORBIS;
 
-        st->time_base.num = 1;
-        st->time_base.den = st->codec->sample_rate;
+        if (srate > 0) {
+            st->codec->sample_rate = srate;
+            av_set_pts_info(st, 64, 1, srate);
+        }
     } else if (os->buf[os->pstart] == 3) {
-        if (os->psize > 8)
-            ff_vorbis_comment (s, &st->metadata, os->buf + os->pstart + 7, os->psize - 8);
+        if (os->psize > 8 &&
+            ff_vorbis_comment(s, &st->metadata, os->buf + os->pstart + 7, os->psize - 8) >= 0) {
+            // drop all metadata we parsed and which is not required by libvorbis
+            unsigned new_len = 7 + 4 + AV_RL32(priv->packet[1] + 7) + 4 + 1;
+            if (new_len >= 16 && new_len < os->psize) {
+                AV_WL32(priv->packet[1] + new_len - 5, 0);
+                priv->packet[1][new_len - 1] = 1;
+                priv->len[1] = new_len;
+            }
+        }
     } else {
         st->codec->extradata_size =
             fixup_vorbis_headers(s, priv, &st->codec->extradata);

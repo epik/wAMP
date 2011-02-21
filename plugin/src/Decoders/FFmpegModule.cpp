@@ -6,6 +6,9 @@
  */
 
 #include "FFmpegModule.h"
+extern "C" {
+#include "libavformat/metadata.h"
+}
 
 MusMessage FFmpegWrapper::Init()
 {
@@ -122,6 +125,8 @@ MusMessage FFmpegWrapper::Open(const char *cstrFileName)
 {
 	MusMessage Msg = FindDecoder(cstrFileName);
 
+	m_iAllowFirstReadError = 1;
+
 	if (Msg != MUS_MOD_Success)
 		return Msg;
 
@@ -136,6 +141,8 @@ MusMessage FFmpegWrapper::Open(const char *cstrFileName)
     m_psOverFlowBuffer = m_psTmpBufferBase;
 
     m_iOverFlowSize = 0;
+
+    m_bEndState = 0;
 
     // Open codec
     int err = avcodec_open(m_pCodecCtx, m_pCodec);
@@ -159,13 +166,109 @@ MusMessage FFmpegWrapper::Open(const char *cstrFileName)
     return MUS_MOD_Success;
 }
 
+// Either there is an error in FFmpeg or in my code
+// I can't figure out where it is, so this is a fix.
+void fake_av_metadata_free(AVMetadata **pm)
+{
+    AVMetadata *m= *pm;
+
+    ReportError("In Fake metadata free");
+
+    if(m){
+    	ReportError("Made it into the clear loop");
+        while(m->count--){
+            av_free(m->elems[m->count].key);
+            av_free(m->elems[m->count].value);
+        }
+        ReportError("Problem is not in this loop");
+        av_free(m->elems);
+        ReportError("Perhaps here");
+    }
+    ReportError("Must be here then");
+}
+
+// Either there is an error in FFmpeg or in my code
+// I can't figure out where it is, so this is a fix.
+void fake_avformat_free_context(AVFormatContext *s)
+{
+    int i;
+    AVStream *st;
+
+    ReportError("fafc 1");
+
+    for(i=0;i<s->nb_streams;i++) {
+        /* free all data in a stream component */
+        st = s->streams[i];
+        if (st->parser) {
+            av_parser_close(st->parser);
+            av_free_packet(&st->cur_pkt);
+        }
+        av_metadata_free(&st->metadata);
+        av_free(st->index_entries);
+        av_free(st->codec->extradata);
+        av_free(st->codec->subtitle_header);
+        av_free(st->codec);
+#if FF_API_OLD_METADATA
+        av_free(st->filename);
+#endif
+        av_free(st->priv_data);
+        av_free(st->info);
+        av_free(st);
+    }
+
+    ReportError("fafc 2");
+
+    for(i=s->nb_programs-1; i>=0; i--) {
+#if FF_API_OLD_METADATA
+        av_freep(&s->programs[i]->provider_name);
+        av_freep(&s->programs[i]->name);
+#endif
+        av_metadata_free(&s->programs[i]->metadata);
+        av_freep(&s->programs[i]->stream_index);
+        av_freep(&s->programs[i]);
+    }
+    av_freep(&s->programs);
+    av_freep(&s->priv_data);
+    while(s->nb_chapters--) {
+#if FF_API_OLD_METADATA
+        av_free(s->chapters[s->nb_chapters]->title);
+#endif
+        av_metadata_free(&s->chapters[s->nb_chapters]->metadata);
+        av_free(s->chapters[s->nb_chapters]);
+    }
+
+    ReportError("fafc 3");
+
+    av_freep(&s->chapters);
+
+    ReportError("fafc 4");
+    fake_av_metadata_free(&s->metadata);
+    ReportError("fafc 5");
+
+    av_freep(&s->key);
+
+    ReportError("fafc 6");
+    av_free(s);
+}
+
 MusMessage FFmpegWrapper::Close()
 {
 	// Close the codec
-	avcodec_close(m_pCodecCtx);
+	if (m_pCodecCtx)
+		avcodec_close(m_pCodecCtx);
+
+	ReportError1("About to close m_pFormatCtx which has val of %i", m_pFormatCtx);
 
 	// Close the video file
-	av_close_input_file(m_pFormatCtx);
+	if (m_pFormatCtx)
+	{
+		av_close_input_file(m_pFormatCtx);
+		m_pFormatCtx = NULL;
+
+		//fake_avformat_free_context(m_pFormatCtx);
+	}
+
+	ReportError("Closed Format and exit");
 
 	return MUS_MOD_Success;
 }
@@ -193,9 +296,11 @@ int64_t FFmpegWrapper::Seek(double time)
 
 }
 
+
 MusMessage FFmpegWrapper::FillBuffWithRawSong(uint8_t *piBuffToFill,
 												size_t *plNumBytesWritten)
 {
+
 	//ReportError1("****At start OverflowSize=%i", m_iOverFlowSize);
 	if (m_iOverFlowSize > 0)
 	{
@@ -231,6 +336,7 @@ MusMessage FFmpegWrapper::FillBuffWithRawSong(uint8_t *piBuffToFill,
 
 	while ((*plNumBytesWritten) < (uint32_t) GetBufferSize())
 	{
+		int check = (int) m_pFormatCtx;
 		int err = av_read_frame(m_pFormatCtx, &m_packet);
 
 		//ReportError1("err=%i", err);
@@ -238,11 +344,26 @@ MusMessage FFmpegWrapper::FillBuffWithRawSong(uint8_t *piBuffToFill,
 
 		if ((err) || (url_feof(m_pFormatCtx->pb)))
 		{
-			ReportError("Getting this far");
+			ReportError2("Getting this far should be =%i, is=%i", check, m_pFormatCtx);
 
 			if ((err == AVERROR_EOF) || (url_feof(m_pFormatCtx->pb)))
 			{
-				ReportError("Done");
+				char cstrFFmpegError[128];
+				char cstrErrBuf[256] = "We have reached the end of file error:";
+
+				av_strerror(err, cstrFFmpegError, sizeof(cstrFFmpegError));
+
+				strcat(cstrErrBuf, cstrFFmpegError);
+				// Close the video file
+				if (m_pFormatCtx)
+				{
+					av_close_input_file(m_pFormatCtx);
+					m_pFormatCtx = NULL;
+				}
+
+				MUS_ERROR(MUS_ERROR_LOAD_PROBLEM, cstrErrBuf);
+				ReportError2("Other data Err=%i, m_pFormatCtx=%i", err, m_pFormatCtx);
+				m_bEndState = 1;
 				return MUS_MOD_Done;
 			}
 			else
@@ -253,6 +374,14 @@ MusMessage FFmpegWrapper::FillBuffWithRawSong(uint8_t *piBuffToFill,
 				av_strerror(err, cstrFFmpegError, sizeof(cstrFFmpegError));
 
 				strcat(cstrErrBuf, cstrFFmpegError);
+				// Close the video file
+				if (m_pFormatCtx)
+				{
+					av_close_input_file(m_pFormatCtx);
+					m_pFormatCtx = NULL;
+				}
+
+				m_bEndState = 1;
 
 				MUS_ERROR(MUS_ERROR_LOAD_PROBLEM, cstrErrBuf);
 				return MUS_MOD_Error;
@@ -267,23 +396,41 @@ MusMessage FFmpegWrapper::FillBuffWithRawSong(uint8_t *piBuffToFill,
 			int32_t iSize = AVCODEC_MAX_AUDIO_FRAME_SIZE +
 													FF_INPUT_BUFFER_PADDING_SIZE;
 
+			//ReportError1("Size Before=%i", iSize);
+
 			int tmpErr = avcodec_decode_audio3(m_pCodecCtx, m_psTmpBufferBase,
 																&iSize, &m_packet);
 
+			//ReportError1("Size After=%i", iSize);
+
 			if (tmpErr <= 0)
 			{
-				ReportError("Test");
+				//ReportError1("Size After=%i", iSize);
+
+				//ReportError("Test");
 				char cstrFFmpegError[128];
 				char cstrErrBuf[256] = "Unable to decode:";
 
-				av_strerror(err, cstrFFmpegError, sizeof(cstrFFmpegError));
+				av_strerror(tmpErr, cstrFFmpegError, sizeof(cstrFFmpegError));
 
 				strcat(cstrErrBuf, cstrFFmpegError);
 
 				MUS_ERROR(MUS_ERROR_LOAD_PROBLEM, cstrErrBuf);
 
-				break;
+				if (m_iAllowFirstReadError)
+				{
+					m_iAllowFirstReadError = 0;
+					return MUS_MOD_Success;
+				}
+				else
+				{
+					m_bEndState = 1;
+					return MUS_MOD_Error;
+				}
+
 			}
+
+			m_iAllowFirstReadError = 1;
 
 			int iCheckOverflow = (iSize + (*plNumBytesWritten)) - GetBufferSize();
 

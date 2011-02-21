@@ -20,7 +20,7 @@
  */
 
 #include "libavutil/intreadwrite.h"
-#include "libavcore/imgutils.h"
+#include "libavutil/imgutils.h"
 #include "avcodec.h"
 
 typedef struct PTXContext {
@@ -106,7 +106,7 @@ static av_cold int ptx_end(AVCodecContext *avctx) {
     return 0;
 }
 
-AVCodec ptx_decoder = {
+AVCodec ff_ptx_decoder = {
     "ptx",
     AVMEDIA_TYPE_VIDEO,
     CODEC_ID_PTX,

@@ -25,7 +25,6 @@
 #include <strings.h>
 #include "libavutil/intreadwrite.h"
 #include "libavutil/bswap.h"
-#include "libavcodec/bytestream.h"
 #include "avformat.h"
 #include "avi.h"
 #include "dv.h"
@@ -84,17 +83,13 @@ static const char avi_headers[][8] = {
 static int avi_load_index(AVFormatContext *s);
 static int guess_ni_flag(AVFormatContext *s);
 
-#ifdef DEBUG
-static void print_tag(const char *str, unsigned int tag, int size)
-{
-    dprintf(NULL, "%s: tag=%c%c%c%c size=0x%x\n",
-           str, tag & 0xff,
-           (tag >> 8) & 0xff,
-           (tag >> 16) & 0xff,
-           (tag >> 24) & 0xff,
-           size);
-}
-#endif
+#define print_tag(str, tag, size)                       \
+    av_dlog(NULL, "%s: tag=%c%c%c%c size=0x%x\n",       \
+           str, tag & 0xff,                             \
+           (tag >> 8) & 0xff,                           \
+           (tag >> 16) & 0xff,                          \
+           (tag >> 24) & 0xff,                          \
+           size)
 
 static inline int get_duration(AVIStream *ast, int len){
     if(ast->sample_size){
@@ -369,23 +364,22 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
             goto fail;
         tag = get_le32(pb);
         size = get_le32(pb);
-#ifdef DEBUG
+
         print_tag("tag", tag, size);
-#endif
 
         switch(tag) {
         case MKTAG('L', 'I', 'S', 'T'):
             list_end = url_ftell(pb) + size;
             /* Ignored, except at start of video packets. */
             tag1 = get_le32(pb);
-#ifdef DEBUG
+
             print_tag("list", tag1, 0);
-#endif
+
             if (tag1 == MKTAG('m', 'o', 'v', 'i')) {
                 avi->movi_list = url_ftell(pb) - 4;
                 if(size) avi->movi_end = avi->movi_list + size + (size & 1);
                 else     avi->movi_end = url_fsize(pb);
-                dprintf(NULL, "movi end=%"PRIx64"\n", avi->movi_end);
+                av_dlog(NULL, "movi end=%"PRIx64"\n", avi->movi_end);
                 goto end_of_header;
             }
             else if (tag1 == MKTAG('I', 'N', 'F', 'O'))
@@ -447,9 +441,8 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
             if(amv_file_format)
                 tag1 = stream_index ? MKTAG('a','u','d','s') : MKTAG('v','i','d','s');
 
-#ifdef DEBUG
             print_tag("strh", tag1, -1);
-#endif
+
             if(tag1 == MKTAG('i', 'a', 'v', 's') || tag1 == MKTAG('i', 'v', 'a', 's')){
                 int64_t dv_dur;
 
@@ -607,9 +600,8 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                         st->codec->palctrl->palette_changed = 1;
                     }
 
-#ifdef DEBUG
                     print_tag("video", tag1, 0);
-#endif
+
                     st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
                     st->codec->codec_tag = tag1;
                     st->codec->codec_id = ff_codec_get_id(ff_codec_bmp_tags, tag1);
@@ -755,39 +747,32 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
 
 static int read_gab2_sub(AVStream *st, AVPacket *pkt) {
     if (!strcmp(pkt->data, "GAB2") && AV_RL16(pkt->data+5) == 2) {
-        uint8_t desc[256], *d = desc;
-        uint8_t *end, *ptr = pkt->data+7;
-        unsigned int size, desc_len = bytestream_get_le32(&ptr);
-        int score = AVPROBE_SCORE_MAX / 2;
+        uint8_t desc[256];
+        int score = AVPROBE_SCORE_MAX / 2, ret;
         AVIStream *ast = st->priv_data;
         AVInputFormat *sub_demuxer;
         AVRational time_base;
-        ByteIOContext *pb;
+        ByteIOContext *pb = av_alloc_put_byte(pkt->data + 7,
+                                              pkt->size - 7,
+                                              0, NULL, NULL, NULL, NULL);
         AVProbeData pd;
+        unsigned int desc_len = get_le32(pb);
 
-        if (desc_len > FFMAX(pkt->size-17, 0))
-            return 0;
+        if (desc_len > pb->buf_end - pb->buf_ptr)
+            goto error;
 
-        end = ptr + desc_len;
-        while (ptr < end-1) {
-            uint8_t tmp;
-            uint32_t ch;
-            GET_UTF16(ch, ptr < end-1 ? bytestream_get_le16(&ptr) : 0, break;);
-            PUT_UTF8(ch, tmp, if(d-desc < sizeof(desc)-1)  *d++ = tmp;);
-        }
-        *d = 0;
+        ret = avio_get_str16le(pb, desc_len, desc, sizeof(desc));
+        url_fskip(pb, desc_len - ret);
         if (*desc)
             av_metadata_set2(&st->metadata, "title", desc, 0);
 
-        ptr = end + 2;
-        size = bytestream_get_le32(&ptr);
-        size = FFMIN(size, pkt->size+pkt->data-ptr);
+        get_le16(pb);   /* flags? */
+        get_le32(pb);   /* data size */
 
-        pd = (AVProbeData) { .buf = ptr, .buf_size = size };
+        pd = (AVProbeData) { .buf = pb->buf_ptr, .buf_size = pb->buf_end - pb->buf_ptr };
         if (!(sub_demuxer = av_probe_input_format2(&pd, 1, &score)))
-            return 0;
+            goto error;
 
-        pb = av_alloc_put_byte(ptr, size, 0, NULL, NULL, NULL, NULL);
         if (!av_open_input_stream(&ast->sub_ctx, pb, "", sub_demuxer, NULL)) {
             av_read_packet(ast->sub_ctx, &ast->sub_pkt);
             *st->codec = *ast->sub_ctx->streams[0]->codec;
@@ -798,6 +783,8 @@ static int read_gab2_sub(AVStream *st, AVPacket *pkt) {
         ast->sub_buffer = pkt->data;
         memset(pkt, 0, sizeof(*pkt));
         return 1;
+error:
+        av_freep(&pb);
     }
     return 0;
 }
@@ -1361,8 +1348,7 @@ static int avi_read_close(AVFormatContext *s)
         }
     }
 
-    if (avi->dv_demux)
-        av_free(avi->dv_demux);
+    av_free(avi->dv_demux);
 
     return 0;
 }
@@ -1380,7 +1366,7 @@ static int avi_probe(AVProbeData *p)
     return 0;
 }
 
-AVInputFormat avi_demuxer = {
+AVInputFormat ff_avi_demuxer = {
     "avi",
     NULL_IF_CONFIG_SMALL("AVI format"),
     sizeof(AVIContext),

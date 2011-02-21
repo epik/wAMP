@@ -24,6 +24,7 @@
  * RTP protocol
  */
 
+#include "libavutil/parseutils.h"
 #include "libavutil/avstring.h"
 #include "avformat.h"
 #include "rtpdec.h"
@@ -34,8 +35,8 @@
 #include "network.h"
 #include "os_support.h"
 #include <fcntl.h>
-#if HAVE_SYS_SELECT_H
-#include <sys/select.h>
+#if HAVE_POLL_H
+#include <sys/poll.h>
 #endif
 #include <sys/time.h>
 
@@ -161,25 +162,25 @@ static int rtp_open(URLContext *h, const char *uri, int flags)
 
     p = strchr(uri, '?');
     if (p) {
-        if (find_info_tag(buf, sizeof(buf), "ttl", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "ttl", p)) {
             ttl = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "rtcpport", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "rtcpport", p)) {
             rtcp_port = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "localport", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "localport", p)) {
             local_rtp_port = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "localrtpport", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "localrtpport", p)) {
             local_rtp_port = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "localrtcpport", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "localrtcpport", p)) {
             local_rtcp_port = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "pkt_size", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "pkt_size", p)) {
             max_packet_size = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "connect", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "connect", p)) {
             connect = strtol(buf, NULL, 10);
         }
     }
@@ -221,9 +222,9 @@ static int rtp_read(URLContext *h, uint8_t *buf, int size)
     RTPContext *s = h->priv_data;
     struct sockaddr_storage from;
     socklen_t from_len;
-    int len, fd_max, n;
-    fd_set rfds;
-    struct timeval tv;
+    int len, n;
+    struct pollfd p[2] = {{s->rtp_fd, POLLIN, 0}, {s->rtcp_fd, POLLIN, 0}};
+
 #if 0
     for(;;) {
         from_len = sizeof(from);
@@ -242,18 +243,10 @@ static int rtp_read(URLContext *h, uint8_t *buf, int size)
         if (url_interrupt_cb())
             return AVERROR(EINTR);
         /* build fdset to listen to RTP and RTCP packets */
-        FD_ZERO(&rfds);
-        fd_max = s->rtp_fd;
-        FD_SET(s->rtp_fd, &rfds);
-        if (s->rtcp_fd > fd_max)
-            fd_max = s->rtcp_fd;
-        FD_SET(s->rtcp_fd, &rfds);
-        tv.tv_sec = 0;
-        tv.tv_usec = 100 * 1000;
-        n = select(fd_max + 1, &rfds, NULL, NULL, &tv);
+        n = poll(p, 2, 100);
         if (n > 0) {
             /* first try RTCP */
-            if (FD_ISSET(s->rtcp_fd, &rfds)) {
+            if (p[1].revents & POLLIN) {
                 from_len = sizeof(from);
                 len = recvfrom (s->rtcp_fd, buf, size, 0,
                                 (struct sockaddr *)&from, &from_len);
@@ -266,7 +259,7 @@ static int rtp_read(URLContext *h, uint8_t *buf, int size)
                 break;
             }
             /* then RTP */
-            if (FD_ISSET(s->rtp_fd, &rfds)) {
+            if (p[0].revents & POLLIN) {
                 from_len = sizeof(from);
                 len = recvfrom (s->rtp_fd, buf, size, 0,
                                 (struct sockaddr *)&from, &from_len);
@@ -359,7 +352,7 @@ int rtp_get_rtcp_file_handle(URLContext *h) {
     return s->rtcp_fd;
 }
 
-URLProtocol rtp_protocol = {
+URLProtocol ff_rtp_protocol = {
     "rtp",
     rtp_open,
     rtp_read,

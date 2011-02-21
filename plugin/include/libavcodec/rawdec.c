@@ -28,8 +28,7 @@
 #include "imgconvert.h"
 #include "raw.h"
 #include "libavutil/intreadwrite.h"
-#include "libavcore/imgutils.h"
-#include "libavcore/internal.h"
+#include "libavutil/imgutils.h"
 
 typedef struct RawVideoContext {
     uint32_t palette[AVPALETTE_COUNT];
@@ -124,6 +123,7 @@ static int raw_decode(AVCodecContext *avctx,
     frame->interlaced_frame = avctx->coded_frame->interlaced_frame;
     frame->top_field_first = avctx->coded_frame->top_field_first;
     frame->reordered_opaque = avctx->reordered_opaque;
+    frame->pkt_pts          = avctx->pkt->pts;
 
     //2bpp and 4bpp raw in avi and mov (yes this is ugly ...)
     if (context->buffer) {
@@ -195,7 +195,7 @@ static av_cold int raw_close_decoder(AVCodecContext *avctx)
     return 0;
 }
 
-AVCodec rawvideo_decoder = {
+AVCodec ff_rawvideo_decoder = {
     "rawvideo",
     AVMEDIA_TYPE_VIDEO,
     CODEC_ID_RAWVIDEO,

@@ -134,6 +134,8 @@ const AVCodecTag codec_movvideo_tags[] = {
     { CODEC_ID_RAWVIDEO, MKTAG('W', 'R', 'A', 'W') },
 
     { CODEC_ID_H264, MKTAG('a', 'v', 'c', '1') }, /* AVC-1/H.264 */
+    { CODEC_ID_H264, MKTAG('a', 'i', '5', '5') }, /* Flip4Mac AVC Intra 50 */
+    { CODEC_ID_H264, MKTAG('a', 'i', '1', '5') }, /* Flip4Mac AVC Intra 100 */
 
     { CODEC_ID_MPEG1VIDEO, MKTAG('m', '1', 'v', '1') }, /* Apple MPEG-1 Camcorder */
     { CODEC_ID_MPEG1VIDEO, MKTAG('m', 'p', 'e', 'g') }, /* MPEG */
@@ -193,6 +195,12 @@ const AVCodecTag codec_movvideo_tags[] = {
     { CODEC_ID_SGI,   MKTAG('s', 'g', 'i', ' ') }, /* SGI  */
     { CODEC_ID_DPX,   MKTAG('d', 'p', 'x', ' ') }, /* DPX */
 
+    { CODEC_ID_PRORES, MKTAG('a', 'p', 'c', 'h') }, /* Apple ProRes 422 High Quality */
+    { CODEC_ID_PRORES, MKTAG('a', 'p', 'c', 'n') }, /* Apple ProRes 422 Standard Definition */
+    { CODEC_ID_PRORES, MKTAG('a', 'p', 'c', 's') }, /* Apple ProRes 422 LT */
+    { CODEC_ID_PRORES, MKTAG('a', 'p', 'c', 'o') }, /* Apple ProRes 422 Proxy */
+    { CODEC_ID_PRORES, MKTAG('a', 'p', '4', 'h') }, /* Apple ProRes 4444 */
+
     { CODEC_ID_NONE, 0 },
 };
 
@@ -241,6 +249,7 @@ const AVCodecTag codec_movaudio_tags[] = {
     { CODEC_ID_QCELP, MKTAG('Q','c','l','q') },
     { CODEC_ID_QCELP, MKTAG('s','q','c','p') }, /* ISO Media fourcc */
 
+    { CODEC_ID_QDMC, MKTAG('Q', 'D', 'M', 'C') }, /* QDMC */
     { CODEC_ID_QDM2, MKTAG('Q', 'D', 'M', '2') }, /* QDM2 */
 
     { CODEC_ID_DVAUDIO, MKTAG('v', 'd', 'v', 'a') },
@@ -350,7 +359,7 @@ int ff_mp4_read_descr(AVFormatContext *fc, ByteIOContext *pb, int *tag)
     int len;
     *tag = get_byte(pb);
     len = ff_mp4_read_descr_len(pb);
-    dprintf(fc, "MPEG4 description: tag=0x%02x len=%d\n", *tag, len);
+    av_dlog(fc, "MPEG4 description: tag=0x%02x len=%d\n", *tag, len);
     return len;
 }
 
@@ -373,10 +382,10 @@ int ff_mp4_read_dec_config_descr(AVFormatContext *fc, AVStream *st, ByteIOContex
     get_be32(pb); /* avg bitrate */
 
     st->codec->codec_id= ff_codec_get_id(ff_mp4_obj_type, object_type_id);
-    dprintf(fc, "esds object type id 0x%02x\n", object_type_id);
+    av_dlog(fc, "esds object type id 0x%02x\n", object_type_id);
     len = ff_mp4_read_descr(fc, pb, &tag);
     if (tag == MP4DecSpecificDescrTag) {
-        dprintf(fc, "Specific MPEG4 header len=%d\n", len);
+        av_dlog(fc, "Specific MPEG4 header len=%d\n", len);
         if((uint64_t)len > (1<<30))
             return -1;
         av_free(st->codec->extradata);
@@ -396,7 +405,7 @@ int ff_mp4_read_dec_config_descr(AVFormatContext *fc, AVStream *st, ByteIOContex
                 st->codec->sample_rate = cfg.ext_sample_rate;
             else
                 st->codec->sample_rate = cfg.sample_rate;
-            dprintf(fc, "mp4a config channels %d obj %d ext obj %d "
+            av_dlog(fc, "mp4a config channels %d obj %d ext obj %d "
                     "sample rate %d ext sample rate %d\n", st->codec->channels,
                     cfg.object_type, cfg.ext_object_type,
                     cfg.sample_rate, cfg.ext_sample_rate);

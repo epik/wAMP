@@ -33,7 +33,7 @@
 #include "faxcompr.h"
 #include "libavutil/common.h"
 #include "libavutil/intreadwrite.h"
-#include "libavcore/imgutils.h"
+#include "libavutil/imgutils.h"
 
 typedef struct TiffContext {
     AVCodecContext *avctx;
@@ -600,7 +600,7 @@ static av_cold int tiff_end(AVCodecContext *avctx)
     return 0;
 }
 
-AVCodec tiff_decoder = {
+AVCodec ff_tiff_decoder = {
     "tiff",
     AVMEDIA_TYPE_VIDEO,
     CODEC_ID_TIFF,

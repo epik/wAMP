@@ -251,7 +251,7 @@ int main()
 	g_MusController.Init();
 	g_MusController.Start();
 
-	ReportError("Made it past the init stuff");
+	//ReportError("Made it past the init stuff");
 
 #ifndef ON_DEVICE
 	
@@ -259,11 +259,15 @@ int main()
 
 	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/t2.mp3");
 
-	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/test1.mp3", 0.0);
+	ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
+
+	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/f.m4a", 0.0);
 
 	// this keeps track of how long the user has waited for
 	//	the buffering
 	uint32_t uiCurWaitTime = 0;
+
+	ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
 
 	// This starts the timer running so we can know how long we have
 	//	been filling the buffer
@@ -272,20 +276,23 @@ int main()
 	// Run fillbuffer until we meet one of the specified conditions
 	while (uiCurWaitTime < 4) // check wait time
 	{
+		ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
 		// update time since we started
 		uiCurWaitTime = WormCheckTimeSinceMark();
 		// Give the gui a chance to work
 		WormSleep(1);
 	}
 
+	//g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/e.mp3");
 	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/test1.mp3");
 
 	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/test2.mp3", 0.0);
+	//g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/f.m4a", 0.0);
 
 	while (1)
 	{
 		WormSleep(50);
-		ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_META));
+		ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
 	}
 
 #else

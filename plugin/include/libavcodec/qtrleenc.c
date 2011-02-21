@@ -22,7 +22,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "libavcore/imgutils.h"
+#include "libavutil/imgutils.h"
 #include "avcodec.h"
 #include "bytestream.h"
 
@@ -321,7 +321,7 @@ static av_cold int qtrle_encode_end(AVCodecContext *avctx)
     return 0;
 }
 
-AVCodec qtrle_encoder = {
+AVCodec ff_qtrle_encoder = {
     "qtrle",
     AVMEDIA_TYPE_VIDEO,
     CODEC_ID_QTRLE,

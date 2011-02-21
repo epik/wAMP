@@ -20,7 +20,7 @@
 #include "mpegvideo.h"
 #include "h263.h"
 #include "flv.h"
-#include "libavcore/imgutils.h"
+#include "libavutil/imgutils.h"
 
 void ff_flv2_decode_ac_esc(GetBitContext *gb, int *level, int *run, int *last){
     int is11 = get_bits1(gb);
@@ -118,7 +118,7 @@ int ff_flv_decode_picture_header(MpegEncContext *s)
     return 0;
 }
 
-AVCodec flv_decoder = {
+AVCodec ff_flv_decoder = {
     "flv",
     AVMEDIA_TYPE_VIDEO,
     CODEC_ID_FLV1,

@@ -32,7 +32,11 @@ private:
     int16_t			*m_psOverFlowBuffer;
     int32_t			m_iOverFlowSize;
 
+    int16_t			m_iAllowFirstReadError;
+
     MusMessage		m_mmBufferedState;
+
+    int16_t			m_bEndState;
 
     MusMessage FindDecoder(const char *cstrFileName);
 
@@ -52,6 +56,8 @@ public:
 
 	int64_t Seek(double);
 	
+	int16_t	CheckEnd()	{return m_bEndState;};
+
 	char *GetMetadata();
 };
 

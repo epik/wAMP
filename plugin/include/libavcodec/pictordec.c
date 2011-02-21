@@ -24,7 +24,7 @@
  * Pictor/PC Paint decoder
  */
 
-#include "libavcore/imgutils.h"
+#include "libavutil/imgutils.h"
 #include "avcodec.h"
 #include "bytestream.h"
 #include "cga_data.h"
@@ -237,7 +237,7 @@ static av_cold int decode_end(AVCodecContext *avctx)
     return 0;
 }
 
-AVCodec pictor_decoder = {
+AVCodec ff_pictor_decoder = {
     "pictor",
     AVMEDIA_TYPE_VIDEO,
     CODEC_ID_PICTOR,

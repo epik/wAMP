@@ -296,13 +296,18 @@ Mojo.Log.info("PLAYIT CALLING myMetaInterval");
 	{	
 Mojo.Log.info("PLAYIT CALLED JS FUNCTION myGetMetadata");
 		try{
-				var strTmp = this.controller.get('wAMPPlugin').GetMetadata();
-Mojo.Log.info("METADATA STRING " + Object.toJSON(strTmp));
-//Mojo.Log.info("PLAYIT METADATA: " + Mojo.parseJSON(strTmp));
-//				var allMetadata = Mojo.parseJSON(strTmp);
-				this.myMetadata = Object.toJSON(strTmp);
-				this.controller.get('mymarquee').innerHTML = '<marquee id="m" behavior="scroll" direction="left" scrollamount="4">' + this.myMetadata +  '</marquee>';
-        		clearInterval(this.myMetaInterval);
+			var strTmp = this.controller.get('wAMPPlugin').GetMetadata();
+			Mojo.Log.error(strTmp);
+			var allMetadata = Mojo.parseJSON(strTmp);
+			
+			for (var str in allMetadata)
+			{
+				var strOut = str.replace(/_/g, " ");
+				this.myMetadata = String(strOut).toUpperCase() + " = " + allMetadata[str] + " | " + this.myMetadata;
+			}
+			
+			this.controller.get('mymarquee').innerHTML = '<marquee id="m" behavior="scroll" direction="left" scrollamount="4">' + this.myMetadata +  '</marquee>';
+        	clearInterval(this.myMetaInterval);
 		} catch (e) { 
 			Mojo.Log.error("Error happened: %j", e); 
 		};
@@ -519,8 +524,8 @@ Mojo.Log.info("PLAYIT myTimer FOUND END OF SONG. NOW CALLING FUNCTION mySongEnde
 // CALLED REPEATEDLY WHILE USER IS DRAGGING THE SCRUBBER
     	this.myScrubberValue = event.value;
 // APPLY AN UPPER LIMITER ON THE TRAVEL OF THE SCRUBBER TO AVOID ERRORS
-    	if(this.myScrubberValue > 950) {
-    		this.myScrubberValue = 950;
+    	if(this.myScrubberValue > 990) {
+    		this.myScrubberValue = 990;
     	};
 				Mojo.Log.info("PLAYIT myScrubberChange CALLED event.value: " + event.value);
 	},

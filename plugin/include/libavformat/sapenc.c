@@ -20,6 +20,7 @@
  */
 
 #include "avformat.h"
+#include "libavutil/parseutils.h"
 #include "libavutil/random_seed.h"
 #include "libavutil/avstring.h"
 #include "libavutil/intreadwrite.h"
@@ -46,10 +47,7 @@ static int sap_write_close(AVFormatContext *s)
             continue;
         av_write_trailer(rtpctx);
         url_fclose(rtpctx->pb);
-        av_metadata_free(&rtpctx->streams[0]->metadata);
-        av_metadata_free(&rtpctx->metadata);
-        av_free(rtpctx->streams[0]);
-        av_free(rtpctx);
+        avformat_free_context(rtpctx);
         s->streams[i]->priv_data = NULL;
     }
 
@@ -90,16 +88,16 @@ static int sap_write_header(AVFormatContext *s)
     option_list = strrchr(path, '?');
     if (option_list) {
         char buf[50];
-        if (find_info_tag(buf, sizeof(buf), "announce_port", option_list)) {
+        if (av_find_info_tag(buf, sizeof(buf), "announce_port", option_list)) {
             port = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "same_port", option_list)) {
+        if (av_find_info_tag(buf, sizeof(buf), "same_port", option_list)) {
             same_port = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "ttl", option_list)) {
+        if (av_find_info_tag(buf, sizeof(buf), "ttl", option_list)) {
             ttl = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "announce_addr", option_list)) {
+        if (av_find_info_tag(buf, sizeof(buf), "announce_addr", option_list)) {
             av_strlcpy(announce_addr, buf, sizeof(announce_addr));
         }
     }
@@ -250,7 +248,7 @@ static int sap_write_packet(AVFormatContext *s, AVPacket *pkt)
     return ff_write_chained(rtpctx, 0, pkt, s);
 }
 
-AVOutputFormat sap_muxer = {
+AVOutputFormat ff_sap_muxer = {
     "sap",
     NULL_IF_CONFIG_SMALL("SAP output format"),
     NULL,

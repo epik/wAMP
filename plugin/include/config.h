@@ -13,6 +13,7 @@
 // Read little Endian
 #define READ_LITTLE_ENDIAN
 
+
 // Define this to turn on the WormDebug options.
 // More granular options should be tweeked from WormDebug.h
 #ifdef DEBUG_CODE
@@ -35,7 +36,7 @@
 #define RESAMPLE_RES_PATH "res/resamp.res" // locate resample coef
 #else
 
-#define RESAMPLE_RES_PATH "git/STAGING/myplayer.application/res/resamp.res"
+#define RESAMPLE_RES_PATH "git/STAGING/audiophile.application/res/resamp.res"
 
 #endif
 

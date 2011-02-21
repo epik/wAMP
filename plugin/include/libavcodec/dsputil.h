@@ -66,13 +66,7 @@ void ff_h264_idct_add8_c(uint8_t **dest, const int *blockoffset, DCTELEM *block,
 
 void ff_h264_luma_dc_dequant_idct_c(DCTELEM *output, DCTELEM *input, int qmul);
 void ff_svq3_luma_dc_dequant_idct_c(DCTELEM *output, DCTELEM *input, int qp);
-void ff_chroma_dc_dequant_idct_c(DCTELEM *output, DCTELEM *input, int qmul);
 void ff_svq3_add_idct_c(uint8_t *dst, DCTELEM *block, int stride, int qp, int dc);
-
-void ff_vector_fmul_window_c(float *dst, const float *src0, const float *src1,
-                             const float *win, float add_bias, int len);
-void ff_float_to_int16_c(int16_t *dst, const float *src, long len);
-void ff_float_to_int16_interleave_c(int16_t *dst, const float **src, long len, int channels);
 
 /* encoding scans */
 extern const uint8_t ff_alternate_horizontal_scan[64];
@@ -219,6 +213,21 @@ typedef struct DSPContext {
     void (*add_pixels4)(uint8_t *pixels, DCTELEM *block, int line_size);
     int (*sum_abs_dctelem)(DCTELEM *block/*align 16*/);
     /**
+     * Motion estimation with emulated edge values.
+     * @param buf pointer to destination buffer (unaligned)
+     * @param src pointer to pixel source (unaligned)
+     * @param linesize width (in pixels) for src/buf
+     * @param block_w number of pixels (per row) to copy to buf
+     * @param block_h nummber of pixel rows to copy to buf
+     * @param src_x offset of src to start of row - this may be negative
+     * @param src_y offset of src to top of image - this may be negative
+     * @param w width of src in pixels
+     * @param h height of src in pixels
+     */
+    void (*emulated_edge_mc)(uint8_t *buf, const uint8_t *src, int linesize,
+                             int block_w, int block_h,
+                             int src_x, int src_y, int w, int h);
+    /**
      * translational global motion compensation.
      */
     void (*gmc1)(uint8_t *dst/*align 8*/, uint8_t *src/*align 1*/, int srcStride, int h, int x16, int y16, int rounder);
@@ -332,9 +341,6 @@ typedef struct DSPContext {
      */
     h264_chroma_mc_func put_h264_chroma_pixels_tab[3];
     h264_chroma_mc_func avg_h264_chroma_pixels_tab[3];
-    /* This is really one func used in VC-1 decoding */
-    h264_chroma_mc_func put_no_rnd_vc1_chroma_pixels_tab[3];
-    h264_chroma_mc_func avg_no_rnd_vc1_chroma_pixels_tab[3];
 
     qpel_mc_func put_h264_qpel_pixels_tab[4][16];
     qpel_mc_func avg_h264_qpel_pixels_tab[4][16];
@@ -375,17 +381,14 @@ typedef struct DSPContext {
     /* assume len is a multiple of 4, and arrays are 16-byte aligned */
     void (*vorbis_inverse_coupling)(float *mag, float *ang, int blocksize);
     void (*ac3_downmix)(float (*samples)[256], float (*matrix)[2], int out_ch, int in_ch, int len);
-    /* no alignment needed */
-    void (*lpc_compute_autocorr)(const int32_t *data, int len, int lag, double *autoc);
     /* assume len is a multiple of 8, and arrays are 16-byte aligned */
-    void (*vector_fmul)(float *dst, const float *src, int len);
+    void (*vector_fmul)(float *dst, const float *src0, const float *src1, int len);
     void (*vector_fmul_reverse)(float *dst, const float *src0, const float *src1, int len);
     /* assume len is a multiple of 8, and src arrays are 16-byte aligned */
     void (*vector_fmul_add)(float *dst, const float *src0, const float *src1, const float *src2, int len);
     /* assume len is a multiple of 4, and arrays are 16-byte aligned */
-    void (*vector_fmul_window)(float *dst, const float *src0, const float *src1, const float *win, float add_bias, int len);
+    void (*vector_fmul_window)(float *dst, const float *src0, const float *src1, const float *win, int len);
     /* assume len is a multiple of 8, and arrays are 16-byte aligned */
-    void (*int32_to_float_fmul_scalar)(float *dst, const int *src, float mul, int len);
     void (*vector_clipf)(float *dst /* align 16 */, const float *src /* align 16 */, float min, float max, int len /* align 16 */);
     /**
      * Multiply a vector of floats by a scalar float.  Source and
@@ -437,11 +440,6 @@ typedef struct DSPContext {
      * @param len length of vectors, multiple of 4
      */
     void (*butterflies_float)(float *restrict v1, float *restrict v2, int len);
-
-    /* C version: convert floats from the range [384.0,386.0] to ints in [-32768,32767]
-     * simd versions: convert floats from [-32768.0,32767.0] without rescaling and arrays are 16byte aligned */
-    void (*float_to_int16)(int16_t *dst, const float *src, long len);
-    void (*float_to_int16_interleave)(int16_t *dst, const float **src, long len, int channels);
 
     /* (I)DCT */
     void (*fdct)(DCTELEM *block/* align 16*/);
@@ -501,29 +499,6 @@ typedef struct DSPContext {
                                int firorder, int iirorder,
                                unsigned int filter_shift, int32_t mask, int blocksize,
                                int32_t *sample_buffer);
-
-    /* vc1 functions */
-    void (*vc1_inv_trans_8x8)(DCTELEM *b);
-    void (*vc1_inv_trans_8x4)(uint8_t *dest, int line_size, DCTELEM *block);
-    void (*vc1_inv_trans_4x8)(uint8_t *dest, int line_size, DCTELEM *block);
-    void (*vc1_inv_trans_4x4)(uint8_t *dest, int line_size, DCTELEM *block);
-    void (*vc1_inv_trans_8x8_dc)(uint8_t *dest, int line_size, DCTELEM *block);
-    void (*vc1_inv_trans_8x4_dc)(uint8_t *dest, int line_size, DCTELEM *block);
-    void (*vc1_inv_trans_4x8_dc)(uint8_t *dest, int line_size, DCTELEM *block);
-    void (*vc1_inv_trans_4x4_dc)(uint8_t *dest, int line_size, DCTELEM *block);
-    void (*vc1_v_overlap)(uint8_t* src, int stride);
-    void (*vc1_h_overlap)(uint8_t* src, int stride);
-    void (*vc1_v_loop_filter4)(uint8_t *src, int stride, int pq);
-    void (*vc1_h_loop_filter4)(uint8_t *src, int stride, int pq);
-    void (*vc1_v_loop_filter8)(uint8_t *src, int stride, int pq);
-    void (*vc1_h_loop_filter8)(uint8_t *src, int stride, int pq);
-    void (*vc1_v_loop_filter16)(uint8_t *src, int stride, int pq);
-    void (*vc1_h_loop_filter16)(uint8_t *src, int stride, int pq);
-    /* put 8x8 block with bicubic interpolation and quarterpel precision
-     * last argument is actually round value instead of height
-     */
-    op_pixels_func put_vc1_mspel_pixels_tab[16];
-    op_pixels_func avg_vc1_mspel_pixels_tab[16];
 
     /* intrax8 functions */
     void (*x8_spatial_compensation[12])(uint8_t *src , uint8_t *dst, int linesize);
@@ -628,7 +603,6 @@ void dsputil_init_vis(DSPContext* c, AVCodecContext *avctx);
 void ff_dsputil_init_dwt(DSPContext *c);
 void ff_rv30dsp_init(DSPContext* c, AVCodecContext *avctx);
 void ff_rv40dsp_init(DSPContext* c, AVCodecContext *avctx);
-void ff_vc1dsp_init(DSPContext* c, AVCodecContext *avctx);
 void ff_intrax8dsp_init(DSPContext* c, AVCodecContext *avctx);
 void ff_mlp_init(DSPContext* c, AVCodecContext *avctx);
 void ff_mlp_init_x86(DSPContext* c, AVCodecContext *avctx);
@@ -664,20 +638,24 @@ static inline void emms(void)
 #   define STRIDE_ALIGN 8
 #endif
 
-#define LOCAL_ALIGNED(a, t, v, s, ...)                          \
-    uint8_t la_##v[sizeof(t s __VA_ARGS__) + (a)];              \
-    t (*v) __VA_ARGS__ = (void *)FFALIGN((uintptr_t)la_##v, a)
+#define LOCAL_ALIGNED_A(a, t, v, s, o, ...)             \
+    uint8_t la_##v[sizeof(t s o) + (a)];                \
+    t (*v) o = (void *)FFALIGN((uintptr_t)la_##v, a)
+
+#define LOCAL_ALIGNED_D(a, t, v, s, o, ...) DECLARE_ALIGNED(a, t, v) s o
+
+#define LOCAL_ALIGNED(a, t, v, ...) LOCAL_ALIGNED_A(a, t, v, __VA_ARGS__,,)
 
 #if HAVE_LOCAL_ALIGNED_8
-#   define LOCAL_ALIGNED_8(t, v, s, ...) DECLARE_ALIGNED(8, t, v) s __VA_ARGS__
+#   define LOCAL_ALIGNED_8(t, v, ...) LOCAL_ALIGNED_D(8, t, v, __VA_ARGS__,,)
 #else
-#   define LOCAL_ALIGNED_8(t, v, s, ...) LOCAL_ALIGNED(8, t, v, s, __VA_ARGS__)
+#   define LOCAL_ALIGNED_8(t, v, ...) LOCAL_ALIGNED(8, t, v, __VA_ARGS__)
 #endif
 
 #if HAVE_LOCAL_ALIGNED_16
-#   define LOCAL_ALIGNED_16(t, v, s, ...) DECLARE_ALIGNED(16, t, v) s __VA_ARGS__
+#   define LOCAL_ALIGNED_16(t, v, ...) LOCAL_ALIGNED_D(16, t, v, __VA_ARGS__,,)
 #else
-#   define LOCAL_ALIGNED_16(t, v, s, ...) LOCAL_ALIGNED(16, t, v, s, __VA_ARGS__)
+#   define LOCAL_ALIGNED_16(t, v, ...) LOCAL_ALIGNED(16, t, v, __VA_ARGS__)
 #endif
 
 /* PSNR */

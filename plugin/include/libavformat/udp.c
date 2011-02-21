@@ -27,12 +27,13 @@
 #define _BSD_SOURCE     /* Needed for using struct ip_mreq with recent glibc */
 #define _DARWIN_C_SOURCE /* Needed for using IP_MULTICAST_TTL on OS X */
 #include "avformat.h"
+#include "libavutil/parseutils.h"
 #include <unistd.h>
 #include "internal.h"
 #include "network.h"
 #include "os_support.h"
-#if HAVE_SYS_SELECT_H
-#include <sys/select.h>
+#if HAVE_POLL_H
+#include <poll.h>
 #endif
 #include <sys/time.h>
 
@@ -259,7 +260,7 @@ int udp_set_remote_url(URLContext *h, const char *uri)
     s->is_multicast = ff_is_multicast_address((struct sockaddr*) &s->dest_addr);
     p = strchr(uri, '?');
     if (p) {
-        if (find_info_tag(buf, sizeof(buf), "connect", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "connect", p)) {
             int was_connected = s->is_connected;
             s->is_connected = strtol(buf, NULL, 10);
             if (s->is_connected && !was_connected) {
@@ -313,6 +314,7 @@ static int udp_open(URLContext *h, const char *uri, int flags)
     char buf[256];
     struct sockaddr_storage my_addr;
     int len;
+    int reuse_specified = 0;
 
     h->is_streamed = 1;
     h->max_packet_size = 1472;
@@ -329,20 +331,27 @@ static int udp_open(URLContext *h, const char *uri, int flags)
 
     p = strchr(uri, '?');
     if (p) {
-        s->reuse_socket = find_info_tag(buf, sizeof(buf), "reuse", p);
-        if (find_info_tag(buf, sizeof(buf), "ttl", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "reuse", p)) {
+            const char *endptr=NULL;
+            s->reuse_socket = strtol(buf, &endptr, 10);
+            /* assume if no digits were found it is a request to enable it */
+            if (buf == endptr)
+                s->reuse_socket = 1;
+            reuse_specified = 1;
+        }
+        if (av_find_info_tag(buf, sizeof(buf), "ttl", p)) {
             s->ttl = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "localport", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "localport", p)) {
             s->local_port = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "pkt_size", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "pkt_size", p)) {
             h->max_packet_size = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "buffer_size", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "buffer_size", p)) {
             s->buffer_size = strtol(buf, NULL, 10);
         }
-        if (find_info_tag(buf, sizeof(buf), "connect", p)) {
+        if (av_find_info_tag(buf, sizeof(buf), "connect", p)) {
             s->is_connected = strtol(buf, NULL, 10);
         }
     }
@@ -366,9 +375,14 @@ static int udp_open(URLContext *h, const char *uri, int flags)
     if (udp_fd < 0)
         goto fail;
 
-    if (s->reuse_socket)
+    /* Follow the requested reuse option, unless it's multicast in which
+     * case enable reuse unless explicitely disabled.
+     */
+    if (s->reuse_socket || (s->is_multicast && !reuse_specified)) {
+        s->reuse_socket = 1;
         if (setsockopt (udp_fd, SOL_SOCKET, SO_REUSEADDR, &(s->reuse_socket), sizeof(s->reuse_socket)) != 0)
             goto fail;
+    }
 
     /* the bind is needed to give a port to the socket now */
     /* if multicast, try the multicast address bind first */
@@ -432,25 +446,20 @@ static int udp_open(URLContext *h, const char *uri, int flags)
 static int udp_read(URLContext *h, uint8_t *buf, int size)
 {
     UDPContext *s = h->priv_data;
+    struct pollfd p = {s->udp_fd, POLLIN, 0};
     int len;
-    fd_set rfds;
     int ret;
-    struct timeval tv;
 
     for(;;) {
         if (url_interrupt_cb())
             return AVERROR(EINTR);
-        FD_ZERO(&rfds);
-        FD_SET(s->udp_fd, &rfds);
-        tv.tv_sec = 0;
-        tv.tv_usec = 100 * 1000;
-        ret = select(s->udp_fd + 1, &rfds, NULL, NULL, &tv);
+        ret = poll(&p, 1, 100);
         if (ret < 0) {
             if (ff_neterrno() == FF_NETERROR(EINTR))
                 continue;
             return AVERROR(EIO);
         }
-        if (!(ret > 0 && FD_ISSET(s->udp_fd, &rfds)))
+        if (!(ret == 1 && p.revents & POLLIN))
             continue;
         len = recv(s->udp_fd, buf, size, 0);
         if (len < 0) {
@@ -498,7 +507,7 @@ static int udp_close(URLContext *h)
     return 0;
 }
 
-URLProtocol udp_protocol = {
+URLProtocol ff_udp_protocol = {
     "udp",
     udp_open,
     udp_read,

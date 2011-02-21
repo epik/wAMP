@@ -26,7 +26,7 @@
 #include "avc.h"
 #include "flacenc.h"
 #include "avlanguage.h"
-#include "libavcore/samplefmt.h"
+#include "libavutil/samplefmt.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/random_seed.h"
 #include "libavutil/lfg.h"
@@ -1177,7 +1177,7 @@ static int mkv_write_trailer(AVFormatContext *s)
 }
 
 #if CONFIG_MATROSKA_MUXER
-AVOutputFormat matroska_muxer = {
+AVOutputFormat ff_matroska_muxer = {
     "matroska",
     NULL_IF_CONFIG_SMALL("Matroska file format"),
     "video/x-matroska",
@@ -1195,7 +1195,7 @@ AVOutputFormat matroska_muxer = {
 #endif
 
 #if CONFIG_WEBM_MUXER
-AVOutputFormat webm_muxer = {
+AVOutputFormat ff_webm_muxer = {
     "webm",
     NULL_IF_CONFIG_SMALL("WebM file format"),
     "video/webm",
@@ -1211,7 +1211,7 @@ AVOutputFormat webm_muxer = {
 #endif
 
 #if CONFIG_MATROSKA_AUDIO_MUXER
-AVOutputFormat matroska_audio_muxer = {
+AVOutputFormat ff_matroska_audio_muxer = {
     "matroska",
     NULL_IF_CONFIG_SMALL("Matroska file format"),
     "audio/x-matroska",

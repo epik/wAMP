@@ -22,7 +22,7 @@
  */
 
 #include "libavutil/intreadwrite.h"
-#include "libavcore/imgutils.h"
+#include "libavutil/imgutils.h"
 #include "avcodec.h"
 #include "s3tc.h"
 
@@ -155,7 +155,7 @@ static av_cold int txd_end(AVCodecContext *avctx) {
     return 0;
 }
 
-AVCodec txd_decoder = {
+AVCodec ff_txd_decoder = {
     "txd",
     AVMEDIA_TYPE_VIDEO,
     CODEC_ID_TXD,
