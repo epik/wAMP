@@ -16,6 +16,7 @@
 #include "Filters/Filters.h"
 #include "Decoders/Decoders.h"
 #include "Messages.h"
+#include "Indexer/Indexer.h"
 
 
 // the resample filter used by the musmodule for playback

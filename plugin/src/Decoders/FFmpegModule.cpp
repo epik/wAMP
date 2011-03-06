@@ -6,6 +6,7 @@
  */
 
 #include "FFmpegModule.h"
+#include "../WormMacro.h"
 extern "C" {
 #include "libavformat/metadata.h"
 }
@@ -28,35 +29,79 @@ MusMessage FFmpegWrapper::Uninit()
     return MUS_MOD_Success;
 }
 
-int16_t FFmpegWrapper::IsType(const char *cstrFileName, size_t iPos)
+
+int16_t FFmpegWrapper::IsType(const char *cstrFileName)
 {
-	int16_t retVal = 0;
+	if(av_match_ext(cstrFileName, SUPPORTED_EXTEN) == 0)
+		return 0;
 
-	MusMessage Msg = FindDecoder(cstrFileName);
+	m_pCodecCtx = NULL;
+	m_pFormatCtx = NULL;
 
-	if (Msg == MUS_MOD_Success)
-		retVal = 1;
+	// Open audio file
+	int err = av_open_input_file(&m_pFormatCtx, cstrFileName, NULL, 0, NULL);
 
-	// Close the codec
-	avcodec_close(m_pCodecCtx);
+	if(err != 0)
+	{
+		Close();
+		return 0;
+	}
 
-	// Close the video file
-	av_close_input_file(m_pFormatCtx);
+	// Retrieve stream information
+	err = av_find_stream_info(m_pFormatCtx);
+
+	if(err<0)
+	{
+		Close();
+		return 0;
+	}
+
+	m_iStreamID = -1;
+	for(uint16_t i=0; i<m_pFormatCtx->nb_streams; i++)
+	{
+		if(m_pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_AUDIO)
+		{
+			m_iStreamID = i;
+			break;
+		}
+	}
+
+	if(m_iStreamID==-1)
+	{
+		Close();
+		return 0;
+	}
+
+	// Get a pointer to the codec context for the video stream
+	m_pCodecCtx=m_pFormatCtx->streams[m_iStreamID]->codec;
+
+
+	// Find the decoder for the music stream
+	m_pCodec = avcodec_find_decoder(m_pCodecCtx->codec_id);
+
+	// No decoder found
+	if (!m_pCodec)
+	{
+		Close();
+		return 0;
+	}
+
 
 	return 1;
+
 }
 
 MusMessage FFmpegWrapper::FindDecoder(const char *cstrFileName)
 {
-	//ReportError1("Open with FFmpeg File=%s", cstrFileName);
+	ReportError1("Open with FFmpeg File=%s", cstrFileName);
 
     // Open audio file
 	int err = av_open_input_file(&m_pFormatCtx, cstrFileName, NULL, 0, NULL);
 
     if(err != 0)
     {
-    	char cstrFFmpegError[128];
-    	char cstrErrBuf[256] = "Error Opening Song:";
+    	char cstrFFmpegError[1024];
+    	char cstrErrBuf[1024] = "Error Opening Song:";
 
     	av_strerror(err, cstrFFmpegError, sizeof(cstrFFmpegError));
 
@@ -166,90 +211,6 @@ MusMessage FFmpegWrapper::Open(const char *cstrFileName)
     return MUS_MOD_Success;
 }
 
-// Either there is an error in FFmpeg or in my code
-// I can't figure out where it is, so this is a fix.
-void fake_av_metadata_free(AVMetadata **pm)
-{
-    AVMetadata *m= *pm;
-
-    ReportError("In Fake metadata free");
-
-    if(m){
-    	ReportError("Made it into the clear loop");
-        while(m->count--){
-            av_free(m->elems[m->count].key);
-            av_free(m->elems[m->count].value);
-        }
-        ReportError("Problem is not in this loop");
-        av_free(m->elems);
-        ReportError("Perhaps here");
-    }
-    ReportError("Must be here then");
-}
-
-// Either there is an error in FFmpeg or in my code
-// I can't figure out where it is, so this is a fix.
-void fake_avformat_free_context(AVFormatContext *s)
-{
-    int i;
-    AVStream *st;
-
-    ReportError("fafc 1");
-
-    for(i=0;i<s->nb_streams;i++) {
-        /* free all data in a stream component */
-        st = s->streams[i];
-        if (st->parser) {
-            av_parser_close(st->parser);
-            av_free_packet(&st->cur_pkt);
-        }
-        av_metadata_free(&st->metadata);
-        av_free(st->index_entries);
-        av_free(st->codec->extradata);
-        av_free(st->codec->subtitle_header);
-        av_free(st->codec);
-#if FF_API_OLD_METADATA
-        av_free(st->filename);
-#endif
-        av_free(st->priv_data);
-        av_free(st->info);
-        av_free(st);
-    }
-
-    ReportError("fafc 2");
-
-    for(i=s->nb_programs-1; i>=0; i--) {
-#if FF_API_OLD_METADATA
-        av_freep(&s->programs[i]->provider_name);
-        av_freep(&s->programs[i]->name);
-#endif
-        av_metadata_free(&s->programs[i]->metadata);
-        av_freep(&s->programs[i]->stream_index);
-        av_freep(&s->programs[i]);
-    }
-    av_freep(&s->programs);
-    av_freep(&s->priv_data);
-    while(s->nb_chapters--) {
-#if FF_API_OLD_METADATA
-        av_free(s->chapters[s->nb_chapters]->title);
-#endif
-        av_metadata_free(&s->chapters[s->nb_chapters]->metadata);
-        av_free(s->chapters[s->nb_chapters]);
-    }
-
-    ReportError("fafc 3");
-
-    av_freep(&s->chapters);
-
-    ReportError("fafc 4");
-    fake_av_metadata_free(&s->metadata);
-    ReportError("fafc 5");
-
-    av_freep(&s->key);
-
-    ReportError("fafc 6");
-    av_free(s);
-}
 
 MusMessage FFmpegWrapper::Close()
 {
@@ -257,7 +218,7 @@ MusMessage FFmpegWrapper::Close()
 	if (m_pCodecCtx)
 		avcodec_close(m_pCodecCtx);
 
-	ReportError1("About to close m_pFormatCtx which has val of %i", m_pFormatCtx);
+	//ReportError1("About to close m_pFormatCtx which has val of %i", m_pFormatCtx);
 
 	// Close the video file
 	if (m_pFormatCtx)
@@ -514,21 +475,49 @@ char *FFmpegWrapper::GetMetadata()
 		{
 			tmpSize = MAX(tmpSize+512, 1028);
 			// for ease of use, increment in intervals of 1028
-			SizeLim += 1028;
+			SizeLim += tmpSize;
 			cstrRet = (char *) realloc(cstrRet, SizeLim);
 		}
 		
 		// allocate a new temp string to place the metadata pair into
-		cstrTmp = (char *) malloc(tmpSize);
-		sprintf(cstrTmp, " \"%s\":\"%s\",", tag->key, tag->value);
+		cstrTmp = (char *) malloc(tmpSize+20);
+		char *tmpString = (char *) malloc(tmpSize+20);
+
+		ConvertQuoteStrcpy(tmpString, tag->value);
+
+		//strcpy(tmpString, tag->value);
+
+		sprintf(cstrTmp, " \"%s\":\"%s\",", tag->key, tmpString);
 		strcat(cstrRet, cstrTmp);
 		free(cstrTmp);
+		free(tmpString);
 	}
 	
 	cstrTmp = cstrRet;
 
-	while((*cstrTmp) != 0) cstrTmp++;
+	while((*cstrTmp) != '\0') cstrTmp++;
 	cstrTmp--;
 	*cstrTmp = '}';
 	return cstrRet;
+}
+
+
+/********************************
+ *	GetValue()
+ *
+ *	Get a metadata value that matches the specified key
+ ********************************/
+const char *FFmpegWrapper::GetValue(const char *Key)
+{
+	// variable to pass the metadata pairs to
+	AVMetadataTag *tag=NULL;
+
+	ReportError1("Getting Key %s", Key);
+
+	tag = av_metadata_get(m_pFormatCtx->metadata, Key, tag, AV_METADATA_IGNORE_SUFFIX);
+
+	if (tag == NULL)
+		return NULL;
+
+	return tag->value;
 }

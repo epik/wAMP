@@ -10,6 +10,7 @@
 #include "WormThread.h"
 #include "MusController.h"
 #include "SDL.h"
+#include "Indexer/Indexer.h"
 #if USE_PDL
 #include "PDL.h"
 #define REGISTER_WITH_DEVICE Register()
@@ -19,6 +20,8 @@
 
 
 MusController g_MusController;
+
+WormIndexer g_Indexer;
 
 int32_t	g_iContinue = 1;
 
@@ -159,6 +162,118 @@ PDL_bool GetMetadata(PDL_JSParameters *parms)
 	return PDL_TRUE;
 }
 
+PDL_bool GetCurrentDirLS(PDL_JSParameters *parms)
+{
+	PDL_Err err;
+
+	const char *strVal = PDL_GetJSParamString(parms, 0);
+	int16_t iBuildType = PDL_GetJSParamInt(parms, 1);
+
+	if (iBuildType != BUILD_TYPE_FAST)
+		iBuildType = BUILD_TYPE_SLOW;
+
+	g_Indexer.GetDirFileList(strVal, iBuildType);
+	char *cstrRet = g_Indexer.ConvertToJSON(MUS_MESSAGE_GET_CURRENT_DIR_LS);
+
+	err = PDL_JSReply(parms, cstrRet);
+
+	if (err != PDL_NOERROR)
+	{
+		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
+		return PDL_FALSE;
+	}
+
+	free(cstrRet);
+
+	return PDL_TRUE;
+}
+
+
+PDL_bool GetFullIndex(PDL_JSParameters *parms)
+{
+	PDL_Err err;
+
+	char *cstrRet = g_Indexer.ConvertToJSON(MUS_MESSAGE_GET_FULL_SONG_INDEX);
+
+	if (cstrRet == NULL)
+	{
+		cstrRet = (char *) malloc (256);
+		LockFM();
+		sprintf(cstrRet, "{\"NotReadyYet\":\"%s\"}", g_Indexer.GetCurrentIndexDir());
+		UnlockFM();
+	}
+
+	err = PDL_JSReply(parms, cstrRet);
+
+	if (err != PDL_NOERROR)
+	{
+		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
+		return PDL_FALSE;
+	}
+
+	free(cstrRet);
+
+	return PDL_TRUE;
+}
+
+
+PDL_bool Ping(PDL_JSParameters *parms)
+{
+	PDL_Err err = PDL_JSReply(parms, "Pong");
+
+	if (err != PDL_NOERROR)
+	{
+		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
+		return PDL_FALSE;
+	}
+
+	return PDL_TRUE;
+}
+
+PDL_bool RunYet(PDL_JSParameters *parms)
+{
+	PDL_Err err;
+
+	int16_t iRunStatus = g_Indexer.GetRunYet();
+
+	if (iRunStatus == 0)
+		err = PDL_JSReply(parms, "{\"iRunYet\":0}");
+	else if (iRunStatus == 1)
+		err = PDL_JSReply(parms, "{\"iRunYet\":1}");
+	else
+		err = PDL_JSReply(parms, "{\"iRunYet\":2}");
+
+	if (err != PDL_NOERROR)
+	{
+		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
+		return PDL_FALSE;
+	}
+
+	return PDL_TRUE;
+}
+
+PDL_bool IsPlayable(PDL_JSParameters *parms)
+{
+	PDL_Err err;
+
+	const char *cstrVal = PDL_GetJSParamString(parms, 0);
+
+	int16_t iRunStatus = g_Indexer.IsPlayable(cstrVal);
+
+	if (iRunStatus == 0)
+		err = PDL_JSReply(parms, "{\"iPlayable\":0}");
+	else
+		err = PDL_JSReply(parms, "{\"iPlayable\":1}");
+
+	if (err != PDL_NOERROR)
+	{
+		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
+		return PDL_FALSE;
+	}
+
+	return PDL_TRUE;
+}
+
 int Register()
 {
 	PDL_Err err;
@@ -172,11 +287,26 @@ int Register()
 		return 1;
 	}
 
+	err = PDL_RegisterJSHandler("Ping", Ping);
+	if (err != PDL_NOERROR)
+	{
+		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
+		return 1;
+	}
 
+	err = PDL_RegisterJSHandler("GetCurrentDirLS", GetCurrentDirLS);
+	if (err != PDL_NOERROR)
+	{
+		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
+		return 1;
+	}
+
+	err = PDL_RegisterJSHandler("RunYet", RunYet);
+	err = PDL_RegisterJSHandler("IsPlayable", IsPlayable);
 	err = PDL_RegisterJSHandler("Play", Play);
 	err = PDL_RegisterJSHandler("Pause", Pause);
 	err = PDL_RegisterJSHandler("Open", Open);
-	err = PDL_RegisterJSHandler("OpenNext", SetNext);
+	err = PDL_RegisterJSHandler("SetNext", SetNext);
 	err = PDL_RegisterJSHandler("SetBass", SetBass);
 	err = PDL_RegisterJSHandler("SetTreble", SetTreble);
 	err = PDL_RegisterJSHandler("GetState", GetState);
@@ -185,6 +315,7 @@ int Register()
 	err = PDL_RegisterJSHandler("Seek", Seek);
 	err = PDL_RegisterJSHandler("Quit", PluginQuit);
 	err = PDL_RegisterJSHandler("GetMetadata", GetMetadata);
+	err = PDL_RegisterJSHandler("GetFullIndex", GetFullIndex);
 
 
 	err = PDL_JSRegistrationComplete();
@@ -240,30 +371,52 @@ void Quit()
 	SDL_Quit();
 }
 
+
 int main()
 {
+	/*//g_Indexer.SetHomeDir("c:/Users/Katiebird/Work");
+	g_Indexer.BuildIndex();
+	//g_Indexer.GetDirFileList("c:/", 0);
+
+
+	char *cstrRet = g_Indexer.ConvertToJSON(MUS_MESSAGE_GET_FULL_SONG_INDEX);
+
+	while(cstrRet == NULL)
+	{
+		cstrRet = g_Indexer.ConvertToJSON(MUS_MESSAGE_GET_FULL_SONG_INDEX);
+		WormSleep(100);
+	}
+
+	ReportError1("%s", cstrRet);
+	free(cstrRet);
+
+	return 0;*/
 
 	if (Init()) return 0;
 
 	if(REGISTER_WITH_DEVICE) return 0;
 
+	g_Indexer.BuildIndex();
+
 	// Inits the music part of the program.
 	g_MusController.Init();
 	g_MusController.Start();
 
-	//ReportError("Made it past the init stuff");
+	ReportError("Made it past the init stuff");
 
 #ifndef ON_DEVICE
 	
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, "0");
 
-	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/t2.mp3");
+	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/zcorder_2010-09-23_204950.mp3");
+
+	//g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/e.mp3");
 
 	ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
 
 	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/f.m4a", 0.0);
 
-	// this keeps track of how long the user has waited for
+	/*// this keeps track of how long the user has waited for
 	//	the buffering
 	uint32_t uiCurWaitTime = 0;
 
@@ -274,7 +427,7 @@ int main()
 	WormMarkStartTime();
 
 	// Run fillbuffer until we meet one of the specified conditions
-	while (uiCurWaitTime < 4) // check wait time
+	while (uiCurWaitTime < 20) // check wait time
 	{
 		ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
 		// update time since we started
@@ -287,12 +440,12 @@ int main()
 	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/test1.mp3");
 
 	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/test2.mp3", 0.0);
-	//g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/f.m4a", 0.0);
+	//g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/f.m4a", 0.0);*/
 
-	while (1)
+	while (g_iContinue)
 	{
 		WormSleep(50);
-		ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
+		//ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_META));
 	}
 
 #else

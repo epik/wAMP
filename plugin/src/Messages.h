@@ -47,6 +47,9 @@
 // Here we define the different ways to open the next music file
 #define MUS_MESSAGE_OPEN_SONG				11
 #define MUS_MESSAGE_SET_NEXT				12
+// Here we define messages to to send to the indexer
+#define MUS_MESSAGE_GET_CURRENT_DIR_LS		20
+#define MUS_MESSAGE_GET_FULL_SONG_INDEX		21
 
 //**MusManager status states
 #define MUS_STATUS_SONG_LOADED				101
@@ -62,6 +65,7 @@
 //**MusManager internal message passing
 #define MUS_INTMES_END_OF_SONG_REACHED		1001
 #define MUS_INTMES_BUFFER_UNDERFLOW			1002
+
 
 //**MusManager Error Codes
 #define MUS_ERROR_CODE_CLEAR				0

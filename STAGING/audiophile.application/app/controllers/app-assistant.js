@@ -1,6 +1,8 @@
 function AppAssistant(appController) {
   	console.info("AppAssistant")
   	this.appController = appController;
+	objGlobalwAMP = new wAMP();
+	objGlobalwAMP.CreatePluginHook();
 }
 
 function StageAssistant(stageController) {
@@ -9,6 +11,7 @@ function StageAssistant(stageController) {
     myGlobal.myranonce = null;
 	myGlobal.myprevscene = "home";
   	this.stageController = stageController;
-	this.stageController.pushScene("home", new wAMP());
+	
+	stageController.window.document.body.appendChild(objGlobalwAMP.df);
+	this.stageController.pushScene("plugload", objGlobalwAMP);
 }
-

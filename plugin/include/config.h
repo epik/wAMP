@@ -13,6 +13,11 @@
 // Read little Endian
 #define READ_LITTLE_ENDIAN
 
+#define SUPPORTED_EXTEN "mp3,wma,m4a,aac,flac,FLAC,ogg,ra,ram,wav,mp2,mp1,mpg,als,ors,mp4,3gp,wmv"
+
+#define INDEX_STUF "/wamp.index"
+
+#define CMD_LINE_FOR_FILEIO_ONLY "fileio_mode"
 
 // Define this to turn on the WormDebug options.
 // More granular options should be tweeked from WormDebug.h
@@ -37,6 +42,8 @@
 #else
 
 #define RESAMPLE_RES_PATH "git/STAGING/audiophile.application/res/resamp.res"
+
+#define ON_TEST_RIG_HOME_DIR "c:/Users/Katiebird/Work"
 
 #endif
 

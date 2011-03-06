@@ -78,6 +78,10 @@ inline void operator--(eEnumType& eVal, int)  \
 
 #define BytesToShort(X, Y) (short)((Y<<8)|(X&0xff))
 
+// This is a function to copy a string and make sure any " are
+//	marked with an escape character
+extern void ConvertQuoteStrcpy(char *dest, const char *scr);
+
 // this is for run time checking, which we don't need here
 //#define BytesToShort(X, Y) BigEndianSystem ?(short)((X<<8)|(Y&0xff)):(short)((Y<<8)|(X&0xff))
 

@@ -33,9 +33,9 @@ MUS_MESSAGE 	g_cmStatus = MUS_STATUS_ERROR;
 // status of the next song to play
 MUS_MESSAGE		g_cmNextSongStatus = MUS_STATUS_ERROR;
 // variables for keeping track of currently playing song
-char m_cstrCurrentSong[256];
+char m_cstrCurrentSong[512];
 // keep track of the next song to play
-char m_cstrNextSong[256];
+char m_cstrNextSong[512];
 
 // the resample filter used by the musmodule for playback
 ResampleFilter  g_rfResample;
@@ -47,7 +47,7 @@ int16_t			g_bDifSampleRate = 0;
 // Callback functions to set variables in the global filter
 void SetSpeed(double fSpeed)
 {
-	//ReportError2("Speed Set=%f, scaled by=%f", fSpeed, g_fSongRateScale);
+	ReportError2("Speed Set=%f, scaled by=%f", fSpeed, g_fSongRateScale);
 	g_rfResample.SetFilterRate(fSpeed * g_fSongRateScale);
 	g_fCurSpeed = fSpeed;
 };
@@ -185,22 +185,22 @@ size_t ConvertToSecs(size_t lSamps)
 void MusController::audio_callback_sdl(void *MusicController,
 										Uint8 *destStream, int lRequested)
 {
-	//ReportError("****************ENTERING FILTER CALLBACK*************");
+	ReportError("****************ENTERING FILTER CALLBACK*************");
 
-	/*ReportError2("{\"CurPos\":%i,\"EndAmt\":%i}",
+	ReportError2("{\"CurPos\":%i,\"EndAmt\":%i}",
 				 ConvertToSecs(m_lCurSongSamp),
-				 m_lSongEndInSec);*/
+				 m_lSongEndInSec);
 
 	MusController *pmcController = (MusController *)MusicController;
 	int32_t	lPartialAdvance = 0;
-	/*ReportError7("Cur End Pos %i:ID %i, Cur Write Pos %i:ID: %i, Cur read pos %i:ID %i, req %i",
+	ReportError7("Cur End Pos %i:ID %i, Cur Write Pos %i:ID: %i, Cur read pos %i:ID %i, req %i",
 									pmcController->m_lSongEndPos,
 									pmcController->m_iEndSonBuffID,
 									pmcController->m_lModuleWriteToPos,
 									pmcController->m_iWritingBuffID,
 									pmcController->m_lReadToDSPPos,
 									pmcController->m_iReadingBuffID,
-									lRequested);*/
+									lRequested);
 
 	// Check if we are in a state where we should not be playing
 	//	and send silence if we are
@@ -362,7 +362,7 @@ void MusController::audio_callback_sdl(void *MusicController,
 			psOutBuffer,
 			lRequested/2);
 
-	//ReportError("*****************EXITING FILTER CALLBACK***************");
+	ReportError("*****************EXITING FILTER CALLBACK***************");
 
 };
 
@@ -1345,7 +1345,12 @@ int16_t MusController::OpenNext(MUS_MESSAGE OpenType,
 
 		strcpy(m_cstrCurrentSong, cstrFileName);
 
-		g_fSongRateScale = m_FFmpegDecoder.GetSampleRate()/DEST_FREQ;
+		int iDen = m_FFmpegDecoder.GetSampleRate();
+
+		if (iDen < 11025) iDen = 11025;
+
+		g_fSongRateScale = DEST_FREQ/iDen;
+
 		/*ReportError1("Song Samplerate=%li",
 									m_FFmpegDecoder.GetSampleRate());*/
 		SetSpeed(g_fCurSpeed);
@@ -1374,7 +1379,11 @@ int16_t MusController::OpenNext(MUS_MESSAGE OpenType,
 
 		strcpy(m_cstrCurrentSong, cstrFileName);
 
-		g_fSongRateScale = m_FFmpegDecoder.GetSampleRate()/DEST_FREQ;
+		int iDen = m_FFmpegDecoder.GetSampleRate();
+
+		if (iDen < 11025) iDen = 11025;
+
+		g_fSongRateScale = DEST_FREQ/iDen;
 		/*ReportError1("Song Samplerate=%li",
 									m_FFmpegDecoder.GetSampleRate());*/
 		SetSpeed(g_fCurSpeed);

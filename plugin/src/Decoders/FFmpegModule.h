@@ -52,11 +52,13 @@ public:
 													size_t *plNumBytesWritten);
 	size_t GetSeconds() {return m_iSongLength;};
 
-	int16_t IsType(const char *cstrFileName, size_t iPos=0);
+	int16_t IsType(const char *cstrFileName);
 
 	int64_t Seek(double);
 	
 	int16_t	CheckEnd()	{return m_bEndState;};
+
+	const char *GetValue(const char *Name);
 
 	char *GetMetadata();
 };

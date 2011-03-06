@@ -41,11 +41,13 @@ ReportError1("There was an error: %s", g_cstrErrorStr); \
 //*************************************************************
 #ifdef DEBUG
 
+#define wAMPstrcpy(x, y, z)  SafeStrcpy(x, y, z)
+
+extern int16_t SafeStrcpy(char *cstrDest, const char *cstrSrc, int x);
+
 #ifndef ON_DEVICE
 
 #include <stdio.h>
-
-
 
 #define ERROUT stderr
 
@@ -96,6 +98,8 @@ ReportError1("There was an error: %s", g_cstrErrorStr); \
 #endif // #if DEBUG
 
 #else
+
+#define wAMPstrcpy(x, y, z)  strcpy(x, y)
 
 // No Debug Options go below
 #define ReportError(s)

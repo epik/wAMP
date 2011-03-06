@@ -1,155 +1,161 @@
 
 #include "Indexer.h"
 #include "FMGuiDir.h"
+#include "../WormMacro.h"
 #include <cstring>
-/*
+#include <vector>
+#include "../Decoders/Decoders.h"
+#include "../WormThread.h"
+#include <stdio.h>
+
 using namespace std;
 
-int32_t	IsFlac(size_t iPos, const char *cstrFileName)
+struct VisitQue
 {
-	if ((iPos - 5) >= 0)
-		return 0;
-	
-	cstrFileName += (iPos - 5);
+	char Dir[1024];
+	VisitQue *Next;
 
-	if ((cstrFileName[0] ==  '.') &&
-		((cstrFileName[1] == 'f') || (cstrFileName[1] == 'F')) &&
-		((cstrFileName[2] == 'l') || (cstrFileName[2] == 'L')) &&
-		((cstrFileName[3] == 'a') || (cstrFileName[3] == 'A')) &&
-		((cstrFileName[4] == 'c') || (cstrFileName[4] == 'C')))
+	VisitQue(const char *cstrDir)
 	{
+		wAMPstrcpy(Dir, cstrDir, 512);
+		Next = NULL;
+	}
+
+	void AddToQue(VisitQue *NewNode)
+	{
+		VisitQue *iter = this;
+
+		while(iter->Next != NULL)
+			iter = iter->Next;
+
+		iter->Next = NewNode;
+	}
+
+	int16_t CheckIfValInQue(char *cstrDirToSearch)
+	{
+		VisitQue *iter = this;
+
+		while (strcmp(iter->Dir, cstrDirToSearch) != 0)
+		{
+			if (iter->Next == NULL)
+				return 0;
+
+			iter = iter->Next;
+		}
+
 		return 1;
 	}
+};
+
+
+void WormIndexer::BuildIndex()
+{
+	// Don't need to save this, Thread should be self sufficient
+	pthread_t Thread;
+
+	// spawn the thread to run MusController's logic loop
+	pthread_create(&Thread, NULL, StartIndexThread, this);
+}
+
+
+void WormIndexer::GetFullFileList()
+{
+	m_iIndexingInProgress = 2;
+
+	FILE *pFile;
+
+	pFile = fopen(HOME_DIR INDEX_STUF, "rb");
+
+	if (pFile)
+	{
+		uint32_t iJSONSize;
+		fread(&iJSONSize, sizeof(uint32_t), 1, pFile);
+
+		m_cstrIndexJSON = (char *) malloc(iJSONSize);
+
+		fread(m_cstrIndexJSON, sizeof(char), iJSONSize, pFile);
+		m_iIndexingInProgress = 0;
+		ReportError1("%s", m_cstrIndexJSON);
+
+		m_sRunYet = 1;
+
+		fclose(pFile);
+		return;
+	}
 	else
-		return 0;
-}
-
-
-void FlacIndexer::error_callback(::FLAC__StreamDecoderErrorStatus status)
-{
-	ReportError1("Got error callback: %s", FLAC__StreamDecoderErrorStatusString[status]);
-}
-
-::FLAC__StreamDecoderWriteStatus FlacIndexer::write_callback(const ::FLAC__Frame *frame, const FLAC__int32 * const buffer[])
-{
-	// Do Nothing
-}
-
-void FlacIndexer::metadata_callback(const ::FLAC__StreamMetadata *metadata)
-{
-	// print some stats
-	if(metadata->type == FLAC__METADATA_TYPE_VORBIS_COMMENT)
 	{
-
+		m_sRunYet = 2;
 	}
-	else if (metadata->type == FLAC__METADATA_TYPE_CUESHEET)
-	{
-	
-	}
-	else if (metadata->type == FLAC__METADATA_TYPE_PICTURE)
-	{
-	
-	}
-}
 
-int16_t FlacIndexer::CheckFile(const char *cstrFileName)
-{
-	set_metadata_respond(FLAC__METADATA_TYPE_VORBIS_COMMENT);
-	set_metadata_respond(FLAC__METADATA_TYPE_CUESHEET);
-	set_metadata_respond(FLAC__METADATA_TYPE_PICTURE);
+	VisitQue *DirsToVisit = new VisitQue(m_cstrHomeDir);
+	VisitQue *DirsVisited = NULL;
 
-	FLAC__StreamDecoderInitStatus init_status = init(cstrFileName);
-	if (init_status != FLAC__STREAM_DECODER_INIT_STATUS_OK)
-	{
-		ReportError1("ERROR: initializing decoder: %s", 
-							FLAC__StreamDecoderInitStatusString[init_status]);
-		return 0;
-	}
-	
-	return 1;
-}
-
-void FlacIndexer::GetIndex(IndexItem &Item)
-{
-	m_iiIndexToFill = Item;
-	
-	process_until_end_of_metadata();
-	
-	finish();
-}*/
-
-void WormIndexer::Init(const char *cstrSearchPath)
-{
-	/*vector<string> 				vstrDirsToVisit;
-	vstrDirsToVisit.push_back(string(cstrSearchPath));
-	vector<string> 				vstrVistedDirs;
-	vector<string>::iterator 	it;
-	
 	FMGUI_FileInfo 	Info;
 	FMGUI_Dir 		*pDir;
 
-	while (!vstrDirsToVisit.empty())
+	while (DirsToVisit != NULL)
 	{
-		ReportError1("The current size of the Dir's to visit is %i",
-					vstrDirsToVisit.size());
-
 		// pop the next dir to search
-		std::string strDirName = vstrDirsToVisit.back();
-		vstrDirsToVisit.pop_back();
-	
-		ReportError1("****Starting search of dir: %s", strDirName.c_str());
+		char cstrDirName[1024];
+		strcpy(cstrDirName, DirsToVisit->Dir);
+		VisitQue *Cur = DirsToVisit;
+		DirsToVisit = DirsToVisit->Next;
+		delete Cur;
 
-		bool bVisited = false;
-		it = vstrVistedDirs.begin();
+		//ReportError1("****Starting search of dir: %s", cstrDirName);
 
+		int16_t bVisited;
 
-
-		//ReportError("Checking if we have visited this dir yet");
-		while((it < vstrVistedDirs.end()) && (!bVisited))
-		{
-			if (strDirName.compare(*it) == 0)
-			{
-				ReportError("Previously visited");
-				bVisited = true;
-			}
-			else
-			{
-				it++;
-			}
-		}
+		if (DirsVisited == NULL)
+			bVisited = 0;
+		else
+			bVisited = DirsVisited->CheckIfValInQue(cstrDirName);
 		
 		if (!bVisited)
 		{
+			if (DirsVisited == NULL)
+				DirsVisited = new VisitQue(cstrDirName);
+			else
+				DirsVisited->AddToQue(new VisitQue(cstrDirName));
 
-			vstrVistedDirs.push_back(strDirName);
-			pDir = FMGUI_OpenDir(strDirName.c_str());
+
+
+			pDir = FMGUI_OpenDir(cstrDirName);
+
+			LockFM();
+
+			strcpy(m_cstrCurrentIndexDir, cstrDirName);
+
+			UnlockFM();
 
 			if (pDir == NULL)
 			{
-				ReportError1("Error opening %s", strDirName.c_str());
+				//ReportError1("Error opening %s", cstrDirName);
 				continue;
 			}
 	
 			for (size_t i = 0; i < (size_t) pDir->nents; i++)
 			{
 				
-				ReportError1("Checking info of %s", pDir->ents[i]);
+				//ReportError1("Checking info of %s", pDir->ents[i]);
 
 				if (pDir->ents[i][0] == '.')
 				{
 					continue;
 				} //(pDir->ents[i][0] == '.')
 
-				string strFileFullPath(strDirName);
-				strFileFullPath.append(FMGUI_PATHSEP);
-				strFileFullPath.append(pDir->ents[i]);
+				char strFileFullPath[1024];
+				assert((strlen(cstrDirName)+strlen(pDir->ents[i])+1)<1024);
+				strcpy(strFileFullPath, cstrDirName);
+				strcat(strFileFullPath, FMGUI_PATHSEP);
+				strcat(strFileFullPath, pDir->ents[i]);
 				
 				if (strcmp(pDir->ents[i], "palmos") == 0)
 						continue;
 
-				ReportError1("Full Path Name being searched %s", strFileFullPath.c_str());
+				ReportError1("Full Path Name being searched %s", strFileFullPath);
 
-				if (FMGUI_GetFileInfo(strFileFullPath.c_str(), &Info) == -1)
+				if (FMGUI_GetFileInfo(strFileFullPath, &Info) == -1)
 				{
 					continue;
 				}
@@ -164,40 +170,420 @@ void WormIndexer::Init(const char *cstrSearchPath)
 
 				if (Info.type == FMGUI_FILE_DIRECTORY)
 				{
-					ReportError("Is a directory so add back to search que");
+					//ReportError("Is a directory so add back to search que");
 
-					vstrDirsToVisit.push_back(strFileFullPath);
+					if(DirsToVisit == NULL)
+						DirsToVisit = new VisitQue(strFileFullPath);
+					else
+						DirsToVisit->AddToQue(new VisitQue(strFileFullPath));
+
 				} 
 				else 
 				{
-					ReportError("Checking if a readable song");
-
-					const char  *cstrFileName = pDir->ents[i];
-					size_t		iStrPos = 0;
-					
-					// we check for end of string or potential overflow
-					while ((cstrFileName[iStrPos] != 0) && (iStrPos < 255))
-						iStrPos++;
+					//ReportError1("Checking if %s a readable song", strFileFullPath);
 					
 					// just gonna hard code this for now
 					//	didn't like the way the more robust solution
 					//	worked out in practice
-					if (IsFlac(iStrPos, cstrFileName) &&
-								m_fiFlacIndexer.CheckFile(strFileFullPath.c_str()))
+					if (m_ffmpegObjectAll.IsType(strFileFullPath))
 					{
-						
-						m_vIndex.push_back(IndexItem());
-						m_fiFlacIndexer.GetIndex(m_vIndex.back());
+						ReportError("Starting to extract metadata info");
+
+						SongItem *AddSong = new SongItem(strFileFullPath, pDir->ents[i]);
+						AddSong->Type = SONG;
+
+						AddSong->SetArtist(m_ffmpegObjectAll.GetValue("artist"));
+						AddSong->SetAlbum(m_ffmpegObjectAll.GetValue("album"));
+						AddSong->SetGenre(m_ffmpegObjectAll.GetValue("genre"));
+						AddSong->SetTitle(m_ffmpegObjectAll.GetValue("title"));
+
+						m_FilesNameIndex.AddNode(AddSong);
+
+						m_ffmpegObjectAll.Close();
 					}
 
 				} // else if (Info.type == FMGUI_FILE_DIRECTORY)
 
+				WormSleep(100);
+
 			} //for (size_t i = 0; i < pDir->nents; i++)
 
-			ReportError("****Closing the dir we just searched");
+			//ReportError("****Closing the dir we just searched");
 			FMGUI_CloseDir(pDir);
+
+
 		} //if (!bVisited)
 
-	} //while (!vstrDirsToVisit.empty())*/
+		WormSleep(100);
+
+	} //while (!vstrDirsToVisit.empty())
 	
+	m_FilesIter = m_FilesNameIndex.Root;
+
+	// For now allocate 2056 characters for the json.
+	//	If we need more, we will realloc
+	char *cstrRet = (char *) malloc(2056);
+
+	// keep track of how many characters we have in the string
+	//	in case we need to realloc
+	size_t	SizeLim = 2056;
+
+	SongItem *songVal = GetNextFileFromAll();
+	if (songVal == NULL)
+	{
+		sprintf(cstrRet,"{\"finishedIndexing\":true}");
+
+	}
+	else
+	{
+
+		char *cstrTmp;
+
+		// add the starting bracket to the json
+		sprintf(cstrRet,"{\"finishedIndexing\":true, \"arrayFileList\": [");
+		size_t	CurSize = 50;
+
+		while (songVal != NULL)
+		{
+			cstrTmp = songVal->ToStringMeta();
+
+			// Make sure we have enough room in our main JSON string
+			size_t tmpSize = strlen(cstrTmp);
+			CurSize += tmpSize;
+			if (CurSize > SizeLim)
+			{
+				tmpSize = MAX(tmpSize+512, 1028);
+				// for ease of use, increment in intervals of 1028
+				SizeLim += tmpSize;
+				cstrRet = (char *) realloc(cstrRet, SizeLim);
+			}
+
+			strcat(cstrRet, cstrTmp);
+			free(cstrTmp);
+			songVal = GetNextFileFromAll();
+		}
+
+		cstrTmp = cstrRet;
+
+		while((*cstrTmp) != '\0') cstrTmp++;
+		cstrTmp--;
+		*cstrTmp = ']';
+		strcat(cstrRet, "}");
+
+	}
+
+	pFile = fopen(HOME_DIR INDEX_STUF, "wb");
+
+	if (pFile)
+	{
+		uint32_t i = strlen(cstrRet);
+		fwrite(&i, sizeof(uint32_t), 1, pFile);
+		fwrite(cstrRet, sizeof(char), i, pFile);
+	}
+
+	fclose(pFile);
+
+	m_cstrIndexJSON = cstrRet;
+
+	m_iIndexingInProgress = 0;
+}
+
+
+SongItem * WormIndexer::GetNextFileFromAll()
+{
+	SongItem *retVal = m_FilesIter;
+
+	if (m_FilesIter == NULL)
+	{
+		m_FilesIter = m_FilesNameIndex.Root;
+	}
+	else
+	{
+
+		m_FilesIter = m_FilesIter->Next;
+	}
+
+	return retVal;
+}
+
+
+void WormIndexer::GetDirFileList(const char *cstrDirName, int iBuildType)
+{
+	m_iBuildType = iBuildType;
+
+	m_CurDirLS.Clear();
+
+	FMGUI_FileInfo 	Info;
+	FMGUI_Dir 		*pDir;
+
+	pDir = FMGUI_OpenDir(cstrDirName);
+
+	if (pDir == NULL)
+	{
+		//ReportError1("Error opening %s", cstrDirName);
+		return;
+	}
+
+	for (size_t i = 0; i < (size_t) pDir->nents; i++)
+	{
+
+		//ReportError1("Checking info of %s", pDir->ents[i]);
+
+		if (pDir->ents[i][0] == '.')
+		{
+			continue;
+		} //(pDir->ents[i][0] == '.')
+
+		char strFileFullPath[1024];
+		assert((strlen(cstrDirName)+strlen(pDir->ents[i])+1)<1024);
+		strcpy(strFileFullPath, cstrDirName);
+		strcat(strFileFullPath, FMGUI_PATHSEP);
+		strcat(strFileFullPath, pDir->ents[i]);
+
+		if (strcmp(pDir->ents[i], "palmos") == 0)
+				continue;
+
+		ReportError1("Full Path Name being searched %s", strFileFullPath);
+
+		if (FMGUI_GetFileInfo(strFileFullPath, &Info) == -1)
+		{
+			continue;
+		}
+
+		if ((Info.flags & FMGUI_FILE_HIDDEN) ||
+			(Info.flags & FMGUI_FILE_SYSTEM) ||
+			(Info.flags & FMGUI_FILE_TEMPORARY))
+		{
+			continue;
+		}
+
+
+		if (Info.type == FMGUI_FILE_DIRECTORY)
+		{
+			//ReportError("Is a directory so add back to search que");
+
+			SongItem *AddDir = new SongItem(strFileFullPath, pDir->ents[i]);
+			AddDir->Type = DIR;
+
+			m_CurDirLS.AddNode(AddDir);
+		}
+		else
+		{
+			ReportError1("Checking if %s a readable song", strFileFullPath);
+
+			// just gonna hard code this for now
+			//	didn't like the way the more robust solution
+			//	worked out in practice
+			if (m_iBuildType == BUILD_TYPE_SLOW)
+			{
+
+				if (m_ffmpegObjectDir.IsType(strFileFullPath))
+				{
+					ReportError("Starting to extract metadata info");
+
+					SongItem *AddSong = new SongItem(strFileFullPath, pDir->ents[i]);
+					AddSong->Type = SONG;
+
+
+					AddSong->SetArtist(m_ffmpegObjectDir.GetValue("artist"));
+					AddSong->SetAlbum(m_ffmpegObjectDir.GetValue("album"));
+					AddSong->SetGenre(m_ffmpegObjectDir.GetValue("genre"));
+					AddSong->SetTitle(m_ffmpegObjectDir.GetValue("title"));
+
+					m_CurDirLS.AddNode(AddSong);
+
+					m_ffmpegObjectDir.Close();
+				}
+			}
+			else
+			{
+				SongItem *AddSong = new SongItem(strFileFullPath, pDir->ents[i]);
+				AddSong->Type = SONG;
+				m_CurDirLS.AddNode(AddSong);
+			}
+
+		} // else if (Info.type == FMGUI_FILE_DIRECTORY)
+
+	} //for (size_t i = 0; i < pDir->nents; i++)
+
+
+	FMGUI_CloseDir(pDir);
+
+	m_FFIter = m_CurDirLS.Root;
+	//ReportError("****Closing the dir we just searched");
+
+}
+
+SongItem *WormIndexer::GetNextFileFromFolder()
+{
+	SongItem *retVal = m_FFIter;
+
+	if (m_FFIter == NULL)
+	{
+		m_FFIter = m_CurDirLS.Root;
+	}
+	else
+	{
+		m_FFIter = m_FFIter->Next;
+	}
+
+	return retVal;
+}
+
+char *WormIndexer::ConvertToJSON(MUS_MESSAGE msg)
+{
+
+	char *cstrTmp;
+
+	switch (msg)
+	{
+	case MUS_MESSAGE_GET_CURRENT_DIR_LS:
+	{
+		// For now allocate 2056 characters for the json.
+		//	If we need more, we will realloc
+		char *cstrRet = (char *) malloc(2056);
+
+		// keep track of how many characters we have in the string
+		//	in case we need to realloc
+		size_t	SizeLim = 2056;
+
+		// add the starting bracket to the json
+		sprintf(cstrRet,"{\"arrayFileList\": [");
+		size_t	CurSize = 22;
+
+		SongItem *songVal = GetNextFileFromFolder();
+		if (songVal == NULL)
+		{
+			free(cstrRet);
+			return NULL;
+		}
+
+		while (songVal != NULL)
+		{
+			char *cstrTmp;
+
+			if (m_iBuildType == BUILD_TYPE_FAST)
+				cstrTmp = songVal->ToString();
+			else
+				cstrTmp = songVal->ToStringMeta();
+
+
+			// Make sure we have enough room in our main JSON string
+			size_t tmpSize = strlen(cstrTmp);
+			CurSize += tmpSize;
+			if (CurSize > SizeLim)
+			{
+				tmpSize = MAX(tmpSize+512, 1028);
+				// for ease of use, increment in intervals of 1028
+				SizeLim += tmpSize;
+				cstrRet = (char *) realloc(cstrRet, SizeLim);
+			}
+
+			strcat(cstrRet, cstrTmp);
+			free(cstrTmp);
+			songVal = GetNextFileFromFolder();
+		}
+
+		cstrTmp = cstrRet;
+
+		while((*cstrTmp) != '\0') cstrTmp++;
+		cstrTmp--;
+		*cstrTmp = ']';
+		strcat(cstrRet, "}");
+		return cstrRet;
+	}
+	case MUS_MESSAGE_GET_FULL_SONG_INDEX:
+	{
+		if (m_iIndexingInProgress)
+			return NULL;
+
+		return m_cstrIndexJSON;
+	}
+	default:
+		return NULL;
+	}
+}
+
+
+char *SongItem::ToStringMeta()
+{
+	// first calculate the size of this metadata item
+	//	remember to add a buffer to account for the quote marks
+	//	and colon used for the JSON item (we use 10 to be safe)
+	size_t	tmpSize = strlen(Path) + strlen(Name) +
+						strlen(Artist) + strlen(Album) +
+						strlen(Genre) + strlen(Title) + 256;
+
+	// allocate a new temp string to place the metadata pair into
+	char *cstrTmp = (char *) malloc(tmpSize);
+
+	sprintf(cstrTmp,
+			" {\"name\":\"%s\", \"path\":\"%s\", \"artist\":\"%s\", "
+				"\"album\":\"%s\", \"genre\":\"%s\", \"title\":\"%s\", "
+				"\"isdir\":%s},",
+			Name,
+			Path,
+			Artist,
+			Album,
+			Genre,
+			Title,
+			((Type == DIR)?"true":"false"));
+
+	return cstrTmp;
+}
+
+char *SongItem::ToString()
+{
+	// first calculate the size of this metadata item
+	//	remember to add a buffer to account for the quote marks
+	//	and colon used for the JSON item (we use 10 to be safe)
+	size_t	tmpSize = strlen(Path) + strlen(Name) + 50;
+
+	// allocate a new temp string to place the metadata pair into
+	char *cstrTmp = (char *) malloc(tmpSize);
+
+	sprintf(cstrTmp,
+			" {\"name\":\"%s\", \"path\":\"%s\", \"isdir\":%s},",
+			Name,
+			Path,
+			((Type == DIR)?"true":"false"));
+
+	return cstrTmp;
+}
+
+/**************************************
+ * ThreadedOperation()
+ *
+ *	This is a static function that is used by as the launching
+ *		point for threaded operation
+ *
+ *	In
+ *		Pointer to music player object to launch
+ *
+ *	Out
+ *		None, return value is a void pointer so the function template
+ *		matches the callback
+ ***************************************/
+void *WormIndexer::StartIndexThread(void *pvObject)
+{
+	// Cast the object passed by the thread start routine to
+	//	MusController
+	WormIndexer *pWormIndexer = (WormIndexer *) pvObject;
+
+	// Start MusController's maing logic loop
+	pWormIndexer->GetFullFileList();
+
+	// Do not worry about return value for now
+	return NULL;
+}
+
+
+/********************************************
+ * IsPlayable()
+ *
+ * Returns whether the passed path is a playable song or not
+ ********************************************/
+int WormIndexer::IsPlayable(const char *cstrPath)
+{
+	return m_ffmpegObjectAll.IsType(cstrPath);
 }

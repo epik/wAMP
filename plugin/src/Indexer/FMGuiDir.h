@@ -63,6 +63,12 @@
 #include "config.h"
 #include "../WormDebug.h"
 
+#ifndef ON_DEVICE
+#define HOME_DIR ON_TEST_RIG_HOME_DIR
+#else
+#define HOME_DIR "/media/internal"
+#endif
+
 #define Malloc malloc
 #define Free free
 #define Realloc realloc

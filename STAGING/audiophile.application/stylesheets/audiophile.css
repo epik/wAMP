@@ -1,5 +1,5 @@
 ﻿body.palm-default {
-    background: url(../images/background.png);
+    background: #FFF;
     -webkit-background-size: cover;
 }
 
@@ -167,4 +167,10 @@
     position: fixed;
     bottom: 43px;
 	width: 100%;
+}
+
+.indexviewButton {
+	width:320px;
+	height:72px;
+	z-index:-1;
 }

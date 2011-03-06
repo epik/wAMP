@@ -12,5 +12,13 @@
     {
         "source": "app/controllers/playit-assistant.js",
         "scenes": "playit"
+    },
+	{
+        "source": "app/controllers/plugload-assistant.js",
+        "scenes": "plugload"
+    },
+	{
+        "source": "app/controllers/indexview-assistant.js",
+        "scenes": "indexview"
     }
 ]

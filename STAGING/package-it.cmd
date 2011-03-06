@@ -1,1 +1,1 @@
-palm-package audiophile.application audiophile.srv audiophile.package
+palm-package audiophile.application
