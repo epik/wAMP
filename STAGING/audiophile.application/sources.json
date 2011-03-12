@@ -9,9 +9,9 @@
         "source": "app/controllers/home-assistant.js",
         "scenes": "home"
     },
-    {
-        "source": "app/controllers/playit-assistant.js",
-        "scenes": "playit"
+	{
+        "source": "app/controllers/playsong-assistant.js",
+        "scenes": "playsong"
     },
 	{
         "source": "app/controllers/plugload-assistant.js",

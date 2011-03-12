@@ -1,176 +1,273 @@
 ﻿body.palm-default {
     background: #FFF;
-    -webkit-background-size: cover;
 }
 
-.myname {
-    color: #FFFFFF;
-    font-size: 14pt;
-    font-style: oblique;
-    font-weight: bold;
-    margin-top: 25px;
+/*----------------
+  This is for the play control buttons
+  ----------------*/
+
+.btnwrap
+{
+	position:fixed;
+	top: 330px;
 }
 
-.mypath {
-    color: #858585;
-    font-size: 10pt;
-}
-
-.mymarquee {
-    color: #6DC686;
-    font-size: 10pt;
-}
-
-.myLname {
-    color: #FFFFFF;
-    font-size: 12pt;
-    font-style: oblique;
-    font-weight: bold;
-    margin: 10px;
-}
-
-.myLpath {
-    color: #858585;
-    font-size: 8pt;
-}
-
-.myLnotice {
-    color: #858585;
-    font-size: 12pt;
-    font-style: oblique;
-    font-weight: bold;
-    margin: 10px;
-}
-
-.myprevious .palm-button {
+.btnprevious .palm-button 
+{
    -webkit-border-image: none;
     background-image: url(../images/prev.png);
-    position: fixed;
-    bottom: 0px;
+    position: absolute;
     left: 71px;
     height: 42px;
     width: 57px;
 }
 
-.myplay .palm-button {
+.btnplay .palm-button 
+{
    -webkit-border-image: none;
     background-image: url(../images/play.png);
-    position: fixed;
-    bottom: 0px;
+    position: absolute;
     left: 128px;
     height: 42px;
     width: 50px;
 }
 
-.mypause .palm-button {
+.btnpause .palm-button 
+{
    -webkit-border-image: none;
     background-image: url(../images/pause.png);
-    position: fixed;
-    bottom: 0px;
+    position: absolute;
     left: 128px;
     height: 42px;
     width: 50px;
 }
 
-.myforward .palm-button {
+.btnforward .palm-button {
    -webkit-border-image: none;
     background-image: url(../images/next.png);
     position: fixed;
-    bottom: 0px;
     left: 178px;
     height: 42px;
     width: 57px;
 }
 
-.myspeedlabel {
-    color: #858585;
-    font-size: 10pt;
-    position: fixed;
-    bottom: 280px;
-    right: 32px;
-}
-
-.myspeed {
-    display: block;
-    width: 250px;
-    position: fixed;
-    bottom: 270px;
-    left: 12px;
-}
-
-.myvolumelabel {
-    color: #858585;
-    font-size: 10pt;
-    position: fixed;
-    bottom: 230px;
-    right: 32px;
-}
-
-.myvolume {
-    display: block;
-    width: 250px;
-    position: fixed;
-    bottom: 220px;
-    left: 12px;
-}
-
-.mytreblelabel {
-    color: #858585;
-    font-size: 10pt;
-    position: fixed;
-    bottom: 180px;
-    right: 32px;
-}
-
-.mytreble {
-    display: block;
-    width: 250px;
-    position: fixed;
-    bottom: 170px;
-    left: 12px;
-}
-
-.mybasslabel {
-    color: #858585;
-    font-size: 10pt;
-    position: fixed;
-    bottom: 130px;
-    right: 32px;
-}
-
-.mybass {
-    display: block;
-    width: 250px;
-    position: fixed;
-    bottom: 120px;
-    left: 12px;
-}
-
-.myscrublabel {
-    color: #FFFFFF;
-    font-size: 12pt;
-    position: fixed;
-    bottom: 80px;
-    right: 32px;
-}
-
-.myscrub {
-    display: block;
-    width: 250px;
-    position: fixed;
-    bottom: 70px;
-    left: 12px;
-}
-
-.mySongProgress {
-    display: block;
-    position: fixed;
-    bottom: 43px;
-	width: 100%;
-}
+/*----------------
+  This is for the buttons in indexview
+  ----------------*/
 
 .indexviewButton {
 	width:320px;
 	height:72px;
 	z-index:-1;
+}
+
+/*----------------
+  This is for the scruber
+  ----------------*/
+
+.scrubwrap
+{
+	position:fixed;
+	z-index:510;
+}
+
+.scruber
+ {
+	position:fixed; 
+	padding-left:1em; 
+	padding-top:3px; 
+	border:1px solid #000; 
+	-webkit-border-radius: 1em; 
+	z-index:-10;
+	color:#000;
+	background-color:#FFF;
+}
+
+.scruberop 
+{
+	position:fixed; 
+	z-index:-9;
+	padding-left:1em; 
+	padding-top:3px; 
+	border:1px solid #000; 
+	-webkit-border-radius: 1em; 
+	height:1.5em;
+	color:#FFF;
+	background-color:#000;
+}
+
+.scrubpopup
+{
+	white-space:nowrap;
+	font-size:4em;
+	text-align:center;
+	vertical-align:middle;
+	position:fixed;
+	z-index:5000;
+	top:25%;
+	left:12.5%;
+	width:75%;
+	margin-left:auto;
+	margin-right:auto;
+	opacity: 0.50;
+	background-color:#000;
+	color:#FFF;
+	height:25%;
+	border:1px solid #000; 
+}
+
+/*----------------
+  This is for the knob
+  ----------------*/
+
+.rotateable
+{
+	position:absolute;
+	overflow:hidden;
+	-webkit-transition-property: -webkit-transform; 
+	-webkit-transition-duration: 0s;
+}
+
+.rotateablefront
+{
+	position:absolute;
+	z-index:3000;
+	overflow:hidden;
+	-webkit-transition-property: -webkit-transform; 
+	-webkit-transition-duration: 0s;
+}
+
+.rotateableback
+{
+	position:absolute;
+	z-index:2003;
+	overflow:hidden;
+	-webkit-transition-property: -webkit-transform; 
+	-webkit-transition-duration: 0s;
+}
+
+.rotateablebackfill
+{
+	position:absolute;
+	z-index:2030;
+	overflow:hidden;
+	-webkit-transition-property: -webkit-transform; 
+	-webkit-transition-duration: 0s;
+	background:url(display.png) 0 0 no-repeat;
+}
+
+.rotateabledisplay
+{
+	position:absolute;
+	z-index:2300;
+	overflow:hidden;
+	-webkit-transition-property: -webkit-transform; 
+	-webkit-transition-duration: 0s;
+}
+
+.rotateableparent
+{
+	position:absolute;
+	z-index:2000;
+	overflow:hidden;
+	-webkit-transition-property: -webkit-transform; 
+	-webkit-transition-duration: 0s;
+}
+
+/*----------------
+  This is for the spinner
+  See wAMP.js for the required notice under the MIT license
+  ----------------*/
+
+#sw-wrapper {
+	position:absolute; z-index:1000;
+	left:0;
+	width:100%;
+	font-family:helvetica, sans-serif;
+	background:rgba(0,0,0,0.7);
+	text-align:left;
+}
+
+#sw-header {
+	position:relative;
+	width:100%; height:43px;
+	border-top:1px solid #000; border-bottom:1px solid #000;
+	background:url(../res/spinner/sw-header.png) 0 0 repeat-x;
+	opacity: 0.9;
+}
+
+#sw-cancel, #sw-done {
+	position:absolute;
+	top:7px;
+	height:20px; line-height:20px;
+	padding:0 5px; margin:0;
+	border-width:5px;
+	font-size:12px; font-weight:bold;
+	text-shadow:rgba(0,0,0,0.8) 0 -1px 0;
+	color:#fff;
+}
+
+#sw-cancel {
+	left:7px;
+	float:left;
+	-webkit-border-image:url(../res/spinner/sw-button-cancel.png) 5;
+}
+
+#sw-done {
+	right:7px;
+	float:right;
+	-webkit-border-image:url(../res/spinner/sw-button-done.png) 5;
+}
+
+.sw-pressed { opacity:0.4; }
+
+#sw-slots-wrapper {
+	position:relative; z-index:999;
+	display:block;
+	height:127px;
+	padding:0 11px;
+	overflow:hidden;
+}
+
+#sw-slots {
+	display:table;
+	width:100%;
+	background:#fcfcfc;
+}
+
+#sw-slots div {
+	display:table-cell;
+	height:100%;
+	padding-top:42px;
+	border-left:2px solid #0d0e0f;
+	background-color:#fcfcfc;
+	background-image: url(../res/spinner/sw-slot-border.png);
+	background-position: 0 0, 100% 0;
+	background-repeat: repeat-y;
+}
+
+#sw-slots div:first-child { border:0; }
+
+#sw-slots ul {
+	padding:0 0 85px 0; margin:0;
+	list-style:none;
+}
+
+#sw-slots .sw-right { text-align:right; }
+#sw-slots .sw-shrink { width:1%; }
+#sw-slots .sw-readonly { background:#ddd; }
+
+#sw-slots li {
+	padding:0 8px;
+	height:44px;
+	overflow:hidden;
+	font:bold 24px/44px Helvetica,sans-serif;
+}
+
+#sw-frame {
+	position:absolute; z-index:1000;
+	left:0; right:0; top:43px;
+	height:225px;
+	border-width:16px;
+	-webkit-border-image:url(../res/spinner/sw-alpha.png) 16;
 }

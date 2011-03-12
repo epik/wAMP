@@ -35,7 +35,12 @@ var HomeAssistant = Class.create(
 		
 		if (objWAMP.getFolderView() == false)
 		{
-			if (strProp)
+			if(this.objwAMP.strSortKey == "title")
+			{
+				this.iFilterMode = FILTER_MODE_NONE;
+				this.myModel.items = this.objwAMP.getFileList();
+			}
+			else if (strProp)
 			{
 				this.iFilterMode = FILTER_MODE_NONE;
 				this.myModel.items = this.objwAMP.FilterSongs(strProp, strKey);
@@ -140,7 +145,7 @@ var HomeAssistant = Class.create(
 				this.objwAMP.setPlayList(this.myModel.items.slice());
 				this.objwAMP.setIndex(event.index);
 				Mojo.Controller.stageController.popScenesTo();
-				Mojo.Controller.stageController.swapScene('playit', this.objwAMP);
+				Mojo.Controller.stageController.swapScene({name: 'playsong', disableSceneScroller: true}, this.objwAMP);
 			}
 		};	
 	},
