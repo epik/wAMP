@@ -257,11 +257,9 @@ int64_t FFmpegWrapper::Seek(double time)
 
 }
 
-
 MusMessage FFmpegWrapper::FillBuffWithRawSong(uint8_t *piBuffToFill,
 												size_t *plNumBytesWritten)
 {
-
 	//ReportError1("****At start OverflowSize=%i", m_iOverFlowSize);
 	if (m_iOverFlowSize > 0)
 	{
@@ -325,6 +323,14 @@ MusMessage FFmpegWrapper::FillBuffWithRawSong(uint8_t *piBuffToFill,
 				MUS_ERROR(MUS_ERROR_LOAD_PROBLEM, cstrErrBuf);
 				ReportError2("Other data Err=%i, m_pFormatCtx=%i", err, m_pFormatCtx);
 				m_bEndState = 1;
+
+				if (m_iAllowFirstReadError)
+				{
+					return MUS_MOD_Too_Short;
+				}
+				else
+					(*plNumBytesWritten) = 0;
+
 				return MUS_MOD_Done;
 			}
 			else
@@ -366,7 +372,7 @@ MusMessage FFmpegWrapper::FillBuffWithRawSong(uint8_t *piBuffToFill,
 
 			if (tmpErr <= 0)
 			{
-				//ReportError1("Size After=%i", iSize);
+				ReportError1("tmpErr Val: %i", tmpErr);
 
 				//ReportError("Test");
 				char cstrFFmpegError[128];
@@ -377,6 +383,7 @@ MusMessage FFmpegWrapper::FillBuffWithRawSong(uint8_t *piBuffToFill,
 				strcat(cstrErrBuf, cstrFFmpegError);
 
 				MUS_ERROR(MUS_ERROR_LOAD_PROBLEM, cstrErrBuf);
+
 
 				if (m_iAllowFirstReadError)
 				{
@@ -391,7 +398,7 @@ MusMessage FFmpegWrapper::FillBuffWithRawSong(uint8_t *piBuffToFill,
 
 			}
 
-			m_iAllowFirstReadError = 1;
+			m_iAllowFirstReadError = 0;
 
 			int iCheckOverflow = (iSize + (*plNumBytesWritten)) - GetBufferSize();
 
@@ -417,14 +424,17 @@ MusMessage FFmpegWrapper::FillBuffWithRawSong(uint8_t *piBuffToFill,
 
 			m_packet.size -= iSize;
 			m_packet.data += iSize;
-			
+
 		} while (m_packet.size > 0);
+
+
 	}
 
 	ReportError1("End NumWritten=%i",(*plNumBytesWritten));
 
 	return m_mmBufferedState;
 }
+
 
 
 /********************************************

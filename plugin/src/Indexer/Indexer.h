@@ -277,11 +277,15 @@ public:
 
 	void BuildIndex();
 	
+	void ClearIndex();
+
 	void GetFullFileList();
 
 	void GetDirFileList(const char *cstrDirName, int iBuildType = BUILD_TYPE_FAST);
 
 	char *ConvertToJSON(MUS_MESSAGE msg);
+
+	char *GetMetadata(const char *cstrPath);
 };
 
 

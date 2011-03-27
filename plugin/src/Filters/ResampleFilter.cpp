@@ -988,7 +988,7 @@ void ResampleFilter::TableWrite(const char *FileName)
 void ResampleFilter::TableRead(const char *FileName)
 {
 #ifndef HUMAN_READABLE_RESAMPLE_OUT
-	ReportError1("Filename = %s", FileName);
+	//ReportError1("Filename = %s", FileName);
 
 	FILE *pFile;
 

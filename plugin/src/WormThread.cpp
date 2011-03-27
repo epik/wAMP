@@ -19,7 +19,7 @@ static timeval l_tsProfileStart;
 
 pthread_mutex_t music_msg_mutex 	= PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t FM_status_mutex 	= PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t 	FM_status_cond 		= PTHREAD_COND_INITIALIZER;
+pthread_mutex_t meta_write_mutex 	= PTHREAD_MUTEX_INITIALIZER;
 
 void WormSleep(unsigned int iMilSeconds)
 {

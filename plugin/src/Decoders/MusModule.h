@@ -16,7 +16,8 @@ enum MusMessage
 {
 	MUS_MOD_Done 	= -1,
 	MUS_MOD_Success = 1,
-	MUS_MOD_Error	= 0
+	MUS_MOD_Error	= 0,
+	MUS_MOD_Too_Short = 2
 };
 
 class MusModule 

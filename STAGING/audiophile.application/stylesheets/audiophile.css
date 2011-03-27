@@ -1,4 +1,4 @@
-﻿body.palm-default {
+body.palm-default {
     background: #FFF;
 }
 
@@ -6,51 +6,168 @@
   This is for the play control buttons
   ----------------*/
 
-.btnwrap
+#btnshowfilter
+{
+	position:fixed; 
+	bottom:-30px; 
+	text-align:center; 
+	height:50px;
+	right:30px; 
+	left:30px; 
+	font-size:10px; 
+	-webkit-border-radius: 20px; 
+	padding:.5em; 
+	background-color:#333; 
+	color:#DDD;
+}
+  
+#btnplay
 {
 	position:fixed;
-	top: 330px;
+	width:64px;
+	height:64px;
+	bottom:44px;
+	z-index:0;
+	left:128px;
+	border:3px solid #000;
+	background:url(../res/playcont/playsm.png) 0 0 no-repeat; 
 }
 
-.btnprevious .palm-button 
+#btnpause
 {
-   -webkit-border-image: none;
-    background-image: url(../images/prev.png);
-    position: absolute;
-    left: 71px;
-    height: 42px;
-    width: 57px;
+	position:fixed;
+	width:64px;
+	height:64px;
+	bottom:44px;
+	z-index:1;
+	left:128px;
+	border:3px solid #000;
+	background:url(../res/playcont/pausesm.png) 0 0 no-repeat; 
 }
 
-.btnplay .palm-button 
+#btnprev
 {
-   -webkit-border-image: none;
-    background-image: url(../images/play.png);
-    position: absolute;
-    left: 128px;
-    height: 42px;
-    width: 50px;
+	position:fixed;
+	width:64px;
+	height:46px;
+	bottom:56px;
+	z-index:0;
+	border:3px solid #000;
+	left:58px;
+	background:url(../res/playcont/prevsongsm.png) 0 0 no-repeat; 
 }
 
-.btnpause .palm-button 
+#btnnext
 {
-   -webkit-border-image: none;
-    background-image: url(../images/pause.png);
-    position: absolute;
-    left: 128px;
-    height: 42px;
-    width: 50px;
+	position:fixed;
+	width:64px;
+	height:46px;
+	bottom:56px;
+	z-index:0;
+	left:198px;
+	border:3px solid #000;
+	background:url(../res/playcont/nextsongsm.png) 0 0 no-repeat; 
 }
 
-.btnforward .palm-button {
-   -webkit-border-image: none;
-    background-image: url(../images/next.png);
-    position: fixed;
-    left: 178px;
-    height: 42px;
-    width: 57px;
+#btnvol
+{
+	position:fixed;
+	width:46px;
+	height:46px;
+	bottom:56px;
+	z-index:1;
+	border:3px solid #000;
+	left:265px;
+	background:url(../res/playcont/volsm.png) 0 0 no-repeat; 
 }
 
+#btnmute
+{
+	position:fixed;
+	width:46px;
+	height:46px;
+	bottom:56px;
+	z-index:0;
+	border:3px solid #000;
+	left:265px;
+	background:url(../res/playcont/mutesm.png) 0 0 no-repeat; 
+}
+
+#btnshuf
+{
+	position:fixed;
+	width:46px;
+	height:46px;
+	bottom:56px;
+	z-index:0;
+	left:0px;
+	border:3px solid #000;
+	background:url(../res/playcont/shufflesm.png) 0 0 no-repeat; 
+}
+
+#btnnoshuf
+{
+	position:fixed;
+	width:46px;
+	height:46px;
+	bottom:56px;
+	z-index:0;
+	border:3px solid #000;
+	left:0px;
+	background:url(../res/playcont/noshufflesm.png) 0 0 no-repeat; 
+}
+
+#btndir
+{
+	position:fixed;
+	width:64px;
+	height:64px;
+	top:-2px;
+	z-index:1000;
+	left:-4px;
+	border:3px solid #000;
+	background:url(../res/playcont/playlistsm.png) 0 0 no-repeat; 
+}
+
+/*----------------
+  This is for vertical slider control
+  ----------------*/
+.vertselectboxwrapper
+{
+	visibility:hidden;
+	position:fixed;
+	height:250px;
+	width:156px;
+	left:155px;
+	bottom:105px;
+	z-index:6102;
+}
+  
+  .vertselectbox
+{
+	/*visible:hidden;*/
+	position:fixed;
+	height:250px;
+	width:46px;
+	left:265px;
+	bottom:105px;
+	border:1px solid #000;
+	z-index:-2;
+	background:url(../res/volselect/volselectbacksm.png) 0 0 no-repeat; 
+}
+
+.vertselectknob
+{
+	position:fixed;
+	width:46px;
+	height:23px;
+	left:265px;
+	bottom:105px;
+	z-index:-1;
+	background:url(../res/volselect/slidersm.png) 0 0 no-repeat;
+}
+  
+  
 /*----------------
   This is for the buttons in indexview
   ----------------*/
@@ -174,6 +291,18 @@
 	-webkit-transition-duration: 0s;
 }
 
+.rotateablelbl
+{
+	position:absolute;
+	z-index: 3000;
+	top: 10px;
+	width: 100%;
+	font-weight: bold;
+	font-size: 20px;
+	color: #000;
+	text-align: center;
+}
+
 /*----------------
   This is for the spinner
   See wAMP.js for the required notice under the MIT license
@@ -270,4 +399,68 @@
 	height:225px;
 	border-width:16px;
 	-webkit-border-image:url(../res/spinner/sw-alpha.png) 16;
+}
+
+
+/*****************************
+ * CSS routines for the Record spin
+ *****************************/
+.recordwrapper
+{
+position: absolute;
+/*0000af*/
+}
+
+
+.recordparent
+{
+	position: absolute;
+	background-image:url('../res/record/record.png');
+	z-index: 6;
+	height: 200px;
+	width: 200px;
+}
+
+.recordhole
+{
+	position: absolute;
+	background-image:url('../res/record/secondcenter.png');
+	z-index: 6000;
+	height: 200px;
+	width: 200px;
+}
+
+.recordspin
+{
+	position: absolute;
+	background-image:url('../res/record/firstcenter.png');
+	z-index: 60;
+	height: 200px;
+	width: 200px;
+}
+
+.recordpic
+{
+	position: absolute;
+	background-image:url('../res/record/defaultcov.png');
+	z-index: 600;
+	height: 44px;
+	width: 44px;
+}
+
+.recordpicspin
+{
+	position: absolute;
+	background-image:url('../res/record/defaultcov.png');
+	z-index: 600;
+	height: 44px;
+	width: 44px;
+  -webkit-animation-name: rotateThis;
+  -webkit-animation-duration:2s;
+  -webkit-animation-iteration-count:infinite;
+  -webkit-animation-timing-function:linear;
+}
+@-webkit-keyframes rotateThis {
+  from {-webkit-transform: rotate(0deg);}
+  to {-webkit-transform: rotate(360deg);}
 }

@@ -43,7 +43,7 @@ public:
 
 	static const short 			m_NUM_CHANNELS = NUM_CHANNELS;
 	static const unsigned long 	m_DEST_FREQ = DEST_FREQ;
-	static const long			m_lBufferSize = 4096 * 4;
+	static const long			m_lBufferSize = MUS_BUFFER_SIZE;
 
 	// bytes of the decoded song are seperated into channels
 	// additionally we need at least two buffers for each channel to
@@ -65,7 +65,7 @@ public:
 	static const size_t c_BuffInitialOffset = m_lBufferSize;
 	static const size_t c_CopyPoint			= c_BufferUsableSize - 
 													c_BuffInitialOffset;
-	static const size_t c_BuffTale 			= 2 * m_lBufferSize + 1024;
+	static const size_t c_BuffTale 			= 6 * m_lBufferSize + 1024;
 	static const size_t c_BufferTrueSize 	= c_BufferUsableSize + 
 								c_BuffInitialOffset + c_BuffTale;
 
@@ -114,11 +114,10 @@ private:
 	
 	MUS_MESSAGE ReadMessage(MusicMessage *MsgData);
 	bool MsgQueueEmpty();
-	void AddMessage(MusicMessage *Msg);
+	void AddMessage(MusicMessage *Msg, int16_t iClearSongInfoBuf = 0);
 
 	// We need these for determining next song transitions
 	int16_t			m_sNextSongWriteType;
-	int32_t			m_iPartialWrite;
 	long			m_lNextSongGap;
 	double			m_lNextSongTimeBack;
 	int16_t			m_bDirtyLoad;
@@ -127,6 +126,11 @@ private:
 	uint16_t		m_sCurrentShiftAmt;
 
 	int32_t			m_iPlay;
+
+	void 			(*m_funcCallBack)(char *);
+
+	char 			*m_cstrMetaRetTemp;
+	size_t			m_iSizeMetaRetTemp;
 
 public:
 	
@@ -144,12 +148,14 @@ public:
 	
 
 	int16_t Seek(double);
-	int16_t Init();
+	int16_t Init(void (*funcCallBack)(char *));
 	int16_t Open(const char *cstrFileName);
 	int16_t Stop();
 	int16_t OpenNext(MUS_MESSAGE OpenType, const char *cstrFileName,
 													double Time = 0);
 
+	void StartSong();
+	void SetMeta();
 
 	int16_t Uninit();
 	int16_t FillBuffer();
@@ -173,7 +179,6 @@ inline MusController::MusController()
 	m_lEndShiftRemain = 0;
 
 	m_sNextSongWriteType = 0;
-	m_iPartialWrite = 0;
 	
 	m_iStopWriting = 0;
 

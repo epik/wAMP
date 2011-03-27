@@ -15,7 +15,7 @@
 
 #define SUPPORTED_EXTEN "mp3,wma,m4a,aac,flac,FLAC,ogg,ra,ram,wav,mp2,mp1,mpg,als,ors,mp4,3gp,wmv"
 
-#define INDEX_STUF "/wamp.index"
+#define INDEX_STUF "/wamp.v1.index"
 
 #define CMD_LINE_FOR_FILEIO_ONLY "fileio_mode"
 
@@ -25,6 +25,7 @@
 #define DEBUG 1
 #endif
 
+#define MUS_BUFFER_SIZE (4096 * 4)
 
 // Here we define the various audio variables
 #define NUM_CHANNELS 2	// number of supported audio playback channels

@@ -27,10 +27,25 @@ int32_t	g_iContinue = 1;
 
 int32_t	g_InitError = 0;
 
+
+
+void StartSong(char *cstrVal)
+{
 #if USE_PDL
+	const char *params[1];
+	params[0] = cstrVal;
 
+	PDL_Err mjErr = PDL_CallJS("startSong", params, 1);
+	if ( mjErr != PDL_NOERROR )
+	{
+	  printf("error: %s\n", PDL_GetError());
+	}
+#else
+	ReportError1("Callback Val: %s", cstrVal);
+#endif
+}
 
-
+#if USE_PDL
 PDL_bool Play(PDL_JSParameters *parms)
 {
 
@@ -274,6 +289,14 @@ PDL_bool IsPlayable(PDL_JSParameters *parms)
 	return PDL_TRUE;
 }
 
+PDL_bool ClearIndex(PDL_JSParameters *parms)
+{
+	g_Indexer.ClearIndex();
+
+	return PDL_TRUE;
+}
+
+
 int Register()
 {
 	PDL_Err err;
@@ -302,6 +325,7 @@ int Register()
 	}
 
 	err = PDL_RegisterJSHandler("RunYet", RunYet);
+	err = PDL_RegisterJSHandler("ClearIndex", ClearIndex);
 	err = PDL_RegisterJSHandler("IsPlayable", IsPlayable);
 	err = PDL_RegisterJSHandler("Play", Play);
 	err = PDL_RegisterJSHandler("Pause", Pause);
@@ -399,24 +423,23 @@ int main()
 	g_Indexer.BuildIndex();
 
 	// Inits the music part of the program.
-	g_MusController.Init();
+	g_MusController.Init(StartSong);
 	g_MusController.Start();
 
 	ReportError("Made it past the init stuff");
 
 #ifndef ON_DEVICE
-	
+
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, "0");
 
-	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/zcorder_2010-09-23_204950.mp3");
+	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/music/Rain Dance (short).mp3");
 
-	//g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/e.mp3");
 
 	ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
 
-	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/f.m4a", 0.0);
 
-	/*// this keeps track of how long the user has waited for
+
+	// this keeps track of how long the user has waited for
 	//	the buffering
 	uint32_t uiCurWaitTime = 0;
 
@@ -427,25 +450,77 @@ int main()
 	WormMarkStartTime();
 
 	// Run fillbuffer until we meet one of the specified conditions
-	while (uiCurWaitTime < 20) // check wait time
+	while (uiCurWaitTime < 8) // check wait time
 	{
-		ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
+		//ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
 		// update time since we started
 		uiCurWaitTime = WormCheckTimeSinceMark();
 		// Give the gui a chance to work
-		WormSleep(1);
+		WormSleep(100);
 	}
 
-	//g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/e.mp3");
-	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/test1.mp3");
+	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/f.m4a", 0.0);
 
-	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/test2.mp3", 0.0);
-	//g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/f.m4a", 0.0);*/
+	uiCurWaitTime = 0;
+
+	ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
+
+	// This starts the timer running so we can know how long we have
+	//	been filling the buffer
+	WormMarkStartTime();
+
+	// Run fillbuffer until we meet one of the specified conditions
+	while (uiCurWaitTime < 8) // check wait time
+	{
+		//ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
+		// update time since we started
+		uiCurWaitTime = WormCheckTimeSinceMark();
+		// Give the gui a chance to work
+		WormSleep(100);
+	}
+
+	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/music/Dulcimer (short).mp3", 0.0);
+
+	uiCurWaitTime = 0;
+
+	//ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
+
+	// This starts the timer running so we can know how long we have
+	//	been filling the buffer
+	WormMarkStartTime();
+
+	// Run fillbuffer until we meet one of the specified conditions
+	while (uiCurWaitTime < 8) // check wait time
+	{
+		//ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
+		// update time since we started
+		uiCurWaitTime = WormCheckTimeSinceMark();
+		// Give the gui a chance to work
+		WormSleep(100);
+	}
+
+	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/music/Cymbells (short).mp3", 0.0);
+
+	// This starts the timer running so we can know how long we have
+	//	been filling the buffer
+	WormMarkStartTime();
+
+	// Run fillbuffer until we meet one of the specified conditions
+	while (uiCurWaitTime < 8) // check wait time
+	{
+		//ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
+		// update time since we started
+		uiCurWaitTime = WormCheckTimeSinceMark();
+		// Give the gui a chance to work
+		WormSleep(100);
+	}
+
+	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/music/Anticipation (short).mp3", 0.0);
 
 	while (g_iContinue)
 	{
-		WormSleep(50);
-		//ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_META));
+		WormSleep(100);
+		//ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
 	}
 
 #else

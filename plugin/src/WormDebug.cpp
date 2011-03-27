@@ -26,6 +26,7 @@ int16_t SafeStrcpy(char *cstrDest, const char *cstrSrc, int limit)
 		*destIter++ = *iter++;
 		if(++i >= limit)
 		{
+			ReportError("Problem with strcpy safe");
 			assert(0);
 			return 0;
 		}

@@ -50,6 +50,8 @@ function wAMP()
 	//	full indexing type io
 	this.indexType = 0;
 	
+	this.mutexLikeCheck = 0;
+	
 	this.iPlayMode = PLAY_MODE_NORMAL;
 	
 	// This will hold the song list for viewing
@@ -112,6 +114,14 @@ function wAMP()
 	};
 	
 	/******************************
+	 * Clear the Index
+	 ******************************/
+	wAMP.prototype.clearIndex = function()
+	{
+		$('wAMPPlugin').ClearIndex();
+	};
+	
+	/******************************
 	 * This function is checks whether the plugin has been
 	 *	loaded yet or not
 	 *
@@ -169,8 +179,6 @@ function wAMP()
 		
 			var strJSON = $('wAMPPlugin').GetFullIndex(this.strCurrentPath);
 			
-			this.Log(strJSON);
-			
 			if (!strJSON)
 			{
 				clearInterval(this.myInterval);
@@ -219,10 +227,13 @@ function wAMP()
 			
 			this.arrayIndexLS = jsonFileList.arrayFileList;
 			
+			this.arrayI
+			
 			return 1;
 		}
 		catch (err) {this.Log(err);}
 	};
+
 	
 	/******************************
 	 * Gets the file list based on which option we are using
@@ -244,7 +255,9 @@ function wAMP()
 	 ******************************/
 	wAMP.prototype.getFileList = function()
 	{
+	
 		this.arrayWorkingArray = ((this.iSongViewType == INDEX_TYPE_FF) ? this.getDirFileList() : this.getIndexFileList());
+		
 		return this.arrayWorkingArray;
 	};
 	
@@ -354,14 +367,6 @@ function wAMP()
 	};
 	
 	
-	/*******************************
-	 * Get the name of the currently playing son
-	 *******************************/
-	wAMP.prototype.getCurrentSongName = function()
-	{
-		return this.arrayPlayingArray[this.iSongIndex].name;
-	}
-	
 	/******************************
 	 * Get the type of view we are
 	 ******************************/
@@ -394,14 +399,18 @@ function wAMP()
 	{
 		var iRet = this.iSongIndex;
 		
+		var iCheck;
+		
 		do 
 		{
 			if (this.iPlayMode == PLAY_MODE_RANDOM)
 				iRet = Math.floor(Math.random()*this.arrayPlayingArray.length);
 			else
 				iRet = (iRet + 1) % this.arrayPlayingArray.length;
-				
-		} while (this.isPlayable(iRet) == false);
+			
+			iCheck = this.isPlayable(iRet);
+		
+		} while (!(iCheck));
 		
 		return iRet;
 	};
@@ -499,8 +508,6 @@ function wAMP()
 			this.setIndex(iIndex);
 	 
 		$('wAMPPlugin').Open(this.arrayPlayingArray[this.iSongIndex].path);
-		
-		$('wAMPPlugin').SetNext(this.arrayPlayingArray[this.getNextIndex()].path);
 	 };
 	 
 	 /*******************************
@@ -511,18 +518,30 @@ function wAMP()
 		this.setIndex(this.getNextIndex());
 	 
 		$('wAMPPlugin').Open(this.arrayPlayingArray[this.iSongIndex].path);
-		
-		$('wAMPPlugin').SetNext(this.arrayPlayingArray[this.getNextIndex()].path);
+
 	};
+	
+	
+	/*******************************
+	 * Tell the plugin to use a new next song
+	 *******************************/
+	 wAMP.prototype.setNextSong = function()
+	 {		
+		$('wAMPPlugin').SetNext(this.arrayPlayingArray[this.iSongIndex].path);
+	};
+	
 	 
 	 /*******************************
 	 * Tell the plugin to Play the next song
 	 *******************************/
-	 wAMP.prototype.endCurSong = function()
+	 wAMP.prototype.advanceIndex = function()
 	 {		
-		this.setIndex(this.getNextIndex());
-		
-		$('wAMPPlugin').SetNext(this.arrayPlayingArray[this.getNextIndex()].path);
+	 
+		var iIndex = this.getNextIndex();
+	 
+		this.Log("After GetNextIndex: " + iIndex);
+	 
+		this.setIndex(iIndex);
 	};
 	 
 	 /*******************************
@@ -533,8 +552,6 @@ function wAMP()
 		this.setIndex(this.getPreviousIndex());
 	 
 		$('wAMPPlugin').Open(this.arrayPlayingArray[this.iSongIndex].path);
-		
-		$('wAMPPlugin').SetNext(this.arrayPlayingArray[this.getNextIndex()].path);
 	 };
 	 
 	/*******************************
@@ -558,7 +575,7 @@ function wAMP()
 	 /*******************************
 	 * Tell the plugin to pause
 	 *******************************/
-	 wAMP.prototype.Pause = function()
+	 wAMP.prototype.pause = function()
 	 {
 		$('wAMPPlugin').Pause();
 	 };
@@ -566,7 +583,7 @@ function wAMP()
 	 /*******************************
 	 * Tell the plugin to play
 	 *******************************/
-	 wAMP.prototype.Play = function()
+	 wAMP.prototype.play = function()
 	 {
 		$('wAMPPlugin').Play();
 	 };
@@ -595,7 +612,7 @@ function wAMP()
 	 wAMP.prototype.getState = function()
 	 {
 		var StateString = $('wAMPPlugin').GetState();
-
+		
 		this.objPluginState = JSON.parse(StateString);
 		
 		return this.objPluginState;
@@ -638,26 +655,67 @@ function wAMP()
 	 *******************************/
 	 wAMP.prototype.seek = function(iNewTime)
 	 {
-		this.Log(iNewTime);
 		$('wAMPPlugin').Seek(iNewTime);
 	 } 
 	 
-	 /*******************************
-	  * Get metadata
-	  *******************************/
-	 wAMP.prototype.getMetadata = function()
+	 	
+	/******************************
+	 * Initialization function to register the
+	 *	plugin callback
+	 ******************************/
+	wAMP.prototype.initPluginInterface = function(strJSON)
+	{
+		$('wAMPPlugin').startSong = this.startSong.bind(this);
+	}
+	
+	/*********************************
+	 * Register the scrubber so we can set the end
+	 *********************************/
+	 wAMP.prototype.registerFunctions = function(funcEndTime, funcTitle, funcArtistAndAlbum)
 	 {
-		var strJSON = $('wAMPPlugin').GetMetadata();
-		
-		if (!(strJSON))
-			return this.objLastGoodMetadata;
-		
-		var objMetadata = JSON.parse(strJSON);
-		if (objMetadata)
-			this.objLastGoodMetadata = objMetadata;
-		
-		return objMetadata;
+		this.funcEndTime = funcEndTime;
+		this.funcTitle = funcTitle;
+		this.funcArtistAndAlbum = funcArtistAndAlbum;
 	 }
+	
+	/*********************************
+	 * Callback function called by the plugin to
+	 *	let the javascript know when a song has ended.
+	 *********************************/
+	wAMP.prototype.startSong = function(strJSON)
+	{
+		this.strJSON = strJSON;
+		
+		this.intervalStateCheck = setInterval(this.avoidPluginCall.bind(this),400);
+	}
+	
+	/*********************************
+	 * Need this to avoid calling the plugin
+	 *  from the plugin callback
+	 *********************************/
+	wAMP.prototype.avoidPluginCall = function()
+	{
+		clearInterval(this.intervalStateCheck);
+		if (this.mutexLikeCheck == 1)
+			return;
+		
+		this.mutexLikeCheck = 1;
+		
+		this.objSongInfo = JSON.parse(this.strJSON);
+		this.funcEndTime(this.objSongInfo["EndAmt"]);
+		
+		if (this.objSongInfo.Metadata["title"])
+			this.funcTitle(this.objSongInfo.Metadata["title"]);
+		else
+			this.funcTitle(this.arrayPlayingArray[this.iSongIndex].name);
+		
+		if (this.objSongInfo.Metadata["artist"])
+			this.funcArtistAndAlbum(this.objSongInfo.Metadata["artist"], this.objSongInfo.Metadata["artist"]);
+		else
+			this.funcArtistAndAlbum(this.arrayPlayingArray[this.iSongIndex].path);
+		
+		this.mutexLikeCheck = 0;
+	}
  }
 
  /****************************************************

@@ -28,6 +28,7 @@
 // We use global variables for thread safe passing here
 // Message queue to allow for thread safe operation
 MusicMessage	*g_dqMessageBuffer = NULL;
+MusicMessage	*g_dqSongMessageBuffer = NULL;
 // Status variable of the current song state
 MUS_MESSAGE 	g_cmStatus = MUS_STATUS_ERROR;
 // status of the next song to play
@@ -103,11 +104,13 @@ int32_t GetBuffRelativeDis(uint32_t ReadBuf, size_t ReadPos,
 {
 	// Note that ReadPos must be less than 2*c_BufferUsableSize
 	//	if that was allowed, then we would need a more detailed
-	//	calc.
-	assert(ReadPos < (MusController::c_BufferUsableSize*2));
+	//	calc
+	if (ReadPos > (MusController::c_BufferUsableSize*2))
+		ReportError("Problem with ReadPos above usable buf * 2 ");
 	// Note the same condition here.  This limits the length of
 	//	allowable gaps.
-	assert((WritePos+MusController::c_BufferUsableSize)>0);
+	if ((WritePos+MusController::c_BufferUsableSize)<0)
+		ReportError("Problem with WritePos below 0");
 
 	if (ReadBuf == WriteBuf)
 	{
@@ -185,22 +188,22 @@ size_t ConvertToSecs(size_t lSamps)
 void MusController::audio_callback_sdl(void *MusicController,
 										Uint8 *destStream, int lRequested)
 {
-	ReportError("****************ENTERING FILTER CALLBACK*************");
+	//ReportError("****************ENTERING FILTER CALLBACK*************");
 
-	ReportError2("{\"CurPos\":%i,\"EndAmt\":%i}",
+	/*ReportError2("{\"CurPos\":%i,\"EndAmt\":%i}",
 				 ConvertToSecs(m_lCurSongSamp),
-				 m_lSongEndInSec);
+				 m_lSongEndInSec);*/
 
 	MusController *pmcController = (MusController *)MusicController;
 	int32_t	lPartialAdvance = 0;
-	ReportError7("Cur End Pos %i:ID %i, Cur Write Pos %i:ID: %i, Cur read pos %i:ID %i, req %i",
+	/*ReportError7("Cur End Pos %i:ID %i, Cur Write Pos %i:ID: %i, Cur read pos %i:ID %i, req %i",
 									pmcController->m_lSongEndPos,
 									pmcController->m_iEndSonBuffID,
 									pmcController->m_lModuleWriteToPos,
 									pmcController->m_iWritingBuffID,
 									pmcController->m_lReadToDSPPos,
 									pmcController->m_iReadingBuffID,
-									lRequested);
+									lRequested);*/
 
 	// Check if we are in a state where we should not be playing
 	//	and send silence if we are
@@ -223,23 +226,27 @@ void MusController::audio_callback_sdl(void *MusicController,
 							   pmcController->m_iEndSonBuffID,
 							   pmcController->m_lSongEndPos);
 
-		ReportError1("iOver val=%i", iOver);
+		//ReportError1("iOver val=%i", iOver);
 
 		if (iOver < 0)
 		{
 			g_cmStatus = MUS_STATUS_SONG_LOADED;
 			g_cmNextSongStatus = MUS_STATUS_NEXT_SONG_NOT_SET;
-			ReportError2("About to copy string=%s, with %s", m_cstrCurrentSong, m_cstrNextSong);
+			//ReportError2("About to copy string=%s, with %s", m_cstrCurrentSong, m_cstrNextSong);
 			strcpy(m_cstrCurrentSong, m_cstrNextSong);
 			memset(m_cstrNextSong, 0, 255);
-			ReportError("About to GetSeconds");
+			//ReportError("About to GetSeconds");
 			m_lSongEndInSec =
 						   pmcController->m_FFmpegDecoder.GetSeconds();
 			m_lCurSongSamp = 0;
 			g_fSongRateScale = g_fNextSongRateScale;
 			SetSpeed(g_fCurSpeed);
-			//lPartialAdvance = iOver;
-			ReportError("About to swap buffers");
+
+			pmcController->StartSong();
+
+			lPartialAdvance = iOver;
+
+			//ReportError("About to swap buffers");
 			pmcController->m_lSongEndPos = pmcController->m_lBufEndPos;
 			pmcController->m_iEndSonBuffID = pmcController->m_lBufEndID;
 			pmcController->m_lBufEndPos = 0;
@@ -265,19 +272,22 @@ void MusController::audio_callback_sdl(void *MusicController,
 
 	if (iOver < 0)
 	{
-		ReportError("In the underflow area");
+		//ReportError("In the underflow area");
 
 		if ((pmcController->m_iStopWriting) &&
 					(g_cmStatus != MUS_STATUS_LOADING_NEXT_SONG))
 		{
+			//ReportError("passing mus end of song reached");
 			g_cmStatus = MUS_STATUS_WAITING_FOR_SONG;
-			lRequested = lRequested+(iOver*8);
-			ReportError2("lRequested=%i, iOver=%i", lRequested, iOver);
 			pmcController->PassMessage(MUS_INTMES_END_OF_SONG_REACHED);
-			memset(destStream+lRequested, 0, -(iOver*8));
+			//ReportError("passed the message");
+			memset(destStream, 0, lRequested);
+			//ReportError("set the 0s");
+			return;
 		}
 		else
 		{
+			ReportError("passing underflow");
 			// We have an underflow error
 			// First make sure no further playing occurs until condition
 			//	is fixed
@@ -362,13 +372,18 @@ void MusController::audio_callback_sdl(void *MusicController,
 			psOutBuffer,
 			lRequested/2);
 
-	ReportError("*****************EXITING FILTER CALLBACK***************");
+	//ReportError("*****************EXITING FILTER CALLBACK***************");
 
 };
 
 
-int16_t MusController::Init()
+int16_t MusController::Init(void (*funcCallBack)(char *))
 {
+	m_funcCallBack = funcCallBack;
+
+	m_cstrMetaRetTemp = (char *) malloc(4096);
+	m_iSizeMetaRetTemp = 4096;
+
 	m_sPaused = 1;
 	RegisterIntAttribute(GetPaused,
 						SetPaused,
@@ -444,6 +459,7 @@ int16_t MusController::Open(const char *cstrFileName)
 
 using namespace std;
 
+
 /**************************************************
  * FillBuffer()
  *
@@ -487,7 +503,34 @@ int16_t MusController::FillBuffer()
 		//	load the next song to the buffer it is set.
 		if(g_cmNextSongStatus == MUS_STATUS_NEXT_SONG_SET)
 		{
-			//ReportError1("&&&&&Starting Load of next song %s", m_cstrNextSong);
+			// we should start writing again
+			m_iStopWriting = 0;
+
+			// let other methods know we are working with the next song
+			g_cmStatus = MUS_STATUS_LOADING_NEXT_SONG;
+
+			// we only want to keep one song open at a time
+			m_FFmpegDecoder.Close();
+
+			int32_t err = Open(m_cstrNextSong);
+
+			if (err)
+			{
+				m_iStopWriting = 1;
+				g_cmNextSongStatus = MUS_STATUS_NEXT_SONG_NOT_SET;
+				g_cmStatus = MUS_STATUS_SONG_LOADED;
+
+				MUS_ERROR(MUS_ERROR_LOAD_PROBLEM,
+									"Problem trying to open the next song");
+
+				m_bDirtyLoad = 1;
+				return 0;
+			}
+
+			g_fNextSongRateScale =
+						m_FFmpegDecoder.GetSampleRate()/DEST_FREQ;
+
+			SetMeta();
 
 			// The next buffer can be set with a number of options.
 			//	 Here we figure out what those options are and set
@@ -496,64 +539,12 @@ int16_t MusController::FillBuffer()
 			{
 				//No gap
 
-				// we should start writing again
-				m_iStopWriting = 0;
-
-				// let other methods know we are working with the next song
-				g_cmStatus = MUS_STATUS_LOADING_NEXT_SONG;
-
-				// we only want to keep one song open at a time
-				m_FFmpegDecoder.Close();
-
-				int32_t err = Open(m_cstrNextSong);
-
-				if (err)
-				{
-					m_iStopWriting = 1;
-					g_cmNextSongStatus = MUS_STATUS_NEXT_SONG_NOT_SET;
-					g_cmStatus = MUS_STATUS_SONG_LOADED;
-
-					MUS_ERROR(MUS_ERROR_LOAD_PROBLEM,
-										"Problem trying to open the next song");
-
-					m_bDirtyLoad = 1;
-					return 0;
-				}
-
-				g_fNextSongRateScale =
-							m_FFmpegDecoder.GetSampleRate()/DEST_FREQ;
-
-
 				m_sNextSongWriteType = 0;
 
 			}
 			else if (m_lNextSongGap > 0)
 			{
 				// Playback with a gap
-
-				// we should start writing again
-				m_iStopWriting = 0;
-
-				// let other methods know we are working with the next song
-				g_cmStatus = MUS_STATUS_LOADING_NEXT_SONG;
-
-				// we only want to keep one song open at a time
-				m_FFmpegDecoder.Close();
-				int32_t err = Open(m_cstrNextSong);
-
-				if (err)
-				{
-					m_iStopWriting = 1;
-					g_cmNextSongStatus = MUS_STATUS_NEXT_SONG_NOT_SET;
-					g_cmStatus = MUS_STATUS_SONG_LOADED;
-
-					m_bDirtyLoad = 1;
-					return 0;
-				}
-
-				g_fNextSongRateScale =
-							m_FFmpegDecoder.GetSampleRate()/DEST_FREQ;
-
 
 				m_sNextSongWriteType = 1;
 
@@ -583,31 +574,8 @@ int16_t MusController::FillBuffer()
 			{
 				// Crossfade transition
 
-				// we should start writing again
-				m_iStopWriting = 0;
-
 				// zero out the fade in for the next song
 				m_lNextSongFadeIn = 0;
-
-				// let other methods know we are working with the next song
-				g_cmStatus = MUS_STATUS_LOADING_NEXT_SONG;
-
-				// we only want to keep one song open at a time
-				m_FFmpegDecoder.Close();
-				int32_t err = Open(m_cstrNextSong);
-
-				if (err)
-				{
-					m_iStopWriting = 1;
-					g_cmNextSongStatus = MUS_STATUS_NEXT_SONG_NOT_SET;
-					g_cmStatus = MUS_STATUS_SONG_LOADED;
-					m_bDirtyLoad = 1;
-
-					return 0;
-				}
-
-				g_fNextSongRateScale =
-							m_FFmpegDecoder.GetSampleRate()/DEST_FREQ;
 
 				// Check if the sample rates differ between the songs
 				//	that are being cross faded.
@@ -729,30 +697,15 @@ int16_t MusController::FillBuffer()
 		//	crossfade or a fresh load
 		mmWritingStatus = m_FFmpegDecoder.FillBuffWithRawSong(
 										pucTempBuffer, &plNumBytesWritten);
-	}
-	else if (m_sNextSongWriteType == 2)
-	{
-		// We end up here if we are padding the transition
-		//	between songs, but the amount of padding left
-		//	to add is less than a full buffer
-		memset(pucTempBuffer, 0, m_lNextSongGap);
 
-		m_FFmpegDecoder.SetBufferSize(m_iPartialWrite);
-		mmWritingStatus = m_FFmpegDecoder.FillBuffWithRawSong(
-										(pucTempBuffer +
-												(m_lBufferSize -
-												m_iPartialWrite)),
-										&plNumBytesWritten);
-		plNumBytesWritten += m_lNextSongGap;
-		m_lNextSongGap = 0;
-		m_sNextSongWriteType = 0;
-		m_FFmpegDecoder.SetBufferSize(m_lBufferSize);
+		//assert(g_test++ < 1);
+
+		//ReportError1("The num bytes returned %i", plNumBytesWritten);
 	}
 	else if (m_sNextSongWriteType == 1)
 	{
-		// We end up here if we are padding silence between
-		//	the transition.  This will keep being called until
-		//	the gap space is less than a full buffer size
+
+		// We only allow transitions of size X * Buffersize
 		memset(pucTempBuffer, 0, m_lBufferSize);
 		plNumBytesWritten = m_lBufferSize;
 		m_lNextSongGap -= m_lBufferSize;
@@ -760,15 +713,15 @@ int16_t MusController::FillBuffer()
 		//positive gap
 		if (m_lNextSongGap<m_lBufferSize)
 		{
-			m_iPartialWrite = m_lBufferSize - m_lNextSongGap;
-			m_sNextSongWriteType = 2;
+			m_sNextSongWriteType = 0;
+			m_lNextSongGap = 0;
 		}
 	}
 
 
 
 	// We have an error, so truncate the stream at the last good position
-	if (plNumBytesWritten == 0)
+	if ((plNumBytesWritten == 0) && (mmWritingStatus != MUS_MOD_Too_Short))
 	{
 		if (mmWritingStatus == MUS_MOD_Success)
 		{
@@ -795,8 +748,30 @@ int16_t MusController::FillBuffer()
 		return 1;
 	}
 
+	uint8_t *pucStop;
+	uint8_t pucTempBufferSec[m_lBufferSize*6];
+	short *psBuffPointer;
+	
+	if (mmWritingStatus == MUS_MOD_Too_Short)
+	{
+	
+		memset(&pucTempBufferSec, 0, (m_lBufferSize*6));
+		
+		pucStop = &pucTempBufferSec[(m_lBufferSize*6)];
+		
+		psBuffPointer = (short *) pucTempBufferSec;
+		
+		g_bDifSampleRate = 0;
+		m_sNextSongWriteType = 0;
+		
+		plNumBytesWritten = (m_lBufferSize*6);
+	}
+	else
+	{
 
-	uint8_t *pucStop = &pucTempBuffer[plNumBytesWritten];
+		pucStop = &pucTempBuffer[plNumBytesWritten];
+		psBuffPointer = (short *) pucTempBuffer;
+	}
 
 	// Get a pointer to the current write position for both the left and right
 	//	buffer.
@@ -804,7 +779,7 @@ int16_t MusController::FillBuffer()
 					&m_piChanBuffer[m_iWritingBuffID][0][m_lModuleWriteToPos];
 	int16_t *piPointer1 = (int16_t *)
 					&m_piChanBuffer[m_iWritingBuffID][1][m_lModuleWriteToPos];
-	short *psBuffPointer = (short *) pucTempBuffer;
+
 
 
 	// This if/else statement controls how the information is actually
@@ -923,7 +898,8 @@ int16_t MusController::FillBuffer()
 	m_lModuleWriteToPos += plNumBytesWritten/8;
 
 
-	if (mmWritingStatus == MUS_MOD_Done)
+	if ((mmWritingStatus == MUS_MOD_Done) || 
+				(mmWritingStatus == MUS_MOD_Too_Short))
 	{
 		SDL_LockAudio();
 		m_iStopWriting = 1;
@@ -1118,6 +1094,22 @@ int16_t MusController::Seek(double seconds)
 
 
 /**************************************
+ * SetNextMeta()
+ *
+ *	This sets the metadate for the StartSong
+ *	callback.
+ ***************************************/
+void MusController::SetMeta()
+{
+	char *cstrMega = m_FFmpegDecoder.GetMetadata();
+
+	PassMessage(MUS_MESSAGE_SET_NEXT_META, cstrMega);
+
+	free(cstrMega);
+}
+
+
+/**************************************
  * Start()
  *
  *	This function launches a new thread that handles song file
@@ -1131,6 +1123,18 @@ void MusController::Start()
 	// spawn the thread to run MusController's logic loop
 	pthread_create(&Thread, NULL, ThreadedOperation, this);
 }
+
+
+/**************************************************
+ * StartSong()
+ *
+ *	This routine formats a JSON to pass to the javascript
+ *	to let it know that a song has ended.
+ **************************************************/
+void MusController::StartSong()
+{
+	PassMessage(MUS_MESSAGE_PASS_SONG_INFO);
+};
 
 
 /**************************************
@@ -1211,6 +1215,7 @@ void MusController::Tick()
 	MusicMessage 	MsgData; // data passed with message
 	MUS_MESSAGE		Msg;	 // message that is passed
 
+	int16_t iSkipOnce = 0;
 
 	// run until we get a quit message
 	while (1)
@@ -1256,24 +1261,35 @@ void MusController::Tick()
 			{
 				// We reach here if the end of a song is reached, and
 				//	a next song has not been set.
-				/*SDL_LockAudio();
 				Stop();
 				m_FFmpegDecoder.Close();
-				SDL_UnlockAudio();*/
+				iSkipOnce = 1;
+				ReportError("Done end times message actions");
+			}
+			else if (Msg == MUS_MESSAGE_PASS_SONG_INFO)
+			{
+				m_funcCallBack(MsgData.MetaPointer);
+				free(MsgData.MetaPointer);
 			}
 
 
 		} //while(bContinue)
 
-		// Try and fill buffer if there is a song loaded and the
-		//	player is not in an error state.  FillBuffer function
-		//	will handle whether the buffer is actually full or not
-		//	so we don't need to check for that.  Same with song end.
-		if ((g_cmStatus != MUS_STATUS_WAITING_FOR_SONG) &&
-			(g_cmStatus != MUS_STATUS_ERROR))
+
+		if (iSkipOnce)
+			iSkipOnce = 0;
+		else
 		{
-			// This fills the buffer with song data
-			FillBuffer();
+			// Try and fill buffer if there is a song loaded and the
+			//	player is not in an error state.  FillBuffer function
+			//	will handle whether the buffer is actually full or not
+			//	so we don't need to check for that.  Same with song end.
+			if ((g_cmStatus != MUS_STATUS_WAITING_FOR_SONG) &&
+				(g_cmStatus != MUS_STATUS_ERROR))
+			{
+				// This fills the buffer with song data
+				FillBuffer();
+			}
 		}
 
 
@@ -1355,6 +1371,11 @@ int16_t MusController::OpenNext(MUS_MESSAGE OpenType,
 									m_FFmpegDecoder.GetSampleRate());*/
 		SetSpeed(g_fCurSpeed);
 		m_lSongEndInSec = m_FFmpegDecoder.GetSeconds();
+
+		SetMeta();
+
+		StartSong();
+
 		m_lCurSongSamp = 0;
 		FillInitialBuff(5,1);
 		m_bDirtyLoad = 0;
@@ -1388,6 +1409,11 @@ int16_t MusController::OpenNext(MUS_MESSAGE OpenType,
 									m_FFmpegDecoder.GetSampleRate());*/
 		SetSpeed(g_fCurSpeed);
 		m_lSongEndInSec = m_FFmpegDecoder.GetSeconds();
+
+		SetMeta();
+
+		StartSong();
+
 		m_lCurSongSamp = 0;
 		// We should be writing fresh here
 		m_iStopWriting = 0;
@@ -1435,6 +1461,7 @@ int16_t MusController::OpenNext(MUS_MESSAGE OpenType,
 		}
 	}
 
+	ReportError("Should NOT reach here");
 	// should never reach here
 	assert(0);
 	return 0;
@@ -1464,18 +1491,12 @@ char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 	{
 		cstrRet = (char *) malloc(512);
 		sprintf(cstrRet,
-				"{\"CurPos\":%i,\"EndAmt\":%i,"
-					"\"SongState\":%i,\"CurrentSongPath\":\"%s\","
-					"\"NextSongState\":%i,\"NextSongPath\":\"%s\","
-					"\"ErrorCode\":%i,\"LastErrorStr\":\"%s\"}",
+				"{\"CurPos\":%i,\"SongState\":%i,\"CurrentSongPath\":\"%s\","
+				"\"NextSongState\":%i}",
 				 ConvertToSecs(m_lCurSongSamp),
-				 m_lSongEndInSec,
 				 g_cmStatus,
 				 m_cstrCurrentSong,
-				 g_cmNextSongStatus,
-				 m_cstrNextSong,
-				 g_iErrorCode,
-				 g_cstrErrorStr);
+				 g_cmNextSongStatus);
 	}
 	else if (cmMsg == MUS_MESSAGE_GET_META)
 	{
@@ -1489,6 +1510,7 @@ char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 		//	message queue
 		MusicMessage *MusicMsg = (MusicMessage *) malloc(sizeof(MusicMessage));
 		MusicMsg->Next = NULL;
+		MusicMsg->MetaPointer = NULL;
 
 		if (cmMsg == MUS_MESSAGE_OPEN_SONG)
 		{
@@ -1496,7 +1518,7 @@ char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 			char *cstrArg = va_arg(Args, char *);
 			strcpy(MusicMsg->StrData, cstrArg);
 			MusicMsg->DoubleData = va_arg(Args, double);
-			//ReportError1("Created Message to Open Song %s", cstrArg);
+			ReportError1("Created Message to Open Song %s", cstrArg);
 		}
 		else if (cmMsg == MUS_MESSAGE_SET_NEXT)
 		{
@@ -1504,13 +1526,28 @@ char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 			char *cstrArg = va_arg(Args, char *);
 			strcpy(MusicMsg->StrData, cstrArg);
 			MusicMsg->DoubleData = va_arg(Args, double);
-			//ReportError1("Created Message to SetNext %s", cstrArg);
+			ReportError1("##################Created Message to SetNext %s", cstrArg);
 		}
 		else if (cmMsg == MUS_MESSAGE_SEEK)
 		{
 			MusicMsg->Msg = MUS_MESSAGE_SEEK;
 			MusicMsg->DoubleData = va_arg(Args, double);
 			//ReportError1("Seeking to position %f", MusicMsg->DoubleData);
+		}
+		else if (cmMsg == MUS_MESSAGE_SET_NEXT_META)
+		{
+			char *cstrArg = va_arg(Args, char *);
+
+			MusicMsg->MetaPointer = (char *) malloc(strlen(cstrArg)+2048);
+
+			sprintf(MusicMsg->MetaPointer,
+						"{\"EndAmt\":%i,"
+						"\"CurrentSongPath\":\"%s\","
+						"\"Metadata\":%s}",
+						m_lSongEndInSec,
+						m_cstrCurrentSong,
+						cstrArg);
+
 		}
 		else
 		{
@@ -1525,21 +1562,50 @@ char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 	return cstrRet;
 }
 
-void MusController::AddMessage(MusicMessage *Message)
+void MusController::AddMessage(MusicMessage *Message, int16_t iClearSongInfoBuf)
 {
 	//ReportError1("Adding Message %i", Message->Msg);
-	if (g_dqMessageBuffer != NULL)
+	if (Message->MetaPointer == NULL)
 	{
-		MusicMessage *Iter = g_dqMessageBuffer;
-		while(Iter->Next != NULL)
-			Iter = Iter->Next;
-		Iter->Next = Message;
-		Message->Next = NULL;
+		if (g_dqMessageBuffer != NULL)
+		{
+			MusicMessage *Iter = g_dqMessageBuffer;
+			while(Iter->Next != NULL)
+				Iter = Iter->Next;
+			Iter->Next = Message;
+			Message->Next = NULL;
+		}
+		else
+		{
+			g_dqMessageBuffer = Message;
+			Message->Next = NULL;
+		}
 	}
 	else
 	{
-		g_dqMessageBuffer = Message;
-		Message->Next = NULL;
+		if (iClearSongInfoBuf)
+		{
+			while (g_dqSongMessageBuffer != NULL)
+			{
+				MusicMessage *Temp = g_dqMessageBuffer->Next;
+				free(g_dqMessageBuffer->MetaPointer);
+				free(g_dqMessageBuffer);
+				g_dqMessageBuffer = Temp;
+			}
+		}
+		if (g_dqSongMessageBuffer != NULL)
+		{
+			MusicMessage *Iter = g_dqSongMessageBuffer;
+			while(Iter->Next != NULL)
+				Iter = Iter->Next;
+			Iter->Next = Message;
+			Message->Next = NULL;
+		}
+		else
+		{
+			g_dqSongMessageBuffer = Message;
+			Message->Next = NULL;
+		}
 	}
 }
 
@@ -1552,6 +1618,20 @@ MUS_MESSAGE MusController::ReadMessage(MusicMessage *Message)
 	MusicMessage *Temp = g_dqMessageBuffer->Next;
 	free(g_dqMessageBuffer);
 	g_dqMessageBuffer = Temp;
+	if (Message->Msg == MUS_MESSAGE_PASS_SONG_INFO)
+	{
+		if (g_dqSongMessageBuffer == NULL)
+		{
+			Message->MetaPointer = NULL;
+		}
+		else
+		{
+			MusicMessage *Temp = g_dqSongMessageBuffer->Next;
+			Message->MetaPointer = g_dqSongMessageBuffer->MetaPointer;
+			free (g_dqSongMessageBuffer);
+			g_dqSongMessageBuffer = Temp;
+		}
+	}
 	UnlockMusMsgQueue();
 	retVal = Message->Msg;
 	return retVal;

@@ -51,6 +51,10 @@
 #define MUS_MESSAGE_GET_CURRENT_DIR_LS		20
 #define MUS_MESSAGE_GET_FULL_SONG_INDEX		21
 
+// define the messages to handle song transitions
+#define MUS_MESSAGE_SET_NEXT_META			30
+#define MUS_MESSAGE_PASS_SONG_INFO			31
+
 //**MusManager status states
 #define MUS_STATUS_SONG_LOADED				101
 #define MUS_STATUS_LOADING_NEXT_SONG		107
@@ -89,6 +93,8 @@ struct MusicMessage
 	char StrData[200];
 	int32_t	IntData;
 	double 	DoubleData;
+
+	char *MetaPointer;
 
 	MusicMessage *Next;
 };

@@ -5,6 +5,15 @@
     {
         "source": "app/models/wAMP.js"
     },
+	{
+		"source": "app/models/lastfm.api.js"
+	},
+	{
+		"source": "app/models/lastfm.api.md5.js"
+	},
+	{
+		"source": "app/models/lastfm.api.cache.js"
+	},
     {
         "source": "app/controllers/home-assistant.js",
         "scenes": "home"

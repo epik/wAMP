@@ -86,6 +86,8 @@ var HomeAssistant = Class.create(
 		
 		this.objwAMP.Log(imgHeader);
 		$("idListHeaderDiv").appendChild(imgHeader);
+		
+		this.controller.setupWidget(Mojo.Menu.appMenu, newsMenuAttr, newsMenuModel);
 	},
 
 	activate: function()

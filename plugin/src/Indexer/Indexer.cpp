@@ -58,6 +58,11 @@ void WormIndexer::BuildIndex()
 }
 
 
+void WormIndexer::ClearIndex()
+{
+	FMGUI_FileDelete(HOME_DIR INDEX_STUF);
+}
+
 void WormIndexer::GetFullFileList()
 {
 	m_iIndexingInProgress = 2;
@@ -144,14 +149,17 @@ void WormIndexer::GetFullFileList()
 					continue;
 				} //(pDir->ents[i][0] == '.')
 
-				char strFileFullPath[1024];
+				char strFileFullPath[2048];
 				assert((strlen(cstrDirName)+strlen(pDir->ents[i])+1)<1024);
 				strcpy(strFileFullPath, cstrDirName);
 				strcat(strFileFullPath, FMGUI_PATHSEP);
 				strcat(strFileFullPath, pDir->ents[i]);
 				
 				if (strcmp(pDir->ents[i], "palmos") == 0)
-						continue;
+					continue;
+
+				if (strcmp(strFileFullPath, "/media/internal/ringtones") == 0)
+					continue;
 
 				ReportError1("Full Path Name being searched %s", strFileFullPath);
 
@@ -334,7 +342,7 @@ void WormIndexer::GetDirFileList(const char *cstrDirName, int iBuildType)
 			continue;
 		} //(pDir->ents[i][0] == '.')
 
-		char strFileFullPath[1024];
+		char strFileFullPath[2048];
 		assert((strlen(cstrDirName)+strlen(pDir->ents[i])+1)<1024);
 		strcpy(strFileFullPath, cstrDirName);
 		strcat(strFileFullPath, FMGUI_PATHSEP);
@@ -586,4 +594,15 @@ void *WormIndexer::StartIndexThread(void *pvObject)
 int WormIndexer::IsPlayable(const char *cstrPath)
 {
 	return m_ffmpegObjectAll.IsType(cstrPath);
+}
+
+char *WormIndexer::GetMetadata(const char *cstrPath)
+{
+	char *cstrRet;
+
+	m_ffmpegObjectDir.Open(cstrPath);
+	cstrRet = m_ffmpegObjectDir.GetMetadata();
+	m_ffmpegObjectDir.Close();
+
+	return cstrRet;
 }

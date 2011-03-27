@@ -18,16 +18,16 @@
 
 extern pthread_mutex_t 	music_msg_mutex;
 extern pthread_mutex_t 	FM_status_mutex;
-extern pthread_cond_t 	FM_status_cond;
+extern pthread_mutex_t  meta_write_mutex;
 
 #define LockMusMsgQueue() pthread_mutex_lock(&music_msg_mutex)
 #define UnlockMusMsgQueue() pthread_mutex_unlock(&music_msg_mutex)
 
 #define LockFM() 		pthread_mutex_lock(&FM_status_mutex)
 #define UnlockFM() 	pthread_mutex_unlock(&FM_status_mutex)
-/*#define FMStatusSignal()  	pthread_cond_signal(&FM_status_cond)
-#define FMStatusWait()		pthread_cond_wait(&FM_status_cond, \
-													&FM_status_mutex)*/
+
+#define LockMeta()	pthread_mutex_lock(&meta_write_mutex)
+#define UnlockMeta() pthread_mutex_unlock(&meta_write_mutex)
 
 #define WormAlarm(x) alarm(x)
 													
