@@ -76,7 +76,7 @@ var HomeAssistant = Class.create(
 										formatters:{itemOutput: this.RenderListItem.bind(this)}
 									}, 
 									this.myModel);
-        this.controller.listen('myListWidget',Mojo.Event.listTap, this.myTap.bindAsEventListener(this)); 
+        this.controller.listen('myListWidget', Mojo.Event.listTap, this.myTap.bindAsEventListener(this)); 
 		
 		var imgHeader = window.document.createElement("img");
 		imgHeader.className = "indexviewButton";
@@ -86,8 +86,6 @@ var HomeAssistant = Class.create(
 		
 		this.objwAMP.Log(imgHeader);
 		$("idListHeaderDiv").appendChild(imgHeader);
-		
-		this.controller.setupWidget(Mojo.Menu.appMenu, newsMenuAttr, newsMenuModel);
 	},
 
 	activate: function()
@@ -146,8 +144,18 @@ var HomeAssistant = Class.create(
 			{
 				this.objwAMP.setPlayList(this.myModel.items.slice());
 				this.objwAMP.setIndex(event.index);
-				Mojo.Controller.stageController.popScenesTo();
-				Mojo.Controller.stageController.swapScene({name: 'playsong', disableSceneScroller: true}, this.objwAMP);
+				
+				this.objwAMP.iPlayVal = 2;
+				
+				if (this.objwAMP.bHasStartedPlayer)
+				{
+					Mojo.Controller.stageController.popScenesTo("playsong", this.objwAMP);
+				}
+				else
+				{
+					Mojo.Controller.stageController.popScenesTo();
+					Mojo.Controller.stageController.swapScene({name: 'playsong', disableSceneScroller: true}, this.objwAMP);
+				}
 			}
 		};	
 	},
@@ -157,9 +165,38 @@ var HomeAssistant = Class.create(
 		// IF THE USER PERFORMED A BACK SWIPE GESTURE,
         if (event.type == Mojo.Event.back) 
 		{
-			// Go back to the index screen
-			this.objwAMP.myPrevious = "home";
-			Mojo.Controller.stageController.popScene(this.objwAMP);
+			this.objwAMP.iPlayVal = -1;
+		
+			if (this.objwAMP.getFolderView())
+			{
+				if (this.objwAMP.getCurrentPath() == "/media/internal")
+				{
+					if (this.objwAMP.bFolderOnly)
+					{
+						if (this.objwAMP.bHasStartedPlayer)
+						{
+							Mojo.Controller.stageController.popScenesTo("playsong", this.objwAMP);
+						}
+						else
+						{
+							return;
+						}
+					}
+					else
+					{
+						Mojo.Controller.stageController.popScenesTo("indexview", this.objwAMP);
+					}
+				}
+				else
+				{
+					this.objwAMP.setCurrentPath("/media/internal");
+					Mojo.Controller.stageController.pushScene("home", this.objwAMP);
+				}
+			}
+			else
+			{
+				Mojo.Controller.stageController.popScenesTo("indexview", this.objwAMP);
+			}
         }
 	},
 

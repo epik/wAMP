@@ -27,6 +27,9 @@
 
 #define MUS_BUFFER_SIZE (4096 * 4)
 
+#define CHECK_INDEX_KEY 	86753
+#define BAD_INDEX_KEY 		1337
+
 // Here we define the various audio variables
 #define NUM_CHANNELS 2	// number of supported audio playback channels
 #define DEST_FREQ 44100	// playback frequency

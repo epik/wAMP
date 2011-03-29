@@ -1491,9 +1491,11 @@ char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 	{
 		cstrRet = (char *) malloc(512);
 		sprintf(cstrRet,
-				"{\"CurPos\":%i,\"SongState\":%i,\"CurrentSongPath\":\"%s\","
+				"{\"CurPos\":%i, \"EndAmt\":%i, \"SongState\":%i, "
+				"\"CurrentSongPath\":\"%s\","
 				"\"NextSongState\":%i}",
 				 ConvertToSecs(m_lCurSongSamp),
+				 m_lSongEndInSec,
 				 g_cmStatus,
 				 m_cstrCurrentSong,
 				 g_cmNextSongStatus);
@@ -1541,10 +1543,8 @@ char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 			MusicMsg->MetaPointer = (char *) malloc(strlen(cstrArg)+2048);
 
 			sprintf(MusicMsg->MetaPointer,
-						"{\"EndAmt\":%i,"
-						"\"CurrentSongPath\":\"%s\","
+						"{\"CurrentSongPath\":\"%s\","
 						"\"Metadata\":%s}",
-						m_lSongEndInSec,
 						m_cstrCurrentSong,
 						cstrArg);
 

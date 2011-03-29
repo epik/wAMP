@@ -237,14 +237,6 @@ body.palm-default {
   This is for the knob
   ----------------*/
 
-.rotateable
-{
-	position:absolute;
-	overflow:hidden;
-	-webkit-transition-property: -webkit-transform; 
-	-webkit-transition-duration: 0s;
-}
-
 .rotateablefront
 {
 	position:absolute;
@@ -252,25 +244,6 @@ body.palm-default {
 	overflow:hidden;
 	-webkit-transition-property: -webkit-transform; 
 	-webkit-transition-duration: 0s;
-}
-
-.rotateableback
-{
-	position:absolute;
-	z-index:2003;
-	overflow:hidden;
-	-webkit-transition-property: -webkit-transform; 
-	-webkit-transition-duration: 0s;
-}
-
-.rotateablebackfill
-{
-	position:absolute;
-	z-index:2030;
-	overflow:hidden;
-	-webkit-transition-property: -webkit-transform; 
-	-webkit-transition-duration: 0s;
-	background:url(display.png) 0 0 no-repeat;
 }
 
 .rotateabledisplay
@@ -301,6 +274,34 @@ body.palm-default {
 	font-size: 20px;
 	color: #000;
 	text-align: center;
+}
+
+.rotateablebackcircb
+{
+	position: absolute;
+	background: #00F;
+	z-index: 30;
+}
+
+.rotateablebackcircbackb
+{
+	position: absolute;
+	background: #00F;
+	z-index: 26;
+}
+
+.rotateablebackcircw
+{
+	position: absolute;
+	background: #FFF;
+	z-index: 30;
+}
+
+.rotateablebackcircbackw
+{
+	position: absolute;
+	background: #FFF;
+	z-index: 26;
 }
 
 /*----------------
@@ -425,7 +426,7 @@ position: absolute;
 {
 	position: absolute;
 	background-image:url('../res/record/secondcenter.png');
-	z-index: 6000;
+	z-index: 1000;
 	height: 200px;
 	width: 200px;
 }

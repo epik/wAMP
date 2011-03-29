@@ -82,6 +82,11 @@
 #define MUS_ERROR_SEEK_PROBLEM				-7
 #define MUS_ERROR_ATTRIBUTE_CALLBACK_ERR	-8
 
+#define MUS_INDEX_STATE_NOT_READY			0
+#define MUS_INDEX_STATE_ALREADY				1
+#define MUS_INDEX_STATE_FIRST				2
+#define MUS_INDEX_STATE_FAILED				3
+
 // *********************************************************
 // Here we declare some generic message structs
 // *********************************************************

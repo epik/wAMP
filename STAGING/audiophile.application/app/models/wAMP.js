@@ -20,6 +20,7 @@ var INDEX_TYPE_ALL 	= false;
 var INDEX_NOT_READY_YET = 0;
 var INDEX_ALREADY_RUN = 1;
 var INDEX_FIRST_RUN = 2;
+var INDEX_FAILED_LOAD = 3;
 
 var PLAY_MODE_RANDOM = 1;
 var PLAY_MODE_NORMAL = 0;
@@ -63,6 +64,10 @@ function wAMP()
 	// This needs to be initialized to cut down on divs
 	// it is the scaling variable to the total time
 	this.fTimeScale == 9999
+	
+	this.strTransition = "0.0";
+	
+	this.strLastSetNextPath = "";
 	
 	this.arraySongProp = new Object();
 	this.arraySongProp["album"] = new Object();
@@ -507,7 +512,7 @@ function wAMP()
 		if (iIndex)
 			this.setIndex(iIndex);
 	 
-		$('wAMPPlugin').Open(this.arrayPlayingArray[this.iSongIndex].path);
+		this.open(this.arrayPlayingArray[this.iSongIndex].path);
 	 };
 	 
 	 /*******************************
@@ -517,19 +522,48 @@ function wAMP()
 	 {
 		this.setIndex(this.getNextIndex());
 	 
-		$('wAMPPlugin').Open(this.arrayPlayingArray[this.iSongIndex].path);
+		this.open(this.arrayPlayingArray[this.iSongIndex].path);
 
 	};
 	
 	
 	/*******************************
+	 * Set the song transition type
+	 *******************************/
+	wAMP.prototype.setSongTransitionType = function (strTransition)
+	{
+		this.Log("Setting Song Transition to:" + strTransition);
+	
+		this.strTransition = strTransition;
+		
+		if (this.strLastSetNextPath != "")
+			this.setNext(this.strLastSetNextPath);
+	}
+	
+	/*******************************
+	 * Wrapper for the open function
+	 *******************************/
+	wAMP.prototype.open = function(strPath)
+	{
+		$('wAMPPlugin').Open(strPath);
+	}
+	
+	/*******************************
 	 * Tell the plugin to use a new next song
 	 *******************************/
 	 wAMP.prototype.setNextSong = function()
-	 {		
-		$('wAMPPlugin').SetNext(this.arrayPlayingArray[this.iSongIndex].path);
+	 {	
+		this.strLastSetNextPath = this.arrayPlayingArray[this.getNextIndex()].path;
+		this.setNext(this.strLastSetNextPath);
 	};
 	
+	/*******************************
+	 * Wrapper for set next
+	 *******************************/
+	wAMP.prototype.setNext = function(strPath)
+	{
+		$('wAMPPlugin').SetNext(strPath, parseFloat(this.strTransition));
+	}
 	 
 	 /*******************************
 	 * Tell the plugin to Play the next song
@@ -551,7 +585,7 @@ function wAMP()
 	 {
 		this.setIndex(this.getPreviousIndex());
 	 
-		$('wAMPPlugin').Open(this.arrayPlayingArray[this.iSongIndex].path);
+		this.open(this.arrayPlayingArray[this.iSongIndex].path);
 	 };
 	 
 	/*******************************
@@ -671,9 +705,8 @@ function wAMP()
 	/*********************************
 	 * Register the scrubber so we can set the end
 	 *********************************/
-	 wAMP.prototype.registerFunctions = function(funcEndTime, funcTitle, funcArtistAndAlbum)
+	 wAMP.prototype.registerFunctions = function(funcTitle, funcArtistAndAlbum)
 	 {
-		this.funcEndTime = funcEndTime;
 		this.funcTitle = funcTitle;
 		this.funcArtistAndAlbum = funcArtistAndAlbum;
 	 }
@@ -686,7 +719,7 @@ function wAMP()
 	{
 		this.strJSON = strJSON;
 		
-		this.intervalStateCheck = setInterval(this.avoidPluginCall.bind(this),400);
+		this.intervalStateCheckWAMP = setInterval(this.avoidPluginCall.bind(this),400);
 	}
 	
 	/*********************************
@@ -695,14 +728,13 @@ function wAMP()
 	 *********************************/
 	wAMP.prototype.avoidPluginCall = function()
 	{
-		clearInterval(this.intervalStateCheck);
+		clearInterval(this.intervalStateCheckWAMP);
 		if (this.mutexLikeCheck == 1)
 			return;
 		
 		this.mutexLikeCheck = 1;
 		
 		this.objSongInfo = JSON.parse(this.strJSON);
-		this.funcEndTime(this.objSongInfo["EndAmt"]);
 		
 		if (this.objSongInfo.Metadata["title"])
 			this.funcTitle(this.objSongInfo.Metadata["title"]);

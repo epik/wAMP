@@ -76,20 +76,47 @@ void WormIndexer::GetFullFileList()
 		uint32_t iJSONSize;
 		fread(&iJSONSize, sizeof(uint32_t), 1, pFile);
 
+		if (iJSONSize != CHECK_INDEX_KEY)
+		{
+			m_sRunYet = MUS_INDEX_STATE_FAILED;
+			return;
+		}
+
+		fread(&iJSONSize, sizeof(uint32_t), 1, pFile);
+
 		m_cstrIndexJSON = (char *) malloc(iJSONSize);
 
 		fread(m_cstrIndexJSON, sizeof(char), iJSONSize, pFile);
+
+		fread(&iJSONSize, sizeof(uint32_t), 1, pFile);
+
+		if (iJSONSize != CHECK_INDEX_KEY)
+		{
+			m_sRunYet = MUS_INDEX_STATE_FAILED;
+			return;
+		}
+
 		m_iIndexingInProgress = 0;
 		ReportError1("%s", m_cstrIndexJSON);
 
-		m_sRunYet = 1;
+		m_sRunYet = MUS_INDEX_STATE_ALREADY;
 
 		fclose(pFile);
 		return;
 	}
 	else
 	{
-		m_sRunYet = 2;
+		m_sRunYet = MUS_INDEX_STATE_FIRST;
+
+		pFile = fopen(HOME_DIR INDEX_STUF, "wb");
+
+		if (pFile)
+		{
+			uint32_t i = CHECK_INDEX_KEY;
+			fwrite(&i, sizeof(uint32_t), 1, pFile);
+		}
+
+
 	}
 
 	VisitQue *DirsToVisit = new VisitQue(m_cstrHomeDir);
@@ -101,7 +128,7 @@ void WormIndexer::GetFullFileList()
 	while (DirsToVisit != NULL)
 	{
 		// pop the next dir to search
-		char cstrDirName[1024];
+		char cstrDirName[2048];
 		strcpy(cstrDirName, DirsToVisit->Dir);
 		VisitQue *Cur = DirsToVisit;
 		DirsToVisit = DirsToVisit->Next;
@@ -149,7 +176,7 @@ void WormIndexer::GetFullFileList()
 					continue;
 				} //(pDir->ents[i][0] == '.')
 
-				char strFileFullPath[2048];
+				char strFileFullPath[4096];
 				assert((strlen(cstrDirName)+strlen(pDir->ents[i])+1)<1024);
 				strcpy(strFileFullPath, cstrDirName);
 				strcat(strFileFullPath, FMGUI_PATHSEP);
@@ -180,10 +207,11 @@ void WormIndexer::GetFullFileList()
 				{
 					//ReportError("Is a directory so add back to search que");
 
-					if(DirsToVisit == NULL)
-						DirsToVisit = new VisitQue(strFileFullPath);
-					else
-						DirsToVisit->AddToQue(new VisitQue(strFileFullPath));
+					VisitQue *ArrangeAsStack = new VisitQue(strFileFullPath);
+
+					ArrangeAsStack->Next = DirsToVisit;
+
+					DirsToVisit = ArrangeAsStack;
 
 				} 
 				else 
@@ -282,12 +310,20 @@ void WormIndexer::GetFullFileList()
 
 	pFile = fopen(HOME_DIR INDEX_STUF, "wb");
 
+	uint32_t i;
+
 	if (pFile)
 	{
-		uint32_t i = strlen(cstrRet);
+		i = CHECK_INDEX_KEY;
+		fwrite(&i, sizeof(uint32_t), 1, pFile);
+
+		i = strlen(cstrRet);
 		fwrite(&i, sizeof(uint32_t), 1, pFile);
 		fwrite(cstrRet, sizeof(char), i, pFile);
 	}
+
+	i = CHECK_INDEX_KEY;
+	fwrite(&i, sizeof(uint32_t), 1, pFile);
 
 	fclose(pFile);
 
