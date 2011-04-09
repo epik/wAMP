@@ -19,13 +19,13 @@
 
 struct SongItem
 {
-	char 		Path[1024];
-	char		Name[512];
+	char 		Path[2048];
+	char		Name[1024];
 
-	char		Artist[256];
-	char		Album[256];
-	char		Genre[256];
-	char		Title[256];
+	char		Artist[512];
+	char		Album[512];
+	char		Genre[512];
+	char		Title[512];
 
 	int16_t		Type;
 
@@ -37,9 +37,9 @@ struct SongItem
 
 	SongItem(const char *cstrPath, const char *cstrName)
 	{
-		wAMPstrcpy(Path, cstrPath, 1024);
+		ConvertQuoteStrcpy(Path, cstrPath);
 
-		wAMPstrcpy(Name, cstrName, 512);
+		ConvertQuoteStrcpy(Name, cstrName);
 
 		Artist[0] = '\0';
 		Album[0] = '\0';
@@ -251,6 +251,8 @@ private:
 	char m_cstrCurrentIndexDir[512];
 
 	int m_iIndexingInProgress;
+	
+	int16_t m_sDebug;
 
 public:
 
@@ -264,6 +266,8 @@ public:
 
 	static void *StartIndexThread(void *);
 
+	void Debug() {m_sDebug = 1;};
+
 	WormIndexer()
 	{
 		m_ffmpegObjectDir.Init();
@@ -271,6 +275,7 @@ public:
 		strcpy(m_cstrHomeDir, HOME_DIR);
 		m_iIndexingInProgress = 1;
 		m_sRunYet = 0;
+		m_sDebug = 0;
 	};
 
 	void SetHomeDir(char *cstrDir) {strcpy(m_cstrHomeDir, cstrDir);};

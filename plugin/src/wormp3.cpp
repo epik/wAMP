@@ -27,7 +27,21 @@ int32_t	g_iContinue = 1;
 
 int32_t	g_InitError = 0;
 
+#ifdef USE_PDL
+PDL_bool DebugIndex(PDL_JSParameters *parms)
+#else
+void DebugIndex()
+#endif
+{
+	g_Indexer.Debug();
+	g_Indexer.ClearIndex();
+	g_Indexer.BuildIndex();
 
+#ifdef USE_PDL
+	return PDL_TRUE;
+#endif
+
+}
 
 void StartSong(char *cstrVal)
 {
@@ -62,6 +76,7 @@ PDL_bool Pause(PDL_JSParameters *parms)
 	return PDL_TRUE;
 }
 
+
 PDL_bool Open(PDL_JSParameters *parms)
 {
 	const char *cstrPath = PDL_GetJSParamString(parms, 0);
@@ -74,7 +89,7 @@ PDL_bool Open(PDL_JSParameters *parms)
 PDL_bool SetNext(PDL_JSParameters *parms)
 {
 	const char *cstrPath = PDL_GetJSParamString(parms, 0);
-	double dGap = PDL_GetJSParamDouble(parms, 2);
+	double dGap = PDL_GetJSParamDouble(parms, 1);
 	ReportError1("dGap val: %f", dGap);
 	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, cstrPath, dGap);
 
@@ -343,6 +358,7 @@ int Register()
 	err = PDL_RegisterJSHandler("Quit", PluginQuit);
 	err = PDL_RegisterJSHandler("GetMetadata", GetMetadata);
 	err = PDL_RegisterJSHandler("GetFullIndex", GetFullIndex);
+	err = PDL_RegisterJSHandler("DebugIndex", DebugIndex);
 
 
 	err = PDL_JSRegistrationComplete();
@@ -433,7 +449,7 @@ int main()
 
 #ifndef ON_DEVICE
 
-	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, "0");
+	/*g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, "0");
 
 	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/test1.mp3");
 
@@ -463,7 +479,7 @@ int main()
 		WormSleep(100);
 	}*/
 
-
+	DebugIndex();
 
 	while (g_iContinue)
 	{

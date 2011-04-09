@@ -12,12 +12,12 @@ using namespace std;
 
 struct VisitQue
 {
-	char Dir[1024];
+	char Dir[2048];
 	VisitQue *Next;
 
 	VisitQue(const char *cstrDir)
 	{
-		wAMPstrcpy(Dir, cstrDir, 512);
+		ConvertQuoteStrcpy(Dir, cstrDir);
 		Next = NULL;
 	}
 
@@ -63,11 +63,44 @@ void WormIndexer::ClearIndex()
 	FMGUI_FileDelete(HOME_DIR INDEX_STUF);
 }
 
+#ifdef FIX_INDEXER
+
+#define QuickWriteIndex(a, b) { \
+	if (m_sDebug)				\
+	{							\
+		FILE *File; 			\
+		File = fopen(HOME_DIR "/fix_index.txt", "a"); \
+		fprintf(File, "[%i] Indexing: " a "\n", __LINE__, b); \
+		fclose(File); 			\
+	}							\
+}
+
+#else
+
+#define QuickWriteIndex(a, b)
+
+#endif
+
 void WormIndexer::GetFullFileList()
 {
 	m_iIndexingInProgress = 2;
 
 	FILE *pFile;
+
+#ifdef FIX_INDEXER
+	ReportError("Starting");
+
+	if (m_sDebug)
+	{
+		ReportError("Really Starting");
+
+		pFile = fopen(HOME_DIR "/fix_index.txt", "w");
+
+		fclose(pFile);
+	}
+
+	ReportError("Started");
+#endif
 
 	pFile = fopen(HOME_DIR INDEX_STUF, "rb");
 
@@ -116,7 +149,7 @@ void WormIndexer::GetFullFileList()
 			fwrite(&i, sizeof(uint32_t), 1, pFile);
 		}
 
-
+		fclose(pFile);
 	}
 
 	VisitQue *DirsToVisit = new VisitQue(m_cstrHomeDir);
@@ -134,7 +167,7 @@ void WormIndexer::GetFullFileList()
 		DirsToVisit = DirsToVisit->Next;
 		delete Cur;
 
-		//ReportError1("****Starting search of dir: %s", cstrDirName);
+		QuickWriteIndex("*******Starting search of dir: %s", cstrDirName);
 
 		int16_t bVisited;
 
@@ -162,21 +195,21 @@ void WormIndexer::GetFullFileList()
 
 			if (pDir == NULL)
 			{
-				//ReportError1("Error opening %s", cstrDirName);
+				QuickWriteIndex("++++++++Error opening %s", cstrDirName);
 				continue;
 			}
 	
 			for (size_t i = 0; i < (size_t) pDir->nents; i++)
 			{
-				
-				//ReportError1("Checking info of %s", pDir->ents[i]);
-
+				QuickWriteIndex("%s", "-------------------");
+				QuickWriteIndex("***Checking info of %s", pDir->ents[i]);
+				QuickWriteIndex("%s", "-------------------");
 				if (pDir->ents[i][0] == '.')
 				{
 					continue;
 				} //(pDir->ents[i][0] == '.')
 
-				char strFileFullPath[4096];
+				char strFileFullPath[2048];
 				assert((strlen(cstrDirName)+strlen(pDir->ents[i])+1)<1024);
 				strcpy(strFileFullPath, cstrDirName);
 				strcat(strFileFullPath, FMGUI_PATHSEP);
@@ -188,7 +221,7 @@ void WormIndexer::GetFullFileList()
 				if (strcmp(strFileFullPath, "/media/internal/ringtones") == 0)
 					continue;
 
-				ReportError1("Full Path Name being searched %s", strFileFullPath);
+				QuickWriteIndex("Full Path Name being searched %s", strFileFullPath);
 
 				if (FMGUI_GetFileInfo(strFileFullPath, &Info) == -1)
 				{
@@ -205,7 +238,8 @@ void WormIndexer::GetFullFileList()
 
 				if (Info.type == FMGUI_FILE_DIRECTORY)
 				{
-					//ReportError("Is a directory so add back to search que");
+					QuickWriteIndex("\t%s, Is a directory so add back to search que", 
+										strFileFullPath);
 
 					VisitQue *ArrangeAsStack = new VisitQue(strFileFullPath);
 
@@ -216,26 +250,46 @@ void WormIndexer::GetFullFileList()
 				} 
 				else 
 				{
-					//ReportError1("Checking if %s a readable song", strFileFullPath);
+					QuickWriteIndex("\tChecking if %s a readable song", 
+										strFileFullPath);
 					
 					// just gonna hard code this for now
 					//	didn't like the way the more robust solution
 					//	worked out in practice
 					if (m_ffmpegObjectAll.IsType(strFileFullPath))
 					{
-						ReportError("Starting to extract metadata info");
+						QuickWriteIndex("\tStarting to extract metadata info for %s", 
+											strFileFullPath);
 
 						SongItem *AddSong = new SongItem(strFileFullPath, pDir->ents[i]);
 						AddSong->Type = SONG;
 
+						QuickWriteIndex("\tCreated song item for %s", 
+											strFileFullPath);
+
 						AddSong->SetArtist(m_ffmpegObjectAll.GetValue("artist"));
+						
+						QuickWriteIndex("\t\tAdded Artist %s", AddSong->Artist);
+						
 						AddSong->SetAlbum(m_ffmpegObjectAll.GetValue("album"));
+						
+						QuickWriteIndex("\t\tAdded Album %s", AddSong->Album);
+						
 						AddSong->SetGenre(m_ffmpegObjectAll.GetValue("genre"));
+						
+						QuickWriteIndex("\t\tAdded Genre %s", AddSong->Genre);
+						
 						AddSong->SetTitle(m_ffmpegObjectAll.GetValue("title"));
+						
+						QuickWriteIndex("\t\tAdded Title %s", AddSong->Title);
 
 						m_FilesNameIndex.AddNode(AddSong);
 
 						m_ffmpegObjectAll.Close();
+						
+						QuickWriteIndex("\tFinished extract metadata info for %s", 
+											strFileFullPath);
+						
 					}
 
 				} // else if (Info.type == FMGUI_FILE_DIRECTORY)
@@ -253,6 +307,8 @@ void WormIndexer::GetFullFileList()
 		WormSleep(100);
 
 	} //while (!vstrDirsToVisit.empty())
+	
+	QuickWriteIndex("%s", ":-x:-x:-x");
 	
 	m_FilesIter = m_FilesNameIndex.Root;
 

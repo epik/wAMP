@@ -10,12 +10,14 @@
 
 #include "FlacConfig.h"
 
+#define FIX_INDEXER
+
 // Read little Endian
 #define READ_LITTLE_ENDIAN
 
 #define SUPPORTED_EXTEN "mp3,wma,m4a,aac,flac,FLAC,ogg,ra,ram,wav,mp2,mp1,mpg,als,ors,mp4,3gp,wmv"
 
-#define INDEX_STUF "/wamp.v1.index"
+#define INDEX_STUF "/wamp.v2.index"
 
 #define CMD_LINE_FOR_FILEIO_ONLY "fileio_mode"
 

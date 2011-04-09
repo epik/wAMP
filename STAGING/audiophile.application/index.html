@@ -1,15 +1,203 @@
-<?xml version="1.0" encoding="UTF-8"?> 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html> 
+<html> 
+<head>
+	<meta charset="utf-8"> 
+	<meta name="viewport" content="width=device-width, minimum-scale=1, maximum-scale=1"> 
+	<title>Audiophile</title> 
+	<link rel="stylesheet" href="jquery/mobile/jquery.mobile-1.0a4.css" />
+	<link rel="stylesheet" href="wamp/audiophile.css" />
+	<script type="text/javascript" src="jquery/jquery-1.5.2.min.js"></script>
+	<script type="text/javascript" src="scripts/lastfm.api.cache.js"></script>
+	<script type="text/javascript" src="scripts/lastfm.api.js"></script>
+	<script type="text/javascript" src="scripts/lastfm.api.md5.js"></script>
+	<script language="javascript" type="text/javascript" src="wamp/wAMP.js"></script>
+	<script type="text/javascript" src="scripts/scene.js"></script>
+    <script language="javascript" type="text/javascript">
+	
+	objwAMP.CreatePluginHook();
+	objwAMP.setCurrentPath("/media/internal");
+			
+	$(document).bind("mobileinit", 
+					function()
+					{
+						$.extend(  $.mobile , { 
+							ajaxFormsEnabled : false,
+							ajaxLinksEnabled : false
+						});
+					
+						$('#idSplash').live('pagebeforecreate',function(event, ui)
+						{  
+							if (!($('#idSplash').data("status")))
+							{							
+															
+								objwAMP.checkOS();
+								
+								$('#idSplash').css({'background-color': objSkin.theme[objSkin.skinNum].background, 
+												  'background-image':'none'});
+													
+								$('<img />', {
+									"src":objSkin.theme[objSkin.skinNum].splash.imgPath,
+									"width":"320px",
+									"height":"480px"
+								}).appendTo($('#idSplashAddToDiv'));
+							}
+								
+						});	
+						
+						$('#idSplash').live('pageshow',function(event, ui)
+						{  	
+							if (!($('#idSplash').data("status")))
+							{
+								$('#idSplash').jqmData("status", "loaded");
+								sceneSplash.waitForPlugin();
+							}
+						}); 
+					}
+	);
+    </script>
+	<script type="text/javascript" src="jquery/mobile/jquery.mobile-1.0a4.js"></script>
+	<script language="javascript" type="text/javascript">
+		$('document').ready(function() 
+		{
+			$('body').css({'background-color': objSkin.theme[objSkin.skinNum].background.bgcolor, 
+							'background-image': "url(" + objSkin.theme[objSkin.skinNum].background.bgimg + ")",
+							'background-repeat': 'no-repeat'});
+		
+			if (window.PalmSystem) 
+			{
+			   window.PalmSystem.stageReady();
+			}
+				
+			$('body').append(objwAMP.df);
 
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-  <head>
-    <title>Audiophile</title>
-    <script src="/usr/palm/frameworks/mojo/mojo.js" type="text/javascript" x-mojo-version="1"></script>
-	<script src="/usr/palm/frameworks/mojoloader.js" type="text/javascript"></script>
-    <link href="stylesheets/audiophile.css" media="screen" rel="stylesheet" type="text/css" /> 
-  </head>
+			$('#idPlayer').live('pagecreate',function(event, ui)
+			{  
+				scenePlay.Initialize();
+			});
+			
+			$('#idPlayer').live('pagebeforeshow',function(event, ui)
+			{  
+				scenePlay.LoadImages();
+			});
+			
+			$('#idPlayer').live('pageshow',function(event, ui)
+			{  
+				$('#idPlayer').css({'background-color': 
+											objSkin.theme[objSkin.skinNum].background.bgcolor, 
+							'background-image': 
+										"url(" + 
+											objSkin.theme[objSkin.skinNum].background.bgimg + 
+										")",
+							'background-repeat': 'no-repeat'});
+				scenePlay.PlayPauseChange();
+			});
+			
+			$('#idList').live('pagebeforeshow',function(event, ui)
+			{  
+				sceneList.LoadImages();
+			});
+		
+			$('#idList').live('pagehide',function(event, ui)
+			{  
+				sceneList.ClearImages();
+			});
+		
+			$('#idIndex').live('pagebeforeshow',function(event, ui)
+			{  
+				sceneIndex.LoadImages();
+			});
+			
+			$('#idIndex').live('pagehide',function(event, ui)
+			{  
+				sceneIndex.ClearImages();
+			});
+			
+			$('#idOptionButton').click(function () 
+			{
+				objSkin.skinNum = ++objSkin.skinNum % 5;
+				$('body').css({'background-color': objSkin.theme[objSkin.skinNum].background.bgcolor, 
+							'background-image': "url(" + objSkin.theme[objSkin.skinNum].background.bgimg + ")",
+							'background-repeat': 'no-repeat'});
+				sceneList.FastChangeImages();
+			}); 
+		});
+		
+		
+    </script>
+</head> 
+<body> 
 
-  <body>
-  </body>
+	<div data-role="page" id="idSplash">	
+		<div id="idSplashAddToDiv" width="320" height="480" style="background-color:#ffffff; margin-left:auto; margin-right:auto;">
+		</div>
+	</div><!-- /page -->
+	
+	<div data-role="page" id="idPlayer">
 
+			<div id="divNameplate" style="position:fixed; top:0; 
+							left:0px; height:64px; width:320px;; border-bottom:1px solid #0000af">
+				<div id="nameGoesHere" style="position:relative; 
+							font-size:30px; color:#000; padding-left:70px; 
+							white-space:nowrap; font-family:font-family:helvetica, sans-serif;"></div>
+				<div id="artistGoesHere" style="position:relative; 
+							font-size:20px; color:#666; padding-left:70px; 
+							white-space:nowrap; font-family:font-family:helvetica, sans-serif;"></div>
+			</div>
+			<div id="idRecord"></div>
+			<div id="idScrubber"></div>
+
+			<div id="btneq"></div>	
+			<div id="btnplay"></div>
+			<div id="btnpause"></div>
+			<div id="btnprev"></div>
+			<div id="btnnext"></div>
+			<div id="btnvol"></div>
+			<div id="btnmute"></div>
+			<div id="btnshuf"></div>
+			<div id="btnnoshuf"></div>
+			<div id="btndir"></div>
+
+	</div><!-- /page -->
+	
+	
+	<div data-role="page" id="idIndex">
+		<div id="idPlayAllIndex" style="position:fixed; top:0px; left:0px; border-bottom:1px solid #000;"></div>
+		<div id="idAlbumIndex" style="position:fixed; top:73px; left:0px; border-bottom:1px solid #000;"></div>
+		<div id="idArtistIndex" style="position:fixed; top:146px; left:0px; border-bottom:1px solid #000;"></div>
+		<div id="idGenreIndex" style="position:fixed; top:219px; left:0px; border-bottom:1px solid #000;"></div>
+		<div id="idTitleIndex" style="position:fixed; top:292px; left:0px; border-bottom:1px solid #000;"></div>
+		<div id="idFolderIndex" style="position:fixed; top:365px; left:0px; border-bottom:1px solid #000;"></div>
+	</div><!-- /page -->
+
+	<div data-role="page" id="idList">
+		<div id="idListHeader">
+		</div>
+		<div id="idWrapper">
+			<div id="idScroller">
+			<ul data-role="listview" id="idUlList">
+
+			</ul>
+			</div>
+		</div>
+		<div id="idListFooter">
+			<form>
+				<input type="search" name="name" id="idListFilter" value=""  />
+			</form>
+			<div id="idOptionButton">
+			</div>
+		</div>
+	</div>
+
+	<div data-role="dialog" id="idDialog">
+		<div data-role="header">
+			<h1>Dialog</h1>
+		</div><!-- /header -->
+		<div data-role="content">
+			<p id="idTellUser"></p>
+			<div id="idButtonGoesHere"></div>
+		</div>
+
+	</div><!-- /page -->
+	
+</body>
 </html>
