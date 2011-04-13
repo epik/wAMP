@@ -19,30 +19,32 @@
 			
 	$(document).bind("mobileinit", 
 					function()
-					{
+					{			
 						$.extend(  $.mobile , { 
 							ajaxFormsEnabled : false,
 							ajaxLinksEnabled : false
 						});
-					
-						$('#idSplash').live('pagebeforecreate',function(event, ui)
+						
+						$('#idSplash').live('pagebeforeshow',function(event, ui)
 						{  
-							if (!($('#idSplash').data("status")))
-							{							
-															
-								objwAMP.checkOS();
-								
-								$('#idSplash').css({'background-color': objSkin.theme[objSkin.skinNum].background, 
+							
+							objOptions.LoadDatabase();
+							
+							$('#idSplash').css({'background-color': objSkin.theme[objSkin.skinNum].background, 
 												  'background-image':'none'});
 													
-								$('<img />', {
+							$('<img />', {
 									"src":objSkin.theme[objSkin.skinNum].splash.imgPath,
 									"width":"320px",
 									"height":"480px"
 								}).appendTo($('#idSplashAddToDiv'));
-							}
 								
 						});	
+						
+						$('#idSplash').live('pagehide', function(event, ui)
+						{
+							$('#idSplash img').remove();
+						});
 						
 						$('#idSplash').live('pageshow',function(event, ui)
 						{  	
@@ -59,17 +61,21 @@
 	<script language="javascript" type="text/javascript">
 		$('document').ready(function() 
 		{
-			$('body').css({'background-color': objSkin.theme[objSkin.skinNum].background.bgcolor, 
-							'background-image': "url(" + objSkin.theme[objSkin.skinNum].background.bgimg + ")",
-							'background-repeat': 'no-repeat'});
-		
 			if (window.PalmSystem) 
 			{
 			   window.PalmSystem.stageReady();
 			}
 				
+			$('body').get(0).addEventListener("keyup", function(e){backManager.handleBackGesture(e)}, false);
+		
+			$('body').css({'background-color': objSkin.theme[objSkin.skinNum].background.bgcolor, 
+							'background-image': "url(" + objSkin.theme[objSkin.skinNum].background.bgimg + ")",
+							'background-repeat': 'no-repeat'});
+				
 			$('body').append(objwAMP.df);
 
+			objwAMP.checkOS();
+			
 			$('#idPlayer').live('pagecreate',function(event, ui)
 			{  
 				scenePlay.Initialize();
@@ -89,7 +95,14 @@
 											objSkin.theme[objSkin.skinNum].background.bgimg + 
 										")",
 							'background-repeat': 'no-repeat'});
-				scenePlay.PlayPauseChange();
+				
+				$
+				
+				if (scenePlay.bOpenOnStart)
+				{
+					scenePlay.PlayPauseChange();
+					objwAMP.OpenCurrentSong();
+				}
 			});
 			
 			$('#idList').live('pagebeforeshow',function(event, ui)
@@ -114,14 +127,10 @@
 			
 			$('#idOptionButton').click(function () 
 			{
-				objSkin.skinNum = ++objSkin.skinNum % 5;
-				$('body').css({'background-color': objSkin.theme[objSkin.skinNum].background.bgcolor, 
-							'background-image': "url(" + objSkin.theme[objSkin.skinNum].background.bgimg + ")",
-							'background-repeat': 'no-repeat'});
+				objSkin.pickNextSkin();
 				sceneList.FastChangeImages();
 			}); 
 		});
-		
 		
     </script>
 </head> 
@@ -145,7 +154,9 @@
 			</div>
 			<div id="idRecord"></div>
 			<div id="idScrubber"></div>
-
+			<div id="idVolControl"></div>
+			<div id="idFiltHere"></div>
+			
 			<div id="btneq"></div>	
 			<div id="btnplay"></div>
 			<div id="btnpause"></div>
@@ -154,7 +165,8 @@
 			<div id="btnvol"></div>
 			<div id="btnmute"></div>
 			<div id="btnshuf"></div>
-			<div id="btnnoshuf"></div>
+			<div id="btnrep"></div>
+			<div id="btnnormal"></div>
 			<div id="btndir"></div>
 
 	</div><!-- /page -->
