@@ -12,6 +12,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "WormDebug.h"
 
 
@@ -66,9 +67,24 @@ inline void operator--(eEnumType& eVal, int)  \
     eVal = eEnumType(eVal-1); \
 }
 
+// Macro used to allow other macros to encase a variable
+//	in quotes
+#define QUOTEME_(x) #x
+#define QUOTEME(x) QUOTEME_(x)
+
+
+// Memory Macros
+#define MEM_ALIGN_AMT 32
+inline void *WormMalloc(size_t size)
+{
+	void *temp;
+	posix_memalign(&temp, MEM_ALIGN_AMT, size);
+	return temp;
+}
 
 // Since we are working with bytes we need to worry about if we are Big or small endian
 //	so to keep the code easily portable, we do it automatically with tests.
+// (Luckily this has not been a problem so this code really doesn't get used)
 
 //extern bool BigEndianSystem;  //you might want to extern this
 
@@ -80,7 +96,11 @@ inline void operator--(eEnumType& eVal, int)  \
 
 // This is a function to copy a string and make sure any " are
 //	marked with an escape character
-extern void ConvertQuoteStrcpy(char *dest, const char *scr);
+extern char *SafeStringCopy(const char *cstr);
+
+extern int32_t SafeStringLen(char *);
+
+extern int QuickExtCheck(const char *filename);
 
 // this is for run time checking, which we don't need here
 //#define BytesToShort(X, Y) BigEndianSystem ?(short)((X<<8)|(Y&0xff)):(short)((Y<<8)|(X&0xff))

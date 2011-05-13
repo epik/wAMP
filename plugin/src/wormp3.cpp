@@ -27,32 +27,53 @@ int32_t	g_iContinue = 1;
 
 int32_t	g_InitError = 0;
 
-#ifdef USE_PDL
-PDL_bool DebugIndex(PDL_JSParameters *parms)
-#else
-void DebugIndex()
-#endif
-{
-	g_Indexer.Debug();
-	g_Indexer.ClearIndex();
-	g_Indexer.BuildIndex();
 
-#ifdef USE_PDL
-	return PDL_TRUE;
-#endif
-
-}
-
-void StartSong(char *cstrVal)
+void StartSong(const char *cstrVal)
 {
 #if USE_PDL
 	const char *params[1];
 	params[0] = cstrVal;
 
-	PDL_Err mjErr = PDL_CallJS("startSong", params, 1);
+	PDL_Err mjErr = PDL_CallJS("StartSong", params, 1);
 	if ( mjErr != PDL_NOERROR )
 	{
 	  printf("error: %s\n", PDL_GetError());
+	}
+
+#else
+	ReportError1("*****Callback Val: %s", cstrVal);
+#endif
+
+}
+
+void FinishReindex(const char *cstrVal)
+{
+#if USE_PDL
+
+	const char *params[1];
+	params[0] = cstrVal;
+
+	PDL_Err mjErr = PDL_CallJS("FinishIndex", params, 1);
+	if ( mjErr != PDL_NOERROR )
+	{
+		ReportError1("error: %s\n", PDL_GetError());
+	}
+#else
+	ReportError1("Callback Val: %s", cstrVal);
+#endif
+}
+
+void FinishSeek(const char *cstrVal)
+{
+#if USE_PDL
+
+	const char *params[1];
+	params[0] = cstrVal;
+
+	PDL_Err mjErr = PDL_CallJS("FinishSeek", params, 1);
+	if ( mjErr != PDL_NOERROR )
+	{
+		ReportError1("error: %s\n", PDL_GetError());
 	}
 #else
 	ReportError1("Callback Val: %s", cstrVal);
@@ -63,7 +84,7 @@ void StartSong(char *cstrVal)
 PDL_bool Play(PDL_JSParameters *parms)
 {
 
-	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, "0");
+	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, 0, 0);
 
 
 	return PDL_TRUE;
@@ -71,7 +92,7 @@ PDL_bool Play(PDL_JSParameters *parms)
 
 PDL_bool Pause(PDL_JSParameters *parms)
 {
-	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, "1");
+	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, 1, 0);
 
 	return PDL_TRUE;
 }
@@ -98,10 +119,10 @@ PDL_bool SetNext(PDL_JSParameters *parms)
 
 PDL_bool SetBass(PDL_JSParameters *parms)
 {
-	const char *strVal = PDL_GetJSParamString(parms, 0);
+	double fVal = PDL_GetJSParamDouble(parms, 0);
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET,
 								ATTRIB_BASSTREB_BASS_VAL,
-								strVal);
+								fVal, 0);
 
 	return PDL_TRUE;
 }
@@ -118,30 +139,40 @@ PDL_bool Seek(PDL_JSParameters *parms)
 
 PDL_bool SetVol(PDL_JSParameters *parms)
 {
-	const char *strVal = PDL_GetJSParamString(parms, 0);
+	double fVal = PDL_GetJSParamDouble(parms, 0);
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET,
 								ATTRIB_BASSTREB_VOL_VAL,
-								strVal);
+								fVal, 0);
 
 	return PDL_TRUE;
 }
 
 PDL_bool SetTreble(PDL_JSParameters *parms)
 {
-	const char *strVal = PDL_GetJSParamString(parms, 0);
+	double fVal = PDL_GetJSParamDouble(parms, 0);
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET,
 									ATTRIB_BASSTREB_TREB_VAL,
-									strVal);
+									fVal, 0);
+
+	return PDL_TRUE;
+}
+
+PDL_bool SetMid(PDL_JSParameters *parms)
+{
+	double fVal = PDL_GetJSParamDouble(parms, 0);
+	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET,
+									ATTRIB_BASSTREB_MID_VAL,
+									fVal, 0);
 
 	return PDL_TRUE;
 }
 
 PDL_bool SetSpeed(PDL_JSParameters *parms)
 {
-	const char *strVal = PDL_GetJSParamString(parms, 0);
+	double fVal = PDL_GetJSParamDouble(parms, 0);
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET,
 									ATTRIB_RESAMP_SPEED_VAL,
-									strVal);
+									fVal, 0);
 
 	return PDL_TRUE;
 }
@@ -198,13 +229,8 @@ PDL_bool GetCurrentDirLS(PDL_JSParameters *parms)
 	PDL_Err err;
 
 	const char *strVal = PDL_GetJSParamString(parms, 0);
-	int16_t iBuildType = PDL_GetJSParamInt(parms, 1);
 
-	if (iBuildType != BUILD_TYPE_FAST)
-		iBuildType = BUILD_TYPE_SLOW;
-
-	g_Indexer.GetDirFileList(strVal, iBuildType);
-	char *cstrRet = g_Indexer.ConvertToJSON(MUS_MESSAGE_GET_CURRENT_DIR_LS);
+	char *cstrRet = g_Indexer.GetDirFileList(strVal);
 
 	err = PDL_JSReply(parms, cstrRet);
 
@@ -224,15 +250,7 @@ PDL_bool GetFullIndex(PDL_JSParameters *parms)
 {
 	PDL_Err err;
 
-	char *cstrRet = g_Indexer.ConvertToJSON(MUS_MESSAGE_GET_FULL_SONG_INDEX);
-
-	if (cstrRet == NULL)
-	{
-		cstrRet = (char *) malloc (256);
-		LockFM();
-		sprintf(cstrRet, "{\"NotReadyYet\":\"%s\"}", g_Indexer.GetCurrentIndexDir());
-		UnlockFM();
-	}
+	char *cstrRet = g_Indexer.GetIndexer();
 
 	err = PDL_JSReply(parms, cstrRet);
 
@@ -247,6 +265,18 @@ PDL_bool GetFullIndex(PDL_JSParameters *parms)
 	return PDL_TRUE;
 }
 
+PDL_bool RedoIndex(PDL_JSParameters *parms)
+{
+
+	FMGUI_FileDelete(HOME_DIR INDEX_STUF);
+
+	g_Indexer.BuildIndex(1);
+
+	ReportError("Should reach here first");
+
+	return PDL_TRUE;
+}
+
 
 PDL_bool Ping(PDL_JSParameters *parms)
 {
@@ -257,59 +287,6 @@ PDL_bool Ping(PDL_JSParameters *parms)
 		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
 		return PDL_FALSE;
 	}
-
-	return PDL_TRUE;
-}
-
-PDL_bool RunYet(PDL_JSParameters *parms)
-{
-	PDL_Err err;
-
-	int16_t iRunStatus = g_Indexer.GetRunYet();
-
-	if (iRunStatus == 0)
-		err = PDL_JSReply(parms, "{\"iRunYet\":0}");
-	else if (iRunStatus == 1)
-		err = PDL_JSReply(parms, "{\"iRunYet\":1}");
-	else if (iRunStatus == MUS_INDEX_STATE_FAILED)
-		err = PDL_JSReply(parms, "{\"iRunYet\":3}");
-	else
-		err = PDL_JSReply(parms, "{\"iRunYet\":2}");
-
-	if (err != PDL_NOERROR)
-	{
-		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
-		return PDL_FALSE;
-	}
-
-	return PDL_TRUE;
-}
-
-PDL_bool IsPlayable(PDL_JSParameters *parms)
-{
-	PDL_Err err;
-
-	const char *cstrVal = PDL_GetJSParamString(parms, 0);
-
-	int16_t iRunStatus = g_Indexer.IsPlayable(cstrVal);
-
-	if (iRunStatus == 0)
-		err = PDL_JSReply(parms, "{\"iPlayable\":0}");
-	else
-		err = PDL_JSReply(parms, "{\"iPlayable\":1}");
-
-	if (err != PDL_NOERROR)
-	{
-		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
-		return PDL_FALSE;
-	}
-
-	return PDL_TRUE;
-}
-
-PDL_bool ClearIndex(PDL_JSParameters *parms)
-{
-	g_Indexer.ClearIndex();
 
 	return PDL_TRUE;
 }
@@ -342,15 +319,14 @@ int Register()
 		return 1;
 	}
 
-	err = PDL_RegisterJSHandler("RunYet", RunYet);
-	err = PDL_RegisterJSHandler("ClearIndex", ClearIndex);
-	err = PDL_RegisterJSHandler("IsPlayable", IsPlayable);
+
 	err = PDL_RegisterJSHandler("Play", Play);
 	err = PDL_RegisterJSHandler("Pause", Pause);
 	err = PDL_RegisterJSHandler("Open", Open);
 	err = PDL_RegisterJSHandler("SetNext", SetNext);
 	err = PDL_RegisterJSHandler("SetBass", SetBass);
 	err = PDL_RegisterJSHandler("SetTreble", SetTreble);
+	err = PDL_RegisterJSHandler("SetMid", SetMid);
 	err = PDL_RegisterJSHandler("GetState", GetState);
 	err = PDL_RegisterJSHandler("SetSpeed", SetSpeed);
 	err = PDL_RegisterJSHandler("SetVol", SetVol);
@@ -358,8 +334,7 @@ int Register()
 	err = PDL_RegisterJSHandler("Quit", PluginQuit);
 	err = PDL_RegisterJSHandler("GetMetadata", GetMetadata);
 	err = PDL_RegisterJSHandler("GetFullIndex", GetFullIndex);
-	err = PDL_RegisterJSHandler("DebugIndex", DebugIndex);
-
+	err = PDL_RegisterJSHandler("RedoIndex", RedoIndex);
 
 	err = PDL_JSRegistrationComplete();
 	if (err != PDL_NOERROR)
@@ -417,80 +392,70 @@ void Quit()
 
 int main()
 {
-	/*g_Indexer.SetHomeDir("c:/Users/Katiebird/Work");
-	g_Indexer.BuildIndex();
-	//g_Indexer.GetDirFileList("c:/", 0);
-
-
-	char *cstrRet = g_Indexer.ConvertToJSON(MUS_MESSAGE_GET_FULL_SONG_INDEX);
-
-	while(cstrRet == NULL)
-	{
-		cstrRet = g_Indexer.ConvertToJSON(MUS_MESSAGE_GET_FULL_SONG_INDEX);
-		WormSleep(100);
-	}
-
-	ReportError1("%s", cstrRet);
-	free(cstrRet);
-
-	return 0;*/
 
 	if (Init()) return 0;
 
 	if(REGISTER_WITH_DEVICE) return 0;
 
+	ReportError("Starting Build Index");
+
+#ifdef ON_DEVICE
 	g_Indexer.BuildIndex();
 
+	g_Indexer.SetCallback(FinishReindex);
+#endif
+
+	ReportError("Past Build Index");
+
 	// Inits the music part of the program.
-	g_MusController.Init(StartSong);
+	g_MusController.Init(StartSong, FinishSeek);
 	g_MusController.Start();
 
 	ReportError("Made it past the init stuff");
 
 #ifndef ON_DEVICE
 
-	/*g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, "0");
+	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, 0);
 
-	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/test1.mp3");
+	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/f.m4a");
 
+	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/u.flac", -4.0);
 
-	ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
+	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET,
+								ATTRIB_BASSTREB_BASS_VAL,
+								2.0, 0);
 
-	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/test2.mp3", -4.0);
+	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET,
+								ATTRIB_BASSTREB_TREB_VAL,
+								2.0, 0);
+
+	//g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_RESAMP_SPEED_VAL, "0.5");
 
 
 	// this keeps track of how long the user has waited for
 	//	the buffering
 	uint32_t uiCurWaitTime = 0;
 
-	ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
 
-/*	// This starts the timer running so we can know how long we have
-	//	been filling the buffer
+	/*
+	// routine to stop for a set time
 	WormMarkStartTime();
-
-	// Run fillbuffer until we meet one of the specified conditions
 	while (uiCurWaitTime < 8) // check wait time
 	{
-		//ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
-		// update time since we started
 		uiCurWaitTime = WormCheckTimeSinceMark();
-		// Give the gui a chance to work
 		WormSleep(100);
 	}*/
 
-	DebugIndex();
-
 	while (g_iContinue)
 	{
-		WormSleep(100);
-		//ReportError1("%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
+		WormSleep(300);
+		//ReportError1("State:%s", g_MusController.PassMessage(MUS_MESSAGE_GET_SONG_STATE));
 	}
 
 #else
 	while (1)
 	{
-		WormSleep(500);
+		WormSleep(300);
 	}
 #endif
 

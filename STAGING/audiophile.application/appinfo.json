@@ -3,7 +3,7 @@
 	"type": "web",
 	"main": "index.html",
 	"id": "com.epikmayo.audiophile",
-	"version": "0.0.8",
+	"version": "0.1.0",
 	"vendor": "EpikMayo, Inc.",
 	"plug-ins": true
 }

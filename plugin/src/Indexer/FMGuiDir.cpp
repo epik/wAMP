@@ -52,6 +52,8 @@
  * SUCH DAMAGE.
  */
 
+#include "../WormDebug.h"
+
 #include <sys/types.h>
 #include <stdlib.h>
 
@@ -113,20 +115,21 @@ FMGUI_GetFileInfo(const char *path, FMGUI_FileInfo *i)
 #else /* !_WIN32 */
 
 int
-FMGUI_GetFileInfo(const char *path, FMGUI_FileInfo *i)
+FMGUI_GetFileInfo(const char *path, FMGUI_FileInfo *i, time_t *ptimeLasMod)
 {
 	struct stat sb;
 	uid_t uid = geteuid();
 	gid_t gid = getegid();
 
 	if (stat(path, &sb) == -1) {
-		ReportError2("%s: Failed to get information (%s)", path,
-		    strerror(errno));
+
 		return (-1);
 	}
 	i->type = FMGUI_FILE_REGULAR;
 	i->flags = 0;
 	i->perms = 0;
+
+	*ptimeLasMod = sb.st_mtime;
 
 	if ((sb.st_mode & S_IFDIR)==S_IFDIR) {
 		i->type = FMGUI_FILE_DIRECTORY;
@@ -396,7 +399,9 @@ FMGUI_MkPath(const char *path)
 		done = (*slash == '\0');
 		*slash = '\0';
 
-		if (FMGUI_GetFileInfo(pathp, &info) == -1) {
+		time_t time;
+
+		if (FMGUI_GetFileInfo(pathp, &info, &time) == -1) {
 			if ((rv = FMGUI_FileExists(pathp)) == -1) {
 				goto fail;
 			} else if (rv == 0) {
@@ -458,4 +463,34 @@ PathIsFilesystemRoot(const char *path)
 	//	easiest if we just assume root is /media/internal
 	return (strcmp(path, "/media/internal") == 0);
 #endif
+}
+
+char *SafeStringIn(FILE *file)
+{
+	char	*result;
+	int		size, med, c;
+	
+	med = size = 0;
+	result = (char *) malloc(16);
+	
+	c = fgetc(file);
+	
+	if(c == EOF)
+		return NULL;
+	
+	while(!(c == EOF || c == '\n' || c == '\0')) {
+		if(size == med) {
+			med += 64;
+			result = (char *) realloc(result, med);
+		}
+		result[size++] = (char)c;
+		c = fgetc(file);
+	}
+	
+	// Trim allocated buffer to contain only the string and terminating '\0'
+	result = (char *) realloc(result, size + 1);
+
+	result[size] = '\0';
+	
+	return result;
 }

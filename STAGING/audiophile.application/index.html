@@ -6,11 +6,16 @@
 	<title>Audiophile</title> 
 	<link rel="stylesheet" href="jquery/mobile/jquery.mobile-1.0a4.css" />
 	<link rel="stylesheet" href="wamp/audiophile.css" />
-	<script type="text/javascript" src="jquery/jquery-1.5.2.min.js"></script>
+	<script type="text/javascript" src="jquery/jquery-1.6.js"></script>
+	<script type="text/javascript" src="jquery/jquery.event.drag.js"></script>
+	<script type="text/javascript" src="jquery/jquery.event.drop.js"></script>
 	<script type="text/javascript" src="scripts/lastfm.api.cache.js"></script>
 	<script type="text/javascript" src="scripts/lastfm.api.js"></script>
 	<script type="text/javascript" src="scripts/lastfm.api.md5.js"></script>
 	<script language="javascript" type="text/javascript" src="wamp/wAMP.js"></script>
+	<script language="javascript" type="text/javascript" src="wamp/skin.js"></script>
+	<script type="text/javascript" src="scripts/widgets.js"></script>
+	<script type="text/javascript" src="scripts/wScroll.js"></script>
 	<script type="text/javascript" src="scripts/scene.js"></script>
     <script language="javascript" type="text/javascript">
 	
@@ -25,33 +30,43 @@
 							ajaxLinksEnabled : false
 						});
 						
+						$('#idSplash').live('pagebeforecreate',function(event, ui)
+						{
+							$('#idSplash').jqmData("Reload", "Normal");
+						});
+						
 						$('#idSplash').live('pagebeforeshow',function(event, ui)
 						{  
-							
-							objOptions.LoadDatabase();
-							
-							$('#idSplash').css({'background-color': objSkin.theme[objSkin.skinNum].background, 
-												  'background-image':'none'});
-													
-							$('<img />', {
-									"src":objSkin.theme[objSkin.skinNum].splash.imgPath,
-									"width":"320px",
-									"height":"480px"
-								}).appendTo($('#idSplashAddToDiv'));
+							if ($('#idSplash').jqmData("Reload") == "Refresh")
+							{
+								$('#idSplash').jqmData("Reload", "Normal");
+							}
+							else
+							{
+								$('#idSplash img').remove();
 								
+								objOptions.LoadDatabase();
+								 
+														
+								$('<img />', {
+										"src":objSkin.theme[objSkin.skinNum].splash.imgPath,
+										"width":"320px",
+										"height":"480px"
+									}).appendTo($('#idSplashAddToDiv'));
+							}
 						});	
 						
 						$('#idSplash').live('pagehide', function(event, ui)
 						{
-							$('#idSplash img').remove();
+							
 						});
 						
 						$('#idSplash').live('pageshow',function(event, ui)
 						{  	
-							if (!($('#idSplash').data("status")))
+							if (!($('#idSplash').jqmData("status")))
 							{
 								$('#idSplash').jqmData("status", "loaded");
-								sceneSplash.waitForPlugin();
+								setTimeout(function() {sceneSplash.LoadSplash();},10);
 							}
 						}); 
 					}
@@ -66,15 +81,31 @@
 			   window.PalmSystem.stageReady();
 			}
 				
-			$('body').get(0).addEventListener("keyup", function(e){backManager.handleBackGesture(e)}, false);
+			$('body').get(0).addEventListener("keyup", 
+									function(e){backManager.handleBackGesture(e)}, false);
 		
 			$('body').css({'background-color': objSkin.theme[objSkin.skinNum].background.bgcolor, 
-							'background-image': "url(" + objSkin.theme[objSkin.skinNum].background.bgimg + ")",
+							'background-image': "none",
 							'background-repeat': 'no-repeat'});
 				
 			$('body').append(objwAMP.df);
+			
+			console.log("Just added the object to the DOM");
 
+			$('body').bind('pageshow', function(event, ui)
+			{
+				if (objOptions.bOptVis == true)
+				{
+					objOptions.Draw();
+				}
+			});
+			
 			objwAMP.checkOS();
+
+			$('#idPlayer').live('pagebeforecreate',function(event, ui)
+			{
+				$('#idPlayer').jqmData("Reload", "Normal");
+			});
 			
 			$('#idPlayer').live('pagecreate',function(event, ui)
 			{  
@@ -96,40 +127,136 @@
 										")",
 							'background-repeat': 'no-repeat'});
 				
-				$
 				
 				if (scenePlay.bOpenOnStart)
 				{
 					scenePlay.PlayPauseChange();
-					objwAMP.OpenCurrentSong();
+					objwAMP.OpenSong();
 				}
+				
+				$('#idPlayer').jqmData("Reload", "Normal");
+			});
+
+			$('#idList').live('pagebeforecreate',function(event, ui)
+			{
+				$('#idList').jqmData("Reload", "Normal");
 			});
 			
 			$('#idList').live('pagebeforeshow',function(event, ui)
-			{  
-				sceneList.LoadImages();
+			{
+				if ($('#idList').jqmData("Reload") == "Refresh")
+					sceneList.FastChangeImages();
+				else
+					sceneList.LoadImages();
+			});
+		
+			$('#idList').live('pageshow', function(event, ui)
+			{
+				$('#idList').jqmData("Reload", "Normal");
+				sceneList.ScrollBox.RecalcBottom();
 			});
 		
 			$('#idList').live('pagehide',function(event, ui)
 			{  
-				sceneList.ClearImages();
+				if ($('#idList').jqmData("Reload") != "Refresh")
+					sceneList.ClearImages();
+			});
+
+			$('#idIndex').live('pagebeforecreate',function(event, ui)
+			{
+				$('#idIndex').jqmData("Reload", "Normal");
 			});
 		
 			$('#idIndex').live('pagebeforeshow',function(event, ui)
-			{  
+			{			    
 				sceneIndex.LoadImages();
+			});
+
+			$('#idIndex').live('pagecreate',function(event, ui)
+			{
+				sceneIndex.InitMyDiv();
+			});
+			
+			$('#idIndex').live('pageshow', function(event, ui)
+			{
+				$('#idIndex').css({'background-color': 
+											objSkin.theme[objSkin.skinNum].background.bgcolor, 
+							'background-image': 
+										"url(" + 
+											objSkin.theme[objSkin.skinNum].background.bgimg + 
+										")",
+							'background-repeat': 'no-repeat'});
+				$('#idIndex').jqmData("Reload", "Normal");
 			});
 			
 			$('#idIndex').live('pagehide',function(event, ui)
 			{  
-				sceneIndex.ClearImages();
+			});
+		
+			$('#idPlaylist').live('pagebeforecreate',function(event, ui)
+			{
+				$('#idPlaylist').jqmData("Reload", "Normal");
+				scenePlaylist.Init();
+			});
+		
+			$('#idPlaylist').live('pagebeforeshow',function(event, ui)
+			{
+				scenePlaylist.SkinMyDiv();
+				scenePlaylist.BuildPlaylist();
+			});
+	
+
+			$('#idPlaylist').live('pageshow',function(event, ui)
+			{
+				scenePlaylist.ScrollBox.SimpleDraw("idPlaylistScroller", 
+									function(event, domTarget) 
+									{
+										scenePlaylist.PlayClickedSong(event, 
+																	domTarget);
+									},
+									function(event, iDir)
+									{
+										scenePlaylist.HandleSwipe(event, iDir);
+									});
+				var position = $(".nowplaying").position();
+				scenePlaylist.ScrollBox.scrollTo(0 - position.top, 0);
+			});
+	
+			// Load the option buttons
+			
+			$('<img />',{
+				"src": objSkin.theme[objSkin.skinNum].list.optionImg,
+				"class": "indexviewButton",
+				"height": "46px",
+				"width": "46px"
+			}).appendTo($('#idOptionButtonList'));
+			
+			$('<img />',{
+				"src": objSkin.theme[objSkin.skinNum].list.optionImg,
+				"class": "indexviewButton",
+				"height": "40px",
+				"width": "40px"
+			}).appendTo($('#idOptionButtonIndex'));
+			
+			$('#idOptionButtonPlayer').css(
+			{
+				"background-image":'url(' +
+						objSkin.theme[objSkin.skinNum].player.optionImg +
+						')'
 			});
 			
-			$('#idOptionButton').click(function () 
+			$('.classOptionButton').live('click', function (event, ui) 
 			{
-				objSkin.pickNextSkin();
-				sceneList.FastChangeImages();
-			}); 
+				objOptions.Draw();
+			});
+			
+			$('#idOptionButtonPlayer').click(function (event, ui) 
+			{
+				objOptions.Draw();
+			});
+			
+			$('#idPlaylist').bind('songtrans', function() {scenePlaylist.UpdateHighlight();});
+			
 		});
 		
     </script>
@@ -143,20 +270,23 @@
 	
 	<div data-role="page" id="idPlayer">
 
-			<div id="divNameplate" style="position:fixed; top:0; 
-							left:0px; height:64px; width:320px;; border-bottom:1px solid #0000af">
+			<div id="divNone" style="position:fixed; top:0; 
+							left:0px; height:64px; width:320px;">
 				<div id="nameGoesHere" style="position:relative; 
-							font-size:30px; color:#000; padding-left:70px; 
-							white-space:nowrap; font-family:font-family:helvetica, sans-serif;"></div>
+							font-size:20px; color:#FFF; padding-left:64px; padding-top:16px; 
+							white-space:nowrap; font-family:font-family:helvetica, sans-serif;">
+							</div>
 				<div id="artistGoesHere" style="position:relative; 
-							font-size:20px; color:#666; padding-left:70px; 
-							white-space:nowrap; font-family:font-family:helvetica, sans-serif;"></div>
+							font-size:18px; color:#FFF; padding-left:64px; 
+							white-space:nowrap; font-family:font-family:helvetica, sans-serif;">
+							</div>
 			</div>
 			<div id="idRecord"></div>
 			<div id="idScrubber"></div>
 			<div id="idVolControl"></div>
 			<div id="idFiltHere"></div>
 			
+			<div id="btnarm"></div>
 			<div id="btneq"></div>	
 			<div id="btnplay"></div>
 			<div id="btnpause"></div>
@@ -168,19 +298,25 @@
 			<div id="btnrep"></div>
 			<div id="btnnormal"></div>
 			<div id="btndir"></div>
+			
+			<div id="btnplylst"></div>
+			
+			<div id="idOptionButtonPlayer"></div>
 
 	</div><!-- /page -->
 	
 	
 	<div data-role="page" id="idIndex">
-		<div id="idPlayAllIndex" style="position:fixed; top:0px; left:0px; border-bottom:1px solid #000;"></div>
-		<div id="idAlbumIndex" style="position:fixed; top:73px; left:0px; border-bottom:1px solid #000;"></div>
-		<div id="idArtistIndex" style="position:fixed; top:146px; left:0px; border-bottom:1px solid #000;"></div>
-		<div id="idGenreIndex" style="position:fixed; top:219px; left:0px; border-bottom:1px solid #000;"></div>
-		<div id="idTitleIndex" style="position:fixed; top:292px; left:0px; border-bottom:1px solid #000;"></div>
-		<div id="idFolderIndex" style="position:fixed; top:365px; left:0px; border-bottom:1px solid #000;"></div>
+		<div id="btnheader"></div>
+		<div id="idPlayAllIndex"></div>
+		<div id="idAlbumIndex"></div>
+		<div id="idArtistIndex"></div>
+		<div id="idGenreIndex"></div>
+		<div id="idTitleIndex"></div>
+		<div id="idFolderIndex"></div>
+		<div id="idOptionIndex"></div>
 	</div><!-- /page -->
-
+	
 	<div data-role="page" id="idList">
 		<div id="idListHeader">
 		</div>
@@ -195,18 +331,29 @@
 			<form>
 				<input type="search" name="name" id="idListFilter" value=""  />
 			</form>
-			<div id="idOptionButton">
+			<div id="idOptionButtonList" class="classOptionButton">
 			</div>
 		</div>
 	</div>
 
+	<div data-role="page" id="idPlaylist" class="songlistener">
+		<div id="idPlaylistPicture" style="position:absolute";></div>
+		<div style="height:350px; width:100%; position:relative; overflow:hidden;" id="idPlaylistWrapper">
+			<div id="idPlaylistScroller">
+				<ul data-role="listview" id="idPlyLstUL">
+
+				</ul>
+			</div>
+		</div>
+	</div>
+	
 	<div data-role="dialog" id="idDialog">
 		<div data-role="header">
 			<h1>Dialog</h1>
 		</div><!-- /header -->
 		<div data-role="content">
 			<p id="idTellUser"></p>
-			<div id="idButtonGoesHere"></div>
+			<span style="display: block;" id="idButtonGoesHere"><span></span></span>
 		</div>
 
 	</div><!-- /page -->

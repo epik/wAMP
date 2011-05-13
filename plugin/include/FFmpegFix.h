@@ -10,6 +10,7 @@
 
 #ifdef ON_DEVICE
 #define UINT64_C(value) __CONCAT(value, ULL)
+#define INT64_C(value) __CONCAT(value, LL)
 #endif
 
 #endif /* FFMPEGFIX_H_ */

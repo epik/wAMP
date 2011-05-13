@@ -14,7 +14,7 @@
 #include <cstring>
 #include <stdint.h>
 #include "Messages.h"
-
+#include "../src/MemManager/MemoryManager.h"
 
 //**************************************************************
 // universal Error stuff -- this handles runtime error passing
@@ -34,6 +34,8 @@ ReportError1("There was an error: %s", g_cstrErrorStr); \
 
 //**************************************************************
 
+#define ERROUT stderr
+
 //**************************************************************
 // Code debugging -- this is meant for providing us infor while
 //	we are in the development process, and gets turned off in
@@ -48,8 +50,6 @@ extern int16_t SafeStrcpy(char *cstrDest, const char *cstrSrc, int x);
 #ifndef ON_DEVICE
 
 #include <stdio.h>
-
-#define ERROUT stderr
 
 #define ReportError(s) fprintf(ERROUT, "[" __FILE__ ":%i] ReportError: " s "\n", __LINE__)
 #define ReportError1(s, a) fprintf(ERROUT, "[" __FILE__ ":%i] ReportError: " s "\n", __LINE__, a)

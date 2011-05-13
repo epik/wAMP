@@ -62,6 +62,8 @@
 
 #include "config.h"
 #include "../WormDebug.h"
+#include <stdio.h>
+#include <time.h>
 
 #ifndef ON_DEVICE
 #define HOME_DIR ON_TEST_RIG_HOME_DIR
@@ -123,11 +125,15 @@ extern void	   		FMGUI_CloseDir(FMGUI_Dir *);
 extern int	   		FMGUI_MkPath(const char *);
 extern int	   		FMGUI_GetCWD(char *, size_t);
 
-extern int 			FMGUI_GetFileInfo(const char *, FMGUI_FileInfo *);
+extern int 			FMGUI_GetFileInfo(const char *, 
+									  FMGUI_FileInfo *, 
+									  time_t *);
 extern int 			FMGUI_GetSystemTempDir(char *, size_t);
 extern int 			FMGUI_FileExists(const char *);
 extern int 			FMGUI_FileDelete(const char *);
 extern const char 	*FMGUI_ShortFilename(const char *);
+
+extern char 		*SafeStringIn(FILE *file);
 
 extern int 			PathIsFilesystemRoot(const char *path);
 

@@ -38,18 +38,8 @@ http://www.smartelectronix.com/musicdsp/text/filters005.txt
 
 using namespace std;
 
-//*****************************
-// Callback Functions
-//*****************************
-// Need to declare these global in order to use the callback
-// Gain control
-int16_t			m_sBassGain;
-int16_t			m_sTrebleGain;
-int16_t			m_sVol;
-// decision variable on whether to use FIR or IIR
-int32_t 		m_bUseFir;
 
-void BassTrebleFilter::SetBass(double fBass)
+void BassTrebleFilter::SetBass(float fBass)
 {	
 	//ReportError1("Bass Set=%f", fBass);
 	m_sBassGain = (1<<FILTER_GAIN_SCALE) * fBass;
@@ -62,7 +52,20 @@ char* BassTrebleFilter::GetBass()
 	return str;
 };
 
-void BassTrebleFilter::SetVol(double fBass)
+void BassTrebleFilter::SetMid(float fMid)
+{	
+	//ReportError1("Bass Set=%f", fBass);
+	m_sMidRangeGain = (1<<FILTER_GAIN_SCALE) * fMid;
+	//ReportError1("Bass Set(fixed)=%i", m_sBassGain);
+};
+char* BassTrebleFilter::GetMid() 
+{
+	char *str = (char *) malloc(10);
+	sprintf(str, "%f",((float)m_sMidRangeGain/(1<<FILTER_GAIN_SCALE)));
+	return str;
+};
+
+void BassTrebleFilter::SetVol(float fBass)
 {
 	//ReportError1("Bass Set=%f", fBass);
 	m_sVol = ((1<<10)*0.85) * fBass;
@@ -75,7 +78,7 @@ char* BassTrebleFilter::GetVol()
 	return str;
 };
 
-void BassTrebleFilter::SetTreble(double fTreble)
+void BassTrebleFilter::SetTreble(float fTreble)
 {
 	//ReportError1("Treble Set=%f", fTreble);
 	m_sTrebleGain = (1<<FILTER_GAIN_SCALE) * fTreble;
@@ -88,65 +91,31 @@ char* BassTrebleFilter::GetTreble()
 	return str;
 };
 
-void BassTrebleFilter::SetFirUse(int32_t val) 
-{
-	m_bUseFir = val;
-};
-char* BassTrebleFilter::GetFirUse()
-{
-	char *str = (char *) malloc(10);
-	sprintf(str, "%i", m_bUseFir);
-	return str;
-}
 
 //*****************************
 // END Callback
-//*****************************
+//*****************************/
 
-FiltMessage BassTrebleFilter::Init(AttributeHandler *pHandler)
+FiltMessage BassTrebleFilter::Init()
 {
-	m_bUseFir = 0;
 	SetIIRFilterCoef();
-	SetFIRFilterCoef();
 	
 	SetBass(1.0);
+	SetMid(1.0);
 	SetTreble(1.0);
 	SetVol(1.0);
 
-	pHandler->RegisterDoubleAttribute(BassTrebleFilter::GetBass,
-									  BassTrebleFilter::SetBass,
-									  ATTRIB_BASSTREB_BASS_VAL);
-	pHandler->RegisterDoubleAttribute(BassTrebleFilter::GetTreble,
-									  BassTrebleFilter::SetTreble,
-									  ATTRIB_BASSTREB_TREB_VAL);
-	pHandler->RegisterDoubleAttribute(BassTrebleFilter::GetVol,
-									  BassTrebleFilter::SetVol,
-									  ATTRIB_BASSTREB_VOL_VAL);
-	pHandler->RegisterIntAttribute(BassTrebleFilter::GetFirUse,
-								   BassTrebleFilter::SetFirUse,
-								   ATTRIB_BASSTREB_USEFIR_VAL);
 	return FILT_Success;
 }
 
 
-void BassTrebleFilter::Filter(int16_t **psChanIn, size_t uiStartPos,
+void BassTrebleFilter::Filter(int16_t *psChanIn, size_t uiStartPos,
 						size_t *piNumRead, int16_t *pucOutBuffer, 
 						size_t pRequested)
 {
-	int16_t *psChan0 = (int16_t *) &psChanIn[0][uiStartPos];
-	int16_t *psChan1 = (int16_t *) &psChanIn[1][uiStartPos];
-
-	if (m_bUseFir)
-	{
-		ProcessSampleFIR(psChan0, pucOutBuffer, pRequested);
-		ProcessSampleFIR(psChan1, pucOutBuffer+1, pRequested);
-	}
-	else
-	{
-		ProcessSampleIIR(psChan0, pucOutBuffer, pRequested, 0);
-		ProcessSampleIIR(psChan1, pucOutBuffer+1, pRequested, 1);
-
-	}
+	int16_t *psChan0 = (int16_t *) &psChanIn[uiStartPos];
+	
+	ProcessSampleIIR(psChan0, pucOutBuffer, pRequested, 0);
 }
 
 
@@ -220,7 +189,7 @@ void BassTrebleFilter::ProcessSampleFIR(int16_t *insample, int16_t *outsample,
 		}
 
 		*outpos = (short) iResult;
-		outpos += 2;
+		outpos++;
 	}
 }
 
@@ -247,15 +216,15 @@ void BassTrebleFilter::ProcessSampleIIR(int16_t *insample, int16_t *outsample,
 		iResult += iTemp >> FILTER_GAIN_SCALE;
 
 
-		iResult += m_bqfIIRMidFilter[iChan].process(sample);
-
+		iTemp = m_bqfIIRMidFilter[iChan].process(sample) * m_sMidRangeGain;
+		iResult += iTemp >> FILTER_GAIN_SCALE;
 
 		iResult *= m_sVol;
 		iResult >>= 10;
 
 
 		*outpos = (int16_t) iResult;
-		outpos += 2;
+		outpos++;
 	}
 }
 

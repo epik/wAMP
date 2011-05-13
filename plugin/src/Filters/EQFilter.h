@@ -113,7 +113,7 @@ public:
 	void reset() {m_pbqfFilterBank[0].reset(); m_pbqfFilterBank[1].reset();};
 };
 
-class BassTrebleFilter:public MusFilter
+class BassTrebleFilter
 {
 protected:
 
@@ -127,6 +127,10 @@ protected:
 	int16_t			m_psFIRTREBKnobCoef[TREBLE_TAP_NUM];
 	int16_t			m_psFIRMIDKnobCoef[MID_TAP_NUM];
 	
+	int16_t			m_sBassGain;
+	int16_t			m_sTrebleGain;
+	int16_t			m_sMidRangeGain;
+	int16_t			m_sVol;
 
 	/* Computes a BiQuad filter on a sample */
 	void ProcessSampleIIR(int16_t *insample, int16_t *outsample,
@@ -141,24 +145,24 @@ protected:
 
 public:
 
-	FiltMessage Init(AttributeHandler *Handler);
+	FiltMessage Init();
 	FiltMessage Close() {return FILT_Success;};
-
-	static void SetFirUse(int32_t val);
-	static char *GetFirUse();
 				
-	static void SetBass(double fBass);
-	static char *GetBass();
+	void SetBass(float fBass);
+	char *GetBass();
 	
-	static void SetVol(double fBass);
-	static char *GetVol();
+	void SetVol(float fBass);
+	char *GetVol();
 
-	static void SetTreble(double fTreble);
-	static char *GetTreble();
+	void SetTreble(float fTreble);
+	char *GetTreble();
+	
+	void SetMid(float fTreble);
+	char *GetMid();
 	
 	void Reset();
 
-	void Filter(int16_t **psChanIn, size_t uiStartPos, size_t *piNumRead,
+	void Filter(int16_t *psChanIn, size_t uiStartPos, size_t *piNumRead,
 								int16_t *pucOutBuffer, size_t pRequested);
 
 };

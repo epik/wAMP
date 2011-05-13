@@ -13,9 +13,12 @@ extern "C" {
 #include "libavcodec\avcodec.h"
 }
 
+#define MAX_PACKET_SIZE (AVCODEC_MAX_AUDIO_FRAME_SIZE + \
+						 FF_INPUT_BUFFER_PADDING_SIZE)
+
 #include "MusModule.h"
 
-class FFmpegWrapper: public MusModule
+class FFmpegWrapper
 {
 private:
 
@@ -24,20 +27,14 @@ private:
     int16_t			m_iStreamID;
     AVCodec 		*m_pCodec;
 
-    AVPacket 		m_packet;
-
-    size_t			m_iSongLength;
-
-    int16_t			*m_psTmpBufferBase;
-    int16_t			*m_psOverFlowBuffer;
-    int32_t			m_iOverFlowSize;
-
-    int16_t			m_iAllowFirstReadError;
-
-    MusMessage		m_mmBufferedState;
-
-    int16_t			m_bEndState;
-
+	AVPacket		m_avPacket;
+	
+	uint16_t		*m_psTmpBufferBase;
+	
+	int32_t			m_lRate;
+	int32_t			m_iSkipNextFrame;
+	int64_t			m_iSongLength;
+	
     MusMessage FindDecoder(const char *cstrFileName);
 
 public:
@@ -48,19 +45,15 @@ public:
 	MusMessage Uninit();
 	MusMessage Open(const char *cstrFileName);
 	MusMessage Close();
-	MusMessage FillBuffWithRawSong(uint8_t *piBuffToFill,
-													size_t *plNumBytesWritten);
-	size_t GetSeconds() {return m_iSongLength;};
-
-	int16_t IsType(const char *cstrFileName);
-
-	int64_t Seek(double);
+	MusMessage GetNextPacket(void *avpkt);
+	uint32_t Seek(double);
 	
-	int16_t	CheckEnd()	{return m_bEndState;};
-
+	int16_t PrepareMetadata(const char *cstrFileName);
 	const char *GetValue(const char *Name);
-
 	char *GetMetadata();
+	
+	int32_t GetSampleRate() {return m_lRate;};
+	int64_t GetDuration() {return m_iSongLength;};
 };
 
 #endif /* FFMPEGMODULE_H_ */

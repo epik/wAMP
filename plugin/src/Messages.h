@@ -23,7 +23,7 @@
 //**For filters
 #define ATTRIB_BASSTREB_BASS_VAL			1
 #define ATTRIB_BASSTREB_TREB_VAL			2
-#define ATTRIB_BASSTREB_USEFIR_VAL			3
+#define ATTRIB_BASSTREB_MID_VAL				3
 #define ATTRIB_BASSTREB_VOL_VAL				6
 
 //**For music module
@@ -56,11 +56,14 @@
 #define MUS_MESSAGE_PASS_SONG_INFO			31
 
 //**MusManager status states
-#define MUS_STATUS_SONG_LOADED				101
-#define MUS_STATUS_LOADING_NEXT_SONG		107
+#define MUS_STATUS_BUF_FULL					101
+#define MUS_STATUS_BUFFERING				107
+#define MUS_STATUS_INITIAL_BUFFERING		112
 #define MUS_STATUS_ERROR					102
 #define MUS_STATUS_WAITING_FOR_SONG			103
 #define MUS_STATUS_LOADING					105
+#define MUS_STATUS_SOURCE_EOF				110
+#define MUS_STATUS_PLAYING					111
 
 //**special status updates for second song
 #define MUS_STATUS_NEXT_SONG_SET			106
@@ -69,7 +72,12 @@
 //**MusManager internal message passing
 #define MUS_INTMES_END_OF_SONG_REACHED		1001
 #define MUS_INTMES_BUFFER_UNDERFLOW			1002
+#define MUS_INTMES_NEXT_FRAME				1003
 
+//**PIPE-IN possible return messages
+#define MUS_PIPEINMES_PIPE_FULL				1004
+#define MUS_PIPEINMES_PACKET_ADDED			1005
+#define MUS_PIPEINMES_NO_MORE_PACKETS		1006
 
 //**MusManager Error Codes
 #define MUS_ERROR_CODE_CLEAR				0
@@ -95,13 +103,19 @@ struct MusicMessage
 	MUS_MESSAGE Msg;
 
 	// Other variables for passing additional info
-	char StrData[200];
+	char *StrData;
 	int32_t	IntData;
 	double 	DoubleData;
 
-	char *MetaPointer;
-
 	MusicMessage *Next;
+};
+
+class MsgHandler
+{
+public:
+
+	virtual char*	PassMessage(MUS_MESSAGE cmMsg,...) = 0;
+
 };
 
 #endif /* MESSAGES_H_ */

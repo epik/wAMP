@@ -1,6 +1,7 @@
 
 #include "Indexer.h"
 #include "FMGuiDir.h"
+#include "GeneralHashFunctions.h"
 #include "../WormMacro.h"
 #include <cstring>
 #include <vector>
@@ -8,48 +9,273 @@
 #include "../WormThread.h"
 #include <stdio.h>
 
-using namespace std;
+int16_t g_IndexingStatus = 0;
 
-struct VisitQue
+void FileEntry::SetMeta(FFmpegWrapper *FFmpeg)
 {
-	char Dir[2048];
-	VisitQue *Next;
-
-	VisitQue(const char *cstrDir)
+	int16_t iCheck = FFmpeg->PrepareMetadata(Path);
+	if (!iCheck)
 	{
-		ConvertQuoteStrcpy(Dir, cstrDir);
-		Next = NULL;
+		// maybe do something
+		return;
+	}
+	
+	SetArtist(FFmpeg->GetValue("artist"));
+	SetAlbum(FFmpeg->GetValue("album"));
+	SetGenre(FFmpeg->GetValue("genre"));
+	SetTitle(FFmpeg->GetValue("title"));
+	
+	FFmpeg->Close();
+
+}
+
+void FileList::AddNodeLite(FileEntry *pNode, uint32_t uiHash)
+{
+
+	pNode->Hash = uiHash;
+
+	if (m_pRoot == NULL)
+	{
+		m_pRoot = pNode;
+		return;
 	}
 
-	void AddToQue(VisitQue *NewNode)
+	if (m_pRoot->Hash > pNode->Hash)
 	{
-		VisitQue *iter = this;
-
-		while(iter->Next != NULL)
-			iter = iter->Next;
-
-		iter->Next = NewNode;
+		pNode->Next = m_pRoot;
+		m_pRoot = pNode;
+		return;
 	}
 
-	int16_t CheckIfValInQue(char *cstrDirToSearch)
-	{
-		VisitQue *iter = this;
+	FileEntry *pIter = m_pRoot;
 
-		while (strcmp(iter->Dir, cstrDirToSearch) != 0)
+	while ((pIter->Next != NULL) && (pIter->Next->Hash < pNode->Hash))
+	{
+		pIter = pIter->Next;
+	}
+
+	if (pIter->Next == NULL)
+		pIter->Next = pNode;
+	else
+	{
+		pNode->Next = pIter->Next;
+		pIter->Next = pNode;
+	}
+}
+
+void FileList::AddLastRunNode(FileEntry *pNode, uint32_t uiHash)
+{
+
+	pNode->Hash = uiHash;
+
+	if (m_pPrevRoot == NULL)
+	{
+		m_pPrevRoot = pNode;
+		return;
+	}
+
+	if (m_pPrevRoot->Hash > pNode->Hash)
+	{
+		pNode->Next = m_pPrevRoot;
+		m_pPrevRoot = pNode;
+		return;
+	}
+
+	FileEntry *pIter = m_pPrevRoot;
+
+	while ((pIter->Next != NULL) && (pIter->Next->Hash < pNode->Hash))
+	{
+		pIter = pIter->Next;
+	}
+
+	if (pIter->Next == NULL)
+		pIter->Next = pNode;
+	else
+	{
+		pNode->Next = pIter->Next;
+		pIter->Next = pNode;
+	}
+}
+
+int16_t FileList::ReadFile(FILE *pFile)
+{
+	int32_t iVersion;
+
+	int32_t iCheck = fscanf(pFile, "*version %i\n", &iVersion);
+
+	if (iCheck != 1)
+	{
+		ReportError("Bad File Read");
+		return READ_INDEX_BAD_FILE;
+	}
+
+	if (iVersion != 1)
+	{
+		m_pRoot = NULL;
+		m_pPrevRoot = NULL;
+		return READ_INDEX_OLD_VER;
+	}
+
+	FileEntry *pfeTemp;
+
+	char cItemCode = fgetc(pFile);
+
+	while(cItemCode == '#')
+	{
+		pfeTemp = FileEntry::ScanEntry(pFile);
+		AddLastRunNode(pfeTemp, pfeTemp->Hash);
+		cItemCode = fgetc(pFile);
+	}
+
+	/*if (cItemCode == '*')
+	{
+		ReportError("Good File Read");
+		return READ_INDEX_GOOD;
+	}
+	else
+	{
+		ReportError("Bad File Read");
+		return READ_INDEX_BAD_FILE;
+	}*/
+
+	return READ_INDEX_GOOD;
+}
+
+void FileList::Finalize(const char *cstrFileName)
+{
+	FILE *pFile;
+
+	pFile = fopen(cstrFileName, "wb");
+
+	fprintf(pFile, "*version 01\n");
+
+	FileEntry *pIter = m_pRoot;
+
+	while(pIter != NULL)
+	{
+		fputc('#', pFile);
+		pIter->WriteEntry(pFile);
+		pIter = pIter->Next;
+	}
+
+	fprintf(pFile, "*end");
+
+	fclose(pFile);
+
+}
+
+void FileList::FindDifferences(FFmpegWrapper *FFmpeg)
+{
+	FileEntry *pfeCurIter 	= m_pRoot;
+	FileEntry *pfePrevIter;
+
+	ReportError("Start FindDifferences");
+
+	while ((pfeCurIter != NULL) && (m_pPrevRoot != NULL))
+	{
+		int16_t sRel = pfeCurIter->CheckEquality(m_pPrevRoot);
+
+		if (sRel == 1)
 		{
-			if (iter->Next == NULL)
-				return 0;
-
-			iter = iter->Next;
+			//ReportError("Dif");
+			pfePrevIter 	= m_pPrevRoot;
+			m_pPrevRoot 	= m_pPrevRoot->Next;
+			pfePrevIter->Uninit();
+			free(pfePrevIter);
 		}
-
-		return 1;
+		if (sRel == -1)
+		{
+			//ReportError("Dif");
+			pfeCurIter->SetMeta(FFmpeg);
+			pfeCurIter = pfeCurIter->Next;
+		}
+		else
+		{
+			//ReportError("Harvest");
+			pfeCurIter->Harvest(m_pPrevRoot);
+			pfePrevIter 	= m_pPrevRoot;
+			m_pPrevRoot 	= m_pPrevRoot->Next;
+			pfePrevIter->Uninit();
+			free(pfePrevIter);
+			pfeCurIter 	= pfeCurIter->Next;
+		}
 	}
-};
+	
+	if (!pfeCurIter && !m_pPrevRoot)
+	{
+		return;
+	}
+	else if (pfeCurIter == NULL)
+	{
+		while(pfePrevIter != NULL)
+		{
+			pfePrevIter = m_pPrevRoot;
+			m_pPrevRoot = m_pPrevRoot->Next;
+			pfePrevIter->Uninit();
+			free(pfePrevIter);
+		}
+	}
+	else if (m_pPrevRoot == NULL)
+	{
+		while(pfeCurIter != NULL)
+		{
+			pfeCurIter->SetMeta(FFmpeg);
+			pfeCurIter = pfeCurIter->Next;
+		}
+	}
+}
 
 
-void WormIndexer::BuildIndex()
+int32_t FileList::WriteToTempFile(const char *cstrFileName)
 {
+	FILE *pFile;
+
+	pFile = fopen(cstrFileName, "wb");
+
+	fprintf(pFile, "*version 01\n");
+
+	FileEntry *pIter = m_pRoot;
+
+	while(pIter != NULL)
+	{
+		fputc('#', pFile);
+		pIter->WriteEntry(pFile);
+		pIter = pIter->Next;
+	}
+
+	fprintf(pFile, "*end");
+
+	fclose(pFile);
+
+	pFile = fopen(cstrFileName, "ab");
+
+	ReportError("Temp file create JSON for error check");
+
+	char *cstrTest = ConvertToJSON(1);
+
+	fprintf(pFile, "%s\n", cstrTest);
+
+	fclose(pFile);
+
+	free(cstrTest);
+
+	return 0;
+}
+
+void WormIndexer::BuildIndex(int16_t sUseIndex)
+{
+	m_sUseCallback = sUseIndex;
+
+	ReportError("**************************************About to reinit the flIndex");
+
+	if (m_sUseCallback)
+	{
+		m_flIndex.Uninit();
+		m_flIndex.Init();
+	}
+
+	ReportError("*******************************************Reinited the flIndex");
+
 	// Don't need to save this, Thread should be self sufficient
 	pthread_t Thread;
 
@@ -63,111 +289,64 @@ void WormIndexer::ClearIndex()
 	FMGUI_FileDelete(HOME_DIR INDEX_STUF);
 }
 
-#ifdef FIX_INDEXER
 
-#define QuickWriteIndex(a, b) { \
-	if (m_sDebug)				\
-	{							\
-		FILE *File; 			\
-		File = fopen(HOME_DIR "/fix_index.txt", "a"); \
-		fprintf(File, "[%i] Indexing: " a "\n", __LINE__, b); \
-		fclose(File); 			\
-	}							\
+char *WormIndexer::GetIndexer()
+{
+	return m_flIndex.ConvertToJSON();
 }
 
-#else
 
-#define QuickWriteIndex(a, b)
-
-#endif
-
-void WormIndexer::GetFullFileList()
+void WormIndexer::RunIndexer()
 {
-	m_iIndexingInProgress = 2;
+
+	VisitQue *DirsToVisit = new VisitQue(HOME_DIR);
+	VisitQue *DirsVisited = NULL;
+
+	FMGUI_FileInfo 	Info;
+	FMGUI_Dir 		*pDir;
+	time_t			Time;
 
 	FILE *pFile;
-
-#ifdef FIX_INDEXER
-	ReportError("Starting");
-
-	if (m_sDebug)
-	{
-		ReportError("Really Starting");
-
-		pFile = fopen(HOME_DIR "/fix_index.txt", "w");
-
-		fclose(pFile);
-	}
-
-	ReportError("Started");
-#endif
 
 	pFile = fopen(HOME_DIR INDEX_STUF, "rb");
 
 	if (pFile)
 	{
-		uint32_t iJSONSize;
-		fread(&iJSONSize, sizeof(uint32_t), 1, pFile);
+		ReportError("Ping");
 
-		if (iJSONSize != CHECK_INDEX_KEY)
-		{
-			m_sRunYet = MUS_INDEX_STATE_FAILED;
-			return;
-		}
-
-		fread(&iJSONSize, sizeof(uint32_t), 1, pFile);
-
-		m_cstrIndexJSON = (char *) malloc(iJSONSize);
-
-		fread(m_cstrIndexJSON, sizeof(char), iJSONSize, pFile);
-
-		fread(&iJSONSize, sizeof(uint32_t), 1, pFile);
-
-		if (iJSONSize != CHECK_INDEX_KEY)
-		{
-			m_sRunYet = MUS_INDEX_STATE_FAILED;
-			return;
-		}
-
-		m_iIndexingInProgress = 0;
-		ReportError1("%s", m_cstrIndexJSON);
-
-		m_sRunYet = MUS_INDEX_STATE_ALREADY;
-
+		int16_t err = m_flIndex.ReadFile(pFile);
 		fclose(pFile);
-		return;
+
+		if (err == READ_INDEX_GOOD)
+			g_IndexingStatus = 2;
+		else if (err == READ_INDEX_OLD_VER)
+			g_IndexingStatus = 3;
+		else
+		{
+			g_IndexingStatus = -1;
+			return;
+		}
 	}
 	else
 	{
-		m_sRunYet = MUS_INDEX_STATE_FIRST;
+		ReportError("Pong");
 
+		g_IndexingStatus = 1;
+		FILE *pFile;
 		pFile = fopen(HOME_DIR INDEX_STUF, "wb");
-
-		if (pFile)
-		{
-			uint32_t i = CHECK_INDEX_KEY;
-			fwrite(&i, sizeof(uint32_t), 1, pFile);
-		}
-
 		fclose(pFile);
 	}
 
-	VisitQue *DirsToVisit = new VisitQue(m_cstrHomeDir);
-	VisitQue *DirsVisited = NULL;
-
-	FMGUI_FileInfo 	Info;
-	FMGUI_Dir 		*pDir;
 
 	while (DirsToVisit != NULL)
 	{
 		// pop the next dir to search
-		char cstrDirName[2048];
-		strcpy(cstrDirName, DirsToVisit->Dir);
+		char *cstrDirName = DirsToVisit->Dir;
 		VisitQue *Cur = DirsToVisit;
 		DirsToVisit = DirsToVisit->Next;
 		delete Cur;
 
-		QuickWriteIndex("*******Starting search of dir: %s", cstrDirName);
+		ReportError1("About to visit %s", cstrDirName);
 
 		int16_t bVisited;
 
@@ -175,56 +354,45 @@ void WormIndexer::GetFullFileList()
 			bVisited = 0;
 		else
 			bVisited = DirsVisited->CheckIfValInQue(cstrDirName);
-		
-		if (!bVisited)
+
+		if (bVisited)
+		{
+			free(cstrDirName);
+		}
+		else
 		{
 			if (DirsVisited == NULL)
 				DirsVisited = new VisitQue(cstrDirName);
 			else
 				DirsVisited->AddToQue(new VisitQue(cstrDirName));
 
-
+			m_flIndex.SetCurrentSearchDir(cstrDirName);
 
 			pDir = FMGUI_OpenDir(cstrDirName);
 
-			LockFM();
-
-			strcpy(m_cstrCurrentIndexDir, cstrDirName);
-
-			UnlockFM();
-
 			if (pDir == NULL)
-			{
-				QuickWriteIndex("++++++++Error opening %s", cstrDirName);
 				continue;
-			}
-	
+
 			for (size_t i = 0; i < (size_t) pDir->nents; i++)
 			{
-				QuickWriteIndex("%s", "-------------------");
-				QuickWriteIndex("***Checking info of %s", pDir->ents[i]);
-				QuickWriteIndex("%s", "-------------------");
-				if (pDir->ents[i][0] == '.')
-				{
-					continue;
-				} //(pDir->ents[i][0] == '.')
+				//ReportError1("Checking File: %s", pDir->ents[i]);
 
-				char strFileFullPath[2048];
-				assert((strlen(cstrDirName)+strlen(pDir->ents[i])+1)<1024);
-				strcpy(strFileFullPath, cstrDirName);
-				strcat(strFileFullPath, FMGUI_PATHSEP);
-				strcat(strFileFullPath, pDir->ents[i]);
-				
+				if (pDir->ents[i][0] == '.')
+					continue;
 				if (strcmp(pDir->ents[i], "palmos") == 0)
 					continue;
 
-				if (strcmp(strFileFullPath, "/media/internal/ringtones") == 0)
-					continue;
+				char *strFileFullPath = (char *) malloc(strlen(cstrDirName) +
+														5 +
+														strlen(pDir->ents[i]));
+				strcpy(strFileFullPath, cstrDirName);
+				strcat(strFileFullPath, FMGUI_PATHSEP);
+				strcat(strFileFullPath, pDir->ents[i]);
 
-				QuickWriteIndex("Full Path Name being searched %s", strFileFullPath);
 
-				if (FMGUI_GetFileInfo(strFileFullPath, &Info) == -1)
+				if (FMGUI_GetFileInfo(strFileFullPath, &Info, &Time) == -1)
 				{
+					free(strFileFullPath);
 					continue;
 				}
 
@@ -232,196 +400,89 @@ void WormIndexer::GetFullFileList()
 					(Info.flags & FMGUI_FILE_SYSTEM) ||
 					(Info.flags & FMGUI_FILE_TEMPORARY))
 				{
+					free(strFileFullPath);
 					continue;
 				}
 
 
 				if (Info.type == FMGUI_FILE_DIRECTORY)
 				{
-					QuickWriteIndex("\t%s, Is a directory so add back to search que", 
-										strFileFullPath);
-
-					VisitQue *ArrangeAsStack = new VisitQue(strFileFullPath);
-
-					ArrangeAsStack->Next = DirsToVisit;
-
-					DirsToVisit = ArrangeAsStack;
-
-				} 
-				else 
-				{
-					QuickWriteIndex("\tChecking if %s a readable song", 
-										strFileFullPath);
-					
-					// just gonna hard code this for now
-					//	didn't like the way the more robust solution
-					//	worked out in practice
-					if (m_ffmpegObjectAll.IsType(strFileFullPath))
+					if (strcmp(strFileFullPath, "/media/internal/ringtones") == 0)
 					{
-						QuickWriteIndex("\tStarting to extract metadata info for %s", 
-											strFileFullPath);
-
-						SongItem *AddSong = new SongItem(strFileFullPath, pDir->ents[i]);
-						AddSong->Type = SONG;
-
-						QuickWriteIndex("\tCreated song item for %s", 
-											strFileFullPath);
-
-						AddSong->SetArtist(m_ffmpegObjectAll.GetValue("artist"));
-						
-						QuickWriteIndex("\t\tAdded Artist %s", AddSong->Artist);
-						
-						AddSong->SetAlbum(m_ffmpegObjectAll.GetValue("album"));
-						
-						QuickWriteIndex("\t\tAdded Album %s", AddSong->Album);
-						
-						AddSong->SetGenre(m_ffmpegObjectAll.GetValue("genre"));
-						
-						QuickWriteIndex("\t\tAdded Genre %s", AddSong->Genre);
-						
-						AddSong->SetTitle(m_ffmpegObjectAll.GetValue("title"));
-						
-						QuickWriteIndex("\t\tAdded Title %s", AddSong->Title);
-
-						m_FilesNameIndex.AddNode(AddSong);
-
-						m_ffmpegObjectAll.Close();
-						
-						QuickWriteIndex("\tFinished extract metadata info for %s", 
-											strFileFullPath);
-						
+						free(strFileFullPath);
+						continue;
 					}
 
+					//ReportError("It was a dir");
+					VisitQue *ArrangeAsStack = new VisitQue(strFileFullPath);
+					ArrangeAsStack->Next = DirsToVisit;
+					DirsToVisit = ArrangeAsStack;
+					free(strFileFullPath);
+				}
+				else
+				{
+					//ReportError("About to see if item has our exten");
+					if(QuickExtCheck(pDir->ents[i]) != 0)
+					{
+						//ReportError1("Found Song: %s", pDir->ents[i]);
+						char *cstrName = (char *) malloc(strlen(pDir->ents[i]) + 1);
+						strcpy(cstrName, pDir->ents[i]);
+						FileEntry *pfeEntry = (FileEntry *) malloc(sizeof(FileEntry));
+						pfeEntry->Init(strFileFullPath, cstrName, Time);
+						m_flIndex.AddNode((pfeEntry));
+					}
+					else
+					{
+						//ReportError("Nope, Freeing");
+						free(strFileFullPath);
+					}
 				} // else if (Info.type == FMGUI_FILE_DIRECTORY)
 
-				WormSleep(100);
+				//ReportError("Finished whatever it was that we were doing to the file");
 
 			} //for (size_t i = 0; i < pDir->nents; i++)
 
 			//ReportError("****Closing the dir we just searched");
 			FMGUI_CloseDir(pDir);
 
+			free(cstrDirName);
 
 		} //if (!bVisited)
 
-		WormSleep(100);
-
 	} //while (!vstrDirsToVisit.empty())
+
+	ReportError("No problem Building");
+
+	m_flIndex.SetCurrentSearchDir("Getting Metadata");
+
+	m_flIndex.FindDifferences(&m_ffmpegObject);
+
+	m_flIndex.SetCurrentSearchDir("Saving Index");
+
+	//m_flIndex.WriteToTempFile(HOME_DIR INDEX_TMP);
+
+	m_flIndex.Finalize(HOME_DIR INDEX_STUF);
 	
-	QuickWriteIndex("%s", ":-x:-x:-x");
-	
-	m_FilesIter = m_FilesNameIndex.Root;
+	g_IndexingStatus = 4;
 
-	// For now allocate 2056 characters for the json.
-	//	If we need more, we will realloc
-	char *cstrRet = (char *) malloc(2056);
-
-	// keep track of how many characters we have in the string
-	//	in case we need to realloc
-	size_t	SizeLim = 2056;
-
-	SongItem *songVal = GetNextFileFromAll();
-	if (songVal == NULL)
-	{
-		sprintf(cstrRet,"{\"finishedIndexing\":true}");
-
-	}
-	else
-	{
-
-		char *cstrTmp;
-
-		// add the starting bracket to the json
-		sprintf(cstrRet,"{\"finishedIndexing\":true, \"arrayFileList\": [");
-		size_t	CurSize = 50;
-
-		while (songVal != NULL)
-		{
-			cstrTmp = songVal->ToStringMeta();
-
-			// Make sure we have enough room in our main JSON string
-			size_t tmpSize = strlen(cstrTmp);
-			CurSize += tmpSize;
-			if (CurSize > SizeLim)
-			{
-				tmpSize = MAX(tmpSize+512, 1028);
-				// for ease of use, increment in intervals of 1028
-				SizeLim += tmpSize;
-				cstrRet = (char *) realloc(cstrRet, SizeLim);
-			}
-
-			strcat(cstrRet, cstrTmp);
-			free(cstrTmp);
-			songVal = GetNextFileFromAll();
-		}
-
-		cstrTmp = cstrRet;
-
-		while((*cstrTmp) != '\0') cstrTmp++;
-		cstrTmp--;
-		*cstrTmp = ']';
-		strcat(cstrRet, "}");
-
-	}
-
-	pFile = fopen(HOME_DIR INDEX_STUF, "wb");
-
-	uint32_t i;
-
-	if (pFile)
-	{
-		i = CHECK_INDEX_KEY;
-		fwrite(&i, sizeof(uint32_t), 1, pFile);
-
-		i = strlen(cstrRet);
-		fwrite(&i, sizeof(uint32_t), 1, pFile);
-		fwrite(cstrRet, sizeof(char), i, pFile);
-	}
-
-	i = CHECK_INDEX_KEY;
-	fwrite(&i, sizeof(uint32_t), 1, pFile);
-
-	fclose(pFile);
-
-	m_cstrIndexJSON = cstrRet;
-
-	m_iIndexingInProgress = 0;
+	if (m_sUseCallback)
+		m_funcCallBack(m_flIndex.ConvertToJSON());
 }
 
 
-SongItem * WormIndexer::GetNextFileFromAll()
+char *WormIndexer::GetDirFileList(const char *cstrDirName)
 {
-	SongItem *retVal = m_FilesIter;
-
-	if (m_FilesIter == NULL)
-	{
-		m_FilesIter = m_FilesNameIndex.Root;
-	}
-	else
-	{
-
-		m_FilesIter = m_FilesIter->Next;
-	}
-
-	return retVal;
-}
-
-
-void WormIndexer::GetDirFileList(const char *cstrDirName, int iBuildType)
-{
-	m_iBuildType = iBuildType;
-
-	m_CurDirLS.Clear();
-
 	FMGUI_FileInfo 	Info;
 	FMGUI_Dir 		*pDir;
+
+	FileList flIndex;
 
 	pDir = FMGUI_OpenDir(cstrDirName);
 
 	if (pDir == NULL)
 	{
 		//ReportError1("Error opening %s", cstrDirName);
-		return;
+		return 0;
 	}
 
 	for (size_t i = 0; i < (size_t) pDir->nents; i++)
@@ -434,19 +495,24 @@ void WormIndexer::GetDirFileList(const char *cstrDirName, int iBuildType)
 			continue;
 		} //(pDir->ents[i][0] == '.')
 
-		char strFileFullPath[2048];
-		assert((strlen(cstrDirName)+strlen(pDir->ents[i])+1)<1024);
+		char *strFileFullPath = (char *) malloc(strlen(cstrDirName) +
+												5 +
+												strlen(pDir->ents[i]));
 		strcpy(strFileFullPath, cstrDirName);
 		strcat(strFileFullPath, FMGUI_PATHSEP);
 		strcat(strFileFullPath, pDir->ents[i]);
 
 		if (strcmp(pDir->ents[i], "palmos") == 0)
-				continue;
-
-		ReportError1("Full Path Name being searched %s", strFileFullPath);
-
-		if (FMGUI_GetFileInfo(strFileFullPath, &Info) == -1)
 		{
+			free(strFileFullPath);
+			continue;
+		}
+
+		time_t t;
+
+		if (FMGUI_GetFileInfo(strFileFullPath, &Info, &t) == -1)
+		{
+			free(strFileFullPath);
 			continue;
 		}
 
@@ -454,53 +520,28 @@ void WormIndexer::GetDirFileList(const char *cstrDirName, int iBuildType)
 			(Info.flags & FMGUI_FILE_SYSTEM) ||
 			(Info.flags & FMGUI_FILE_TEMPORARY))
 		{
+			free(strFileFullPath);
 			continue;
 		}
 
 
 		if (Info.type == FMGUI_FILE_DIRECTORY)
 		{
-			//ReportError("Is a directory so add back to search que");
-
-			SongItem *AddDir = new SongItem(strFileFullPath, pDir->ents[i]);
+			FileEntry *AddDir = (FileEntry *) malloc(sizeof(FileEntry));
+			char *cstrName = (char *) malloc(strlen(pDir->ents[i]) + 1);
+			strcpy(cstrName, pDir->ents[i]);
+			AddDir->Init(strFileFullPath, cstrName);
 			AddDir->Type = DIR;
-
-			m_CurDirLS.AddNode(AddDir);
+			flIndex.AddNode(AddDir);
 		}
 		else
 		{
-			ReportError1("Checking if %s a readable song", strFileFullPath);
-
-			// just gonna hard code this for now
-			//	didn't like the way the more robust solution
-			//	worked out in practice
-			if (m_iBuildType == BUILD_TYPE_SLOW)
-			{
-
-				if (m_ffmpegObjectDir.IsType(strFileFullPath))
-				{
-					ReportError("Starting to extract metadata info");
-
-					SongItem *AddSong = new SongItem(strFileFullPath, pDir->ents[i]);
-					AddSong->Type = SONG;
-
-
-					AddSong->SetArtist(m_ffmpegObjectDir.GetValue("artist"));
-					AddSong->SetAlbum(m_ffmpegObjectDir.GetValue("album"));
-					AddSong->SetGenre(m_ffmpegObjectDir.GetValue("genre"));
-					AddSong->SetTitle(m_ffmpegObjectDir.GetValue("title"));
-
-					m_CurDirLS.AddNode(AddSong);
-
-					m_ffmpegObjectDir.Close();
-				}
-			}
-			else
-			{
-				SongItem *AddSong = new SongItem(strFileFullPath, pDir->ents[i]);
-				AddSong->Type = SONG;
-				m_CurDirLS.AddNode(AddSong);
-			}
+			FileEntry *AddSong = (FileEntry *) malloc(sizeof(FileEntry));
+			char *cstrName = (char *) malloc(strlen(pDir->ents[i]) + 1);
+			strcpy(cstrName, pDir->ents[i]);
+			AddSong->Init(strFileFullPath, cstrName);
+			AddSong->Type = SONG;
+			flIndex.AddNode(AddSong);
 
 		} // else if (Info.type == FMGUI_FILE_DIRECTORY)
 
@@ -509,118 +550,164 @@ void WormIndexer::GetDirFileList(const char *cstrDirName, int iBuildType)
 
 	FMGUI_CloseDir(pDir);
 
-	m_FFIter = m_CurDirLS.Root;
-	//ReportError("****Closing the dir we just searched");
+	char *cstrRet = flIndex.ConvertToJSONLite();
+
+	ReportError1("Problem might be with cleanup %s", cstrRet);
+
+	return cstrRet;
 
 }
 
-SongItem *WormIndexer::GetNextFileFromFolder()
+char *FileList::ConvertToJSONLite()
 {
-	SongItem *retVal = m_FFIter;
 
-	if (m_FFIter == NULL)
+	ReportError("About to convert JSON");
+
+	char		*cstrRet;
+	char		*cstrTemp;
+	int32_t		size, med, iStrLen;
+
+
+	cstrRet = (char *) malloc(18 + 16);
+	strcpy(cstrRet, "{\"arrayFileList\":[");
+	size = 18;
+	med = 18;
+
+	FileEntry *pIter = m_pRoot;
+
+	while(pIter)
 	{
-		m_FFIter = m_CurDirLS.Root;
+		cstrTemp = pIter->ToStringSimple();
+		iStrLen = strlen(cstrTemp);
+		if (size + iStrLen >= med)
+		{
+			med += 512 + iStrLen;
+			cstrRet = (char *) realloc(cstrRet, med);
+		}
+		strcat(cstrRet+(size-2), cstrTemp);
+		size += iStrLen;
+
+		free(cstrTemp);
+
+		pIter = pIter->Next;
+
+		if (pIter)
+		{
+			if(size+2 >= med)
+			{
+				med += 512;
+				cstrRet = (char *) realloc(cstrRet, med);
+			}
+			strcat(cstrRet+(size-2), ",");
+			size++;
+		}
+	}
+
+	if(size+3 >= med)
+	{
+		med = size+5;
+		cstrRet = (char *) realloc(cstrRet, med);
+	}
+	strcat(cstrRet+(size-2), "]}");
+
+	return cstrRet;
+}
+
+char *FileList::ConvertToJSON(int16_t sForce)
+{
+
+	char		*cstrRet;
+	char		*cstrTemp;
+	int32_t		size, med, iStrLen;
+
+	LockFM();
+	cstrRet = (char *) malloc(strlen(m_cstrCurSearchDir) + 45 + 16);
+	sprintf(cstrRet, "{\"iIndexingStatus\":%i, "
+					 "\"strCurSearchDir\":\"%s\"",
+					 g_IndexingStatus,
+					 m_cstrCurSearchDir);
+	UnlockFM();
+
+	size =  strlen(cstrRet) + 1;
+	med = size;
+
+	if ((g_IndexingStatus != 4) && (!sForce))
+	{
+		strcat(cstrRet+(size-2), "}");
 	}
 	else
 	{
-		m_FFIter = m_FFIter->Next;
-	}
-
-	return retVal;
-}
-
-char *WormIndexer::ConvertToJSON(MUS_MESSAGE msg)
-{
-
-	char *cstrTmp;
-
-	switch (msg)
-	{
-	case MUS_MESSAGE_GET_CURRENT_DIR_LS:
-	{
-		// For now allocate 2056 characters for the json.
-		//	If we need more, we will realloc
-		char *cstrRet = (char *) malloc(2056);
-
-		// keep track of how many characters we have in the string
-		//	in case we need to realloc
-		size_t	SizeLim = 2056;
-
-		// add the starting bracket to the json
-		sprintf(cstrRet,"{\"arrayFileList\": [");
-		size_t	CurSize = 22;
-
-		SongItem *songVal = GetNextFileFromFolder();
-		if (songVal == NULL)
+		iStrLen = 18;
+		if (size + iStrLen >= med)
 		{
-			free(cstrRet);
-			return NULL;
+			med += 512;
+			cstrRet = (char *) realloc(cstrRet, med);
 		}
+		strcat(cstrRet+(size-2), ",\"arrayFileList\":[");
+		size += iStrLen;
 
-		while (songVal != NULL)
+
+		FileEntry *pIter = m_pRoot;
+
+		while(pIter)
 		{
-			char *cstrTmp;
-
-			if (m_iBuildType == BUILD_TYPE_FAST)
-				cstrTmp = songVal->ToString();
-			else
-				cstrTmp = songVal->ToStringMeta();
-
-
-			// Make sure we have enough room in our main JSON string
-			size_t tmpSize = strlen(cstrTmp);
-			CurSize += tmpSize;
-			if (CurSize > SizeLim)
+			cstrTemp = pIter->ToStringMeta();
+			iStrLen = strlen(cstrTemp);
+			if (size + iStrLen >= med)
 			{
-				tmpSize = MAX(tmpSize+512, 1028);
-				// for ease of use, increment in intervals of 1028
-				SizeLim += tmpSize;
-				cstrRet = (char *) realloc(cstrRet, SizeLim);
+				med += 512 + iStrLen;
+				cstrRet = (char *) realloc(cstrRet, med);
 			}
+			strcat(cstrRet+(size-2), cstrTemp);
+			size += iStrLen;
 
-			strcat(cstrRet, cstrTmp);
-			free(cstrTmp);
-			songVal = GetNextFileFromFolder();
+			free(cstrTemp);
+
+			pIter = pIter->Next;
+			if (pIter)
+			{
+				if(size+2 >= med)
+				{
+					med += 512;
+					cstrRet = (char *) realloc(cstrRet, med);
+				}
+				strcat(cstrRet+(size-2), ",");
+				size++;
+			}
 		}
 
-		cstrTmp = cstrRet;
-
-		while((*cstrTmp) != '\0') cstrTmp++;
-		cstrTmp--;
-		*cstrTmp = ']';
-		strcat(cstrRet, "}");
-		return cstrRet;
+		if(size+3 >= med)
+		{
+			med = size+5;
+			cstrRet = (char *) realloc(cstrRet, med);
+		}
+		strcat(cstrRet+(size-2), "]}");
 	}
-	case MUS_MESSAGE_GET_FULL_SONG_INDEX:
-	{
-		if (m_iIndexingInProgress)
-			return NULL;
-
-		return m_cstrIndexJSON;
-	}
-	default:
-		return NULL;
-	}
+	return cstrRet;
 }
 
 
-char *SongItem::ToStringMeta()
+char *FileEntry::ToStringMeta()
 {
 	// first calculate the size of this metadata item
 	//	remember to add a buffer to account for the quote marks
-	//	and colon used for the JSON item (we use 10 to be safe)
-	size_t	tmpSize = strlen(Path) + strlen(Name) +
-						strlen(Artist) + strlen(Album) +
-						strlen(Genre) + strlen(Title) + 256;
+	//	and colon used for the JSON item (count is 83 + null +
+	//	five for safety).
+
+	size_t	tmpSize = SafeStringLen(Path);
+	tmpSize += SafeStringLen(Name);
+	tmpSize += SafeStringLen(Artist);
+	tmpSize += SafeStringLen(Album);
+	tmpSize += SafeStringLen(Genre);
+	tmpSize += SafeStringLen(Title) + 90;
 
 	// allocate a new temp string to place the metadata pair into
 	char *cstrTmp = (char *) malloc(tmpSize);
 
 	sprintf(cstrTmp,
-			" {\"name\":\"%s\", \"path\":\"%s\", \"artist\":\"%s\", "
+			"{\"name\":\"%s\", \"path\":\"%s\", \"artist\":\"%s\", "
 				"\"album\":\"%s\", \"genre\":\"%s\", \"title\":\"%s\", "
-				"\"isdir\":%s},",
+				"\"isdir\":%s}",
 			Name,
 			Path,
 			Artist,
@@ -632,18 +719,18 @@ char *SongItem::ToStringMeta()
 	return cstrTmp;
 }
 
-char *SongItem::ToString()
+char *FileEntry::ToStringSimple()
 {
 	// first calculate the size of this metadata item
 	//	remember to add a buffer to account for the quote marks
-	//	and colon used for the JSON item (we use 10 to be safe)
-	size_t	tmpSize = strlen(Path) + strlen(Name) + 50;
+	//	and colon used for the JSON item
+	size_t	tmpSize = strlen(Path) + strlen(Name) + 40;
 
 	// allocate a new temp string to place the metadata pair into
 	char *cstrTmp = (char *) malloc(tmpSize);
 
 	sprintf(cstrTmp,
-			" {\"name\":\"%s\", \"path\":\"%s\", \"isdir\":%s},",
+			" {\"name\":\"%s\", \"path\":\"%s\", \"isdir\":%s}",
 			Name,
 			Path,
 			((Type == DIR)?"true":"false"));
@@ -671,30 +758,22 @@ void *WormIndexer::StartIndexThread(void *pvObject)
 	WormIndexer *pWormIndexer = (WormIndexer *) pvObject;
 
 	// Start MusController's maing logic loop
-	pWormIndexer->GetFullFileList();
+	pWormIndexer->RunIndexer();
 
 	// Do not worry about return value for now
 	return NULL;
 }
 
 
-/********************************************
- * IsPlayable()
- *
- * Returns whether the passed path is a playable song or not
- ********************************************/
-int WormIndexer::IsPlayable(const char *cstrPath)
-{
-	return m_ffmpegObjectAll.IsType(cstrPath);
-}
-
 char *WormIndexer::GetMetadata(const char *cstrPath)
 {
-	char *cstrRet;
-
-	m_ffmpegObjectDir.Open(cstrPath);
-	cstrRet = m_ffmpegObjectDir.GetMetadata();
-	m_ffmpegObjectDir.Close();
+	char *cstrRet = NULL;
+	
+	if(m_ffmpegObject.PrepareMetadata(cstrPath))
+	{
+		cstrRet = m_ffmpegObject.GetMetadata();
+		m_ffmpegObject.Close();
+	}
 
 	return cstrRet;
 }

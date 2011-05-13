@@ -9,288 +9,381 @@
 #include <cstring>
 
 #include "FMGuiDir.h"
+#include "GeneralHashFunctions.h"
 #include "../Decoders/FFmpegModule.h"
 
 #include "../WormDebug.h"
+#include "../WormThread.h"
 
 
 #define SONG 	1
 #define DIR 	2
 
-struct SongItem
+#define READ_INDEX_OLD_VER 		2
+#define READ_INDEX_BAD_FILE		1
+#define READ_INDEX_GOOD			0
+
+extern int16_t g_IndexingStatus;
+
+struct FileEntry
 {
-	char 		Path[2048];
-	char		Name[1024];
-
-	char		Artist[512];
-	char		Album[512];
-	char		Genre[512];
-	char		Title[512];
-
+	char 		*Path;
+	char		*Name;
+	char		*Artist;
+	char		*Album;
+	char		*Title;
+	char		*Genre;
+	uint32_t	Hash;
+	time_t		LastMod;
+	FileEntry 	*Next;
 	int16_t		Type;
 
-	SongItem	*Next;
-	SongItem	*NextArtist;
-	SongItem	*NextAlbum;
-	SongItem	*NextGenre;
-	SongItem	*NextTitle;
-
-	SongItem(const char *cstrPath, const char *cstrName)
+	void Init(char *cstrPath, char *cstrName, time_t tTime)
 	{
-		ConvertQuoteStrcpy(Path, cstrPath);
-
-		ConvertQuoteStrcpy(Name, cstrName);
-
-		Artist[0] = '\0';
-		Album[0] = '\0';
-		Genre[0] = '\0';
-		Title[0] = '\0';
+		Path = cstrPath;
+		Name = cstrName;
+		LastMod = tTime;
 		Next = NULL;
+		Genre = NULL;
+		Title = NULL;
+		Album = NULL;
+		Artist = NULL;
 		Type = SONG;
-	};
+	}
 
-	void SetArtist(const char *strArtist)
+	void Init(char *cstrPath, char *cstrName)
 	{
-		if (strArtist == NULL)
-			return;
-		else
-			ConvertQuoteStrcpy(Artist, strArtist);
-	};
+		Path = cstrPath;
+		Name = cstrName;
+		Next = NULL;
+		Genre = NULL;
+		Title = NULL;
+		Album = NULL;
+		Artist = NULL;
+		Type = SONG;
+	}
 
-	void SetAlbum(const char *strAlbum)
+
+	void Init()
 	{
-		if (strAlbum == NULL)
-			return;
-		else
-			ConvertQuoteStrcpy(Album, strAlbum);
-	};
+		Path = NULL;
+		Name = NULL;
+		Next = NULL;
+		Genre = NULL;
+		Title = NULL;
+		Album = NULL;
+		Artist = NULL;
+	}
 
-	void SetGenre(const char *strGenre)
+	void SetTitle(const char *cstr)
 	{
-		if (strGenre == NULL)
-			return;
-		else
-			ConvertQuoteStrcpy(Genre, strGenre);
-	};
-
-	void SetTitle(const char *strTitle)
-	{
-		if (strTitle == NULL)
-			return;
-		else
-			ConvertQuoteStrcpy(Title, strTitle);
-	};
-
-	// Returns negative number if this is less than node
-	// returns positive number if this is greater than node
-	// returns 0 if equal
-	int16_t Compare(SongItem *node)
-	{
-		if (node == NULL)
-			return -1;
-
-		if (node->Type != Type)
+		Title = SafeStringCopy(cstr);
+		if (Title == NULL)
 		{
-			if (node->Type == DIR)
-				return 1;
-			else
-				return -1;
+			Title = (char *) malloc(2);
+			*Title = '\0';
+		}
+	}
+
+	void SetArtist(const char *cstr)
+	{
+		Artist = SafeStringCopy(cstr);
+		if (Artist == NULL)
+		{
+			Artist = (char *) malloc(2);
+			*Artist = '\0';
+		}
+	}
+
+	void SetAlbum(const char *cstr)
+	{
+		Album = SafeStringCopy(cstr);
+		if (Album == NULL)
+		{
+			Album = (char *) malloc(2);
+			*Album = '\0';
+		}
+	}
+
+	void SetGenre(const char *cstr)
+	{
+		Genre = SafeStringCopy(cstr);
+		if (Genre == NULL)
+		{
+			Genre = (char *) malloc(2);
+			*Genre = '\0';
+		}
+	}
+
+	void SetMeta(FFmpegWrapper *FFmpeg);
+
+	void Uninit()
+	{
+		free(Path);
+		free(Name);
+		free(Artist);
+		free(Genre);
+		free(Album);
+		free(Title);
+	}
+
+	void Harvest(FileEntry *pNode)
+	{
+		Artist = pNode->Artist;
+		pNode->Artist = NULL;
+		Album = pNode->Album;
+		pNode->Album = NULL;
+		Genre = pNode->Genre;
+		pNode->Genre = NULL;
+		Title = pNode->Title;
+		pNode->Title = NULL;
+	}
+
+	/**********************
+	 * CheckEquality()
+	 *
+	 * 	Check the relationship between two nodes
+	 *
+	 * RETURN:
+	 * 		-1 - if this < pCompNode, or if Hash is equal but text is not
+	 * 		0 - if equal
+	 * 		1 - if this > pCompNode
+	 **********************/
+	int16_t CheckEquality(FileEntry *pCompNode)
+	{
+
+		if (Hash < pCompNode->Hash)
+		{
+			return -1;
+		}
+		else if (Hash > pCompNode->Hash)
+		{
+			return 1;
 		}
 
-		return strcmp(Name,node->Name);
-	};
-
-
-	int16_t CompareArtist(SongItem *node)
-	{
-		if (node == NULL)
+		if (strcmp(Path, pCompNode->Path) != 0)
 			return -1;
 
-		if (node->Type != Type)
-		{
-			if (node->Type == DIR)
-				return 1;
-			else
-				return -1;
-		}
+		if (LastMod != pCompNode->LastMod)
+			return 1;
 
-		return strcmp(Artist,node->Artist);
-	};
+		return 0;
+	}
 
-
-	int16_t CompareAlbum(SongItem *node)
+	void WriteEntry(FILE *pFile)
 	{
-		if (node == NULL)
-			return -1;
+		fprintf(pFile, "%lu %u %s\n", LastMod, Hash, Path);
+		fprintf(pFile, "%s\n", Name);
+		fprintf(pFile, "%s\n", Album);
+		fprintf(pFile, "%s\n", Artist);
+		fprintf(pFile, "%s\n", Genre);
+		fprintf(pFile, "%s\n", Title);
+	}
 
-		if (node->Type != Type)
-		{
-			if (node->Type == DIR)
-				return 1;
-			else
-				return -1;
-		}
-
-		return strcmp(Album,node->Album);
-	};
-
-
-	int16_t CompareGenre(SongItem *node)
+	static FileEntry *ScanEntry(FILE *pFile)
 	{
-		if (node == NULL)
-			return -1;
 
-		if (node->Type != Type)
-		{
-			if (node->Type == DIR)
-				return 1;
-			else
-				return -1;
-		}
+		uint32_t uiLastMod;
+		uint32_t uiHash;
 
-		return strcmp(Genre,node->Genre);
-	};
+		FileEntry *pEntry = (FileEntry *) malloc(sizeof(FileEntry));
 
+		fscanf(pFile, "%u %u", &uiLastMod, &uiHash);
 
-	int16_t CompareTitle(SongItem *node)
-	{
-		if (node == NULL)
-			return -1;
+		if (feof(pFile))
+			return NULL;
 
-		if (node->Type != Type)
-		{
-			if (node->Type == DIR)
-				return 1;
-			else
-				return -1;
-		}
+		fgetc(pFile);
 
-		return strcmp(Title,node->Title);
-	};
+		pEntry->LastMod = uiLastMod;
+		pEntry->Hash = uiHash;
 
-	// Output to string
-	char *ToString();
+		pEntry->Path = SafeStringIn(pFile);
+		pEntry->Name = SafeStringIn(pFile);
+		pEntry->Album = SafeStringIn(pFile);
+		pEntry->Artist = SafeStringIn(pFile);
+		pEntry->Genre = SafeStringIn(pFile);
+		pEntry->Title = SafeStringIn(pFile);
+
+		pEntry->Next = NULL;
+
+		return pEntry;
+	}
+
 	char *ToStringMeta();
+	char *ToStringSimple();
 };
 
 
-/*****************************
- * Structure to build the list of files
- ****************************/
-struct IndexStruct
+class FileList
 {
-	SongItem *Root;
-	SongItem *ArtistRoot;
-	SongItem *AlbumRoot;
-	SongItem *GenreRoot;
-	SongItem *TitleRoot;
+private:
 
-	IndexStruct() {Root = NULL;};
+	int32_t		m_iTempSize;
+	FileEntry 	*m_pRoot;
+	FileEntry	*m_pPrevRoot;
+	char		*m_cstrCurSearchDir;
 
-	void Clear()
+public:
+
+	FileList()
 	{
-		SongItem *iter = Root;
+		Init();
+	};
 
-		while(iter != NULL)
-		{
-			Root = Root->Next;
-			delete[] iter;
-			iter = Root;
-		}
-
-		Root = NULL;
+	void Init(FILE *pFile)
+	{
+		ReadFile(pFile);
 	}
 
-	void AddNode(SongItem *NewNode)
+	void Init()
 	{
-		if ((Root == NULL) || (NewNode->Compare(Root) < 0))
+		m_pRoot = NULL;
+		m_pPrevRoot = NULL;
+		// rather than worry about reallocing this, just make it big
+		m_cstrCurSearchDir = (char *) malloc(8192);
+		m_cstrCurSearchDir[0] = '\0';
+	}
+
+	void Uninit()
+	{
+		free(m_cstrCurSearchDir);
+		FileEntry *pIter = m_pRoot;
+
+		while (pIter != NULL)
 		{
-			NewNode->Next = Root;
-			Root = NewNode;
-			return;
+			FileEntry *Temp = pIter->Next;
+			pIter->Uninit();
+			free(pIter);
+			pIter = Temp;
 		}
+	}
 
-		SongItem *iter = Root;
+	~FileList()
+	{
+		Uninit();
+	}
 
-		while(NewNode->Compare(iter->Next) > 0)
+	// pFile must be open, no error checking for that
+	int16_t ReadFile(FILE *pFile);
+
+	void Finalize(const char *cstrFileName);
+
+	void AddNode(FileEntry *pNode)
+	{
+		AddNodeLite(pNode, APHash(pNode->Path, strlen(pNode->Path)));
+	}
+
+	void SetCurrentSearchDir(const char *cstrSearchDir)
+	{
+		LockFM();
+		strcpy(m_cstrCurSearchDir, cstrSearchDir);
+		UnlockFM();
+	}
+
+	int16_t IsEmpty() {return ((m_pRoot == NULL) ? true : false);};
+
+	void AddNodeLite(FileEntry *pNode, uint32_t uiHash);
+
+	char *ConvertToJSON(int16_t sForce = 0);
+
+	char *ConvertToJSONLite();
+
+	void AddLastRunNode(FileEntry *pNode, uint32_t uiHash);
+
+	void FindDifferences(FFmpegWrapper *FFmpeg);
+
+	// creates a temp file that will eventually be merged
+	//	into the main Index file
+	int32_t WriteToTempFile(const char *cstrFileName);
+};
+
+
+struct VisitQue
+{
+	char 	 *Dir;
+	int32_t	 Hash;
+	VisitQue *Next;
+
+	VisitQue(const char *cstrDir)
+	{
+		Dir = (char *) malloc(strlen(cstrDir) + 2);
+		strcpy(Dir, cstrDir);
+		Hash = SDBMHash(Dir, strlen(Dir));
+		Next = NULL;
+	}
+
+	void AddToQue(VisitQue *NewNode)
+	{
+		VisitQue *iter = this;
+
+		while(iter->Next != NULL)
 			iter = iter->Next;
 
-		NewNode->Next = iter->Next;
 		iter->Next = NewNode;
 	}
 
-};
+	int16_t CheckIfValInQue(char *cstrDirToSearch)
+	{
+		VisitQue *iter = this;
 
-#define BUILD_TYPE_FAST 0
-#define BUILD_TYPE_SLOW 1
+		int32_t iHash = SDBMHash(cstrDirToSearch, strlen(cstrDirToSearch));
+
+		while ((iHash != iter->Hash) && (strcmp(iter->Dir, cstrDirToSearch) != 0))
+		{
+			if (iter->Next == NULL)
+				return 0;
+
+			iter = iter->Next;
+		}
+
+		return 1;
+	}
+};
 
 class WormIndexer
 {
 private:
 
-	char *m_cstrIndexJSON;
+	char 			*m_cstrIndexJSON;
+	char 			*m_cstrHomeDir;
+	char 			*m_cstrCurrentIndexDir;
+	FileList 		m_flIndex;
+	FFmpegWrapper 	m_ffmpegObject;
+	int16_t			m_sUseCallback;
 
-	int16_t m_sRunYet;
-
-	IndexStruct m_FilesNameIndex;
-	SongItem *m_FilesIter;
-
-	IndexStruct	m_CurDirLS;
-	SongItem *m_FFIter;
-	int16_t	m_iBuildType;
-
-	FFmpegWrapper m_ffmpegObjectAll;
-	FFmpegWrapper m_ffmpegObjectDir;
-	
-	SongItem *GetNextFileFromAll();
-
-	SongItem *GetNextFileFromFolder();
-
-	char m_cstrHomeDir[512];
-
-	char m_cstrCurrentIndexDir[512];
-
-	int m_iIndexingInProgress;
-	
-	int16_t m_sDebug;
+	void 			(*m_funcCallBack)(const char *);
 
 public:
 
-	const char *GetCurrentIndexDir() {return m_cstrCurrentIndexDir;};
-
-	int GetIndex() {return m_iIndexingInProgress;};
-
-	int GetRunYet() {return m_sRunYet;};
-
-	int IsPlayable(const char *m_cstrPath);
-
 	static void *StartIndexThread(void *);
-
-	void Debug() {m_sDebug = 1;};
 
 	WormIndexer()
 	{
-		m_ffmpegObjectDir.Init();
-		m_ffmpegObjectAll.Init();
+		m_ffmpegObject.Init();
+		m_sUseCallback = 0;
+		m_cstrHomeDir = (char *) malloc(strlen(HOME_DIR) + 1);
 		strcpy(m_cstrHomeDir, HOME_DIR);
-		m_iIndexingInProgress = 1;
-		m_sRunYet = 0;
-		m_sDebug = 0;
 	};
 
 	void SetHomeDir(char *cstrDir) {strcpy(m_cstrHomeDir, cstrDir);};
 
-	void BuildIndex();
+	void BuildIndex(int16_t sUseIndex = 0);
 	
 	void ClearIndex();
 
-	void GetFullFileList();
+	void RunIndexer();
 
-	void GetDirFileList(const char *cstrDirName, int iBuildType = BUILD_TYPE_FAST);
+	char *GetIndexer();
 
-	char *ConvertToJSON(MUS_MESSAGE msg);
+	char *GetDirFileList(const char *cstrDirName);
 
 	char *GetMetadata(const char *cstrPath);
+
+	void SetCallback(void (*funcCallBack)(const char *))
+	{
+		m_funcCallBack = funcCallBack;
+	}
 };
 
 

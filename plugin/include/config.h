@@ -8,18 +8,15 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#include "FlacConfig.h"
-
-#define FIX_INDEXER
-
 // Read little Endian
 #define READ_LITTLE_ENDIAN
 
-#define SUPPORTED_EXTEN "mp3,wma,m4a,aac,flac,FLAC,ogg,ra,ram,wav,mp2,mp1,mpg,als,ors,mp4,3gp,wmv"
+#define SUPPORTED_EXTEN {5863768, 193436047, 193485930, 193486309, 193497511, 193499443, 193499444, 193499445, 193499446, 193499497, 193501378, 193501753, 193504453, 193509907, 193510282, 193510303, 2089074171, 2090260091}
+// These are all the hash values of the following (not in the same order) using DJBHash
+//#define SUPPORTED_EXTEN "mp3,wma,m4a,aac,flac,FLAC,ogg,ra,ram,wav,mp2,mp1,mpg,als,ors,mp4,3gp,wmv"
 
-#define INDEX_STUF "/wamp.v2.index"
-
-#define CMD_LINE_FOR_FILEIO_ONLY "fileio_mode"
+#define INDEX_STUF "/wamp.index"
+#define INDEX_TMP "/~wamp.tmp"
 
 // Define this to turn on the WormDebug options.
 // More granular options should be tweeked from WormDebug.h
@@ -27,10 +24,8 @@
 #define DEBUG 1
 #endif
 
-#define MUS_BUFFER_SIZE (4096 * 4)
+#define MUS_BUFFER_SIZE 4096
 
-#define CHECK_INDEX_KEY 	86753
-#define BAD_INDEX_KEY 		1337
 
 // Here we define the various audio variables
 #define NUM_CHANNELS 2	// number of supported audio playback channels
@@ -38,8 +33,14 @@
 #define LOW_SPEED_RATIO_LIM 0.25 // Lower limit for playback speed factor
 #define HIGH_SPEED_RATIO_LIM 4.0 // Upper limit for playback speed factor
 
-#define QUOTEME_(x) #x
-#define QUOTEME(x) QUOTEME_(x)
+// For when we start building for the touchpad
+#ifdef BUILD_FOR_TOUCHPAD
+#define NUM_SIM_TRACKS 2
+#else
+#define NUM_SIM_TRACKS 1
+#endif
+
+
 
 #ifdef ON_DEVICE
 #define USE_PDL 1
@@ -49,7 +50,7 @@
 
 #define RESAMPLE_RES_PATH "git/STAGING/audiophile.application/res/resamp.res"
 
-#define ON_TEST_RIG_HOME_DIR "c:/Users/Katiebird/Work"
+#define ON_TEST_RIG_HOME_DIR "c:/Users/Katiebird/Music"
 
 #endif
 
