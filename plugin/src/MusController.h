@@ -91,7 +91,7 @@ public:
 	int16_t Uninit();
 
 
-	char*	PassMessage(MUS_MESSAGE cmMsg,...);
+	const char*	PassMessage(MUS_MESSAGE cmMsg,...);
 	void	Start();
 
 	void	Quit() {m_iPlay = 0;};

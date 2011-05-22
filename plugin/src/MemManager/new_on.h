@@ -57,10 +57,16 @@
 #define LogMemEvent15(s, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) fprintf(ERROUT, "**LogMemEvent: [%s]:(%s:%i)" s "\n", name, file, line, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)
 
 #else
-#define MALLOC(sz)			WormMalloc(sz)
+
+#ifdef DEBUG
+#define MALLOC(sz)			WormMalloc(__FILE__, __LINE__, sz);
+#else
+#define MALLOC(sz)			WormMalloc(sz);
+#endif
+
 #define CALLOC(num, sz)		calloc(num, sz)
 #define REALLOC(ptr, sz)	realloc(ptr, sz)
-#define FREE(sz)			free(sz)
+#define FREE(sz)			ReportError1("Free Addy=%i ***********", sz); free(sz)
 
 #define INIT_LOG(s, f, l)
 

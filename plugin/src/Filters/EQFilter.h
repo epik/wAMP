@@ -61,11 +61,16 @@ enum EQ_KNOBS {
 
 
 #define FILTER_GAIN_SCALE		8
+#define VOL_FIXED_Q_FACTOR		10
+#define VOL_NORM_LEVEL			((1<<VOL_FIXED_Q_FACTOR)*0.85)			
+
 
 #define FILTER_GAIN_RANGE 		24
 #define FILTER_GAIN_MIN			-12
 #define FILTER_GAIN_STEP		1
 #define NUM_EQ_FILTERS			3
+
+#define NUM_MID_EQ_FILT			4
 
 #define L_H_PASS_Q_FACTOR 0.707 // this is the Q for butterworth
 
@@ -131,7 +136,7 @@ protected:
 	int16_t			m_sTrebleGain;
 	int16_t			m_sMidRangeGain;
 	int16_t			m_sVol;
-
+	
 	/* Computes a BiQuad filter on a sample */
 	void ProcessSampleIIR(int16_t *insample, int16_t *outsample,
 										size_t Requested, int16_t iChan);
@@ -153,7 +158,9 @@ public:
 	
 	void SetVol(float fBass);
 	char *GetVol();
-
+	void SetVolFix(int16_t iVol);
+	int16_t GetVolFix();
+	
 	void SetTreble(float fTreble);
 	char *GetTreble();
 	

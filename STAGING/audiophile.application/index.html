@@ -12,86 +12,42 @@
 	<script type="text/javascript" src="scripts/lastfm.api.cache.js"></script>
 	<script type="text/javascript" src="scripts/lastfm.api.js"></script>
 	<script type="text/javascript" src="scripts/lastfm.api.md5.js"></script>
+	<script type="text/javascript">
+var arraySkins = ["skinDefault", 
+			  "skinBrown", 
+			  "skinBlue", 
+			  "skinGreen", 
+			  "skinPink", 
+			  "skinPurple", 
+			  "skinRed"];
+	</script>
 	<script language="javascript" type="text/javascript" src="wamp/wAMP.js"></script>
-	<script language="javascript" type="text/javascript" src="wamp/skin.js"></script>
 	<script type="text/javascript" src="scripts/widgets.js"></script>
 	<script type="text/javascript" src="scripts/wScroll.js"></script>
 	<script type="text/javascript" src="scripts/scene.js"></script>
-    <script language="javascript" type="text/javascript">
-	
-	objwAMP.CreatePluginHook();
-	objwAMP.setCurrentPath("/media/internal");
-			
-	$(document).bind("mobileinit", 
-					function()
-					{			
-						$.extend(  $.mobile , { 
-							ajaxFormsEnabled : false,
-							ajaxLinksEnabled : false
-						});
-						
-						$('#idSplash').live('pagebeforecreate',function(event, ui)
-						{
-							$('#idSplash').jqmData("Reload", "Normal");
-						});
-						
-						$('#idSplash').live('pagebeforeshow',function(event, ui)
-						{  
-							if ($('#idSplash').jqmData("Reload") == "Refresh")
-							{
-								$('#idSplash').jqmData("Reload", "Normal");
-							}
-							else
-							{
-								$('#idSplash img').remove();
-								
-								objOptions.LoadDatabase();
-								 
-														
-								$('<img />', {
-										"src":objSkin.theme[objSkin.skinNum].splash.imgPath,
-										"width":"320px",
-										"height":"480px"
-									}).appendTo($('#idSplashAddToDiv'));
-							}
-						});	
-						
-						$('#idSplash').live('pagehide', function(event, ui)
-						{
-							
-						});
-						
-						$('#idSplash').live('pageshow',function(event, ui)
-						{  	
-							if (!($('#idSplash').jqmData("status")))
-							{
-								$('#idSplash').jqmData("status", "loaded");
-								setTimeout(function() {sceneSplash.LoadSplash();},10);
-							}
-						}); 
-					}
-	);
-    </script>
-	<script type="text/javascript" src="jquery/mobile/jquery.mobile-1.0a4.js"></script>
+
 	<script language="javascript" type="text/javascript">
 		$('document').ready(function() 
 		{
+		
+			objwAMP.CreatePluginHook();
+			objwAMP.setCurrentPath("/media/internal");
+		
 			if (window.PalmSystem) 
 			{
 			   window.PalmSystem.stageReady();
 			}
-				
+						
 			$('body').get(0).addEventListener("keyup", 
 									function(e){backManager.handleBackGesture(e)}, false);
 		
-			$('body').css({'background-color': objSkin.theme[objSkin.skinNum].background.bgcolor, 
-							'background-image': "none",
-							'background-repeat': 'no-repeat'});
-				
+			widStatusPill.Init();
+			widStatusPill.Resize();
+			
 			$('body').append(objwAMP.df);
 			
-			console.log("Just added the object to the DOM");
-
+			objOptions.SetSkin();
+			
 			$('body').bind('pageshow', function(event, ui)
 			{
 				if (objOptions.bOptVis == true)
@@ -101,114 +57,43 @@
 			});
 			
 			objwAMP.checkOS();
-
-			$('#idPlayer').live('pagebeforecreate',function(event, ui)
-			{
-				$('#idPlayer').jqmData("Reload", "Normal");
-			});
 			
-			$('#idPlayer').live('pagecreate',function(event, ui)
+			$('#idPlayer').bind('pageshow',function(event, ui)
 			{  
-				scenePlay.Initialize();
+				scenePlay.Display();
 			});
 			
-			$('#idPlayer').live('pagebeforeshow',function(event, ui)
-			{  
-				scenePlay.LoadImages();
-			});
-			
-			$('#idPlayer').live('pageshow',function(event, ui)
-			{  
-				$('#idPlayer').css({'background-color': 
-											objSkin.theme[objSkin.skinNum].background.bgcolor, 
-							'background-image': 
-										"url(" + 
-											objSkin.theme[objSkin.skinNum].background.bgimg + 
-										")",
-							'background-repeat': 'no-repeat'});
-				
-				
-				if (scenePlay.bOpenOnStart)
-				{
-					scenePlay.PlayPauseChange();
-					objwAMP.OpenSong();
-				}
-				
-				$('#idPlayer').jqmData("Reload", "Normal");
-			});
-
-			$('#idList').live('pagebeforecreate',function(event, ui)
+			$('#idList').bind('pagebeforeshow',function(event, ui)
 			{
-				$('#idList').jqmData("Reload", "Normal");
-			});
-			
-			$('#idList').live('pagebeforeshow',function(event, ui)
-			{
-				if ($('#idList').jqmData("Reload") == "Refresh")
-					sceneList.FastChangeImages();
-				else
-					sceneList.LoadImages();
+				sceneList.LoadImages();
 			});
 		
-			$('#idList').live('pageshow', function(event, ui)
+			$('#idList').bind('pageshow', function(event, ui)
 			{
-				$('#idList').jqmData("Reload", "Normal");
 				sceneList.ScrollBox.RecalcBottom();
 			});
 		
-			$('#idList').live('pagehide',function(event, ui)
+			$('#idList').bind('pagehide',function(event, ui)
 			{  
-				if ($('#idList').jqmData("Reload") != "Refresh")
+				if ($('#idList').data("Reload") != "Refresh")
 					sceneList.ClearImages();
 			});
 
-			$('#idIndex').live('pagebeforecreate',function(event, ui)
-			{
-				$('#idIndex').jqmData("Reload", "Normal");
-			});
-		
-			$('#idIndex').live('pagebeforeshow',function(event, ui)
+			$('#idIndex').bind('pagebeforeshow',function()
 			{			    
 				sceneIndex.LoadImages();
 			});
 
-			$('#idIndex').live('pagecreate',function(event, ui)
+				
+			$('#idPlaylist').bind('pagebeforeshow',function(event, ui)
 			{
-				sceneIndex.InitMyDiv();
-			});
-			
-			$('#idIndex').live('pageshow', function(event, ui)
-			{
-				$('#idIndex').css({'background-color': 
-											objSkin.theme[objSkin.skinNum].background.bgcolor, 
-							'background-image': 
-										"url(" + 
-											objSkin.theme[objSkin.skinNum].background.bgimg + 
-										")",
-							'background-repeat': 'no-repeat'});
-				$('#idIndex').jqmData("Reload", "Normal");
-			});
-			
-			$('#idIndex').live('pagehide',function(event, ui)
-			{  
-			});
-		
-			$('#idPlaylist').live('pagebeforecreate',function(event, ui)
-			{
-				$('#idPlaylist').jqmData("Reload", "Normal");
-				scenePlaylist.Init();
-			});
-		
-			$('#idPlaylist').live('pagebeforeshow',function(event, ui)
-			{
-				scenePlaylist.SkinMyDiv();
 				scenePlaylist.BuildPlaylist();
 			});
 	
 
-			$('#idPlaylist').live('pageshow',function(event, ui)
+			$('#idPlaylist').bind('pageshow',function(event, ui)
 			{
-				scenePlaylist.ScrollBox.SimpleDraw("idPlaylistScroller", 
+				scenePlaylist.ScrollBox.SimpleDraw($("#idPlaylistScroller").get(0), 
 									function(event, domTarget) 
 									{
 										scenePlaylist.PlayClickedSong(event, 
@@ -219,33 +104,11 @@
 										scenePlaylist.HandleSwipe(event, iDir);
 									});
 				var position = $(".nowplaying").position();
-				scenePlaylist.ScrollBox.scrollTo(0 - position.top, 0);
+				if (position)
+					scenePlaylist.ScrollBox.scrollTo(0 - position.top, 100);
 			});
 	
-			// Load the option buttons
-			
-			$('<img />',{
-				"src": objSkin.theme[objSkin.skinNum].list.optionImg,
-				"class": "indexviewButton",
-				"height": "46px",
-				"width": "46px"
-			}).appendTo($('#idOptionButtonList'));
-			
-			$('<img />',{
-				"src": objSkin.theme[objSkin.skinNum].list.optionImg,
-				"class": "indexviewButton",
-				"height": "40px",
-				"width": "40px"
-			}).appendTo($('#idOptionButtonIndex'));
-			
-			$('#idOptionButtonPlayer').css(
-			{
-				"background-image":'url(' +
-						objSkin.theme[objSkin.skinNum].player.optionImg +
-						')'
-			});
-			
-			$('.classOptionButton').live('click', function (event, ui) 
+			$('.classOptionButton').bind('click', function (event, ui) 
 			{
 				objOptions.Draw();
 			});
@@ -257,20 +120,22 @@
 			
 			$('#idPlaylist').bind('songtrans', function() {scenePlaylist.UpdateHighlight();});
 			
+			sceneSplash.LoadSplash();
+			
 		});
 		
     </script>
 </head> 
 <body> 
 
-	<div data-role="page" id="idSplash">	
-		<div id="idSplashAddToDiv" width="320" height="480" style="background-color:#ffffff; margin-left:auto; margin-right:auto;">
+	<div id="idSplash" class="classPage classShowPage">	
+		<div id="idSplashPill">
 		</div>
 	</div><!-- /page -->
 	
-	<div data-role="page" id="idPlayer">
+	<div data-role="page" id="idPlayer" class="classPage">
 
-			<div id="divNone" style="position:fixed; top:0; 
+			<div id="divNone" style="position:absolute; top:0; 
 							left:0px; height:64px; width:320px;">
 				<div id="nameGoesHere" style="position:relative; 
 							font-size:20px; color:#FFF; padding-left:64px; padding-top:16px; 
@@ -282,9 +147,27 @@
 							</div>
 			</div>
 			<div id="idRecord"></div>
-			<div id="idScrubber"></div>
-			<div id="idVolControl"></div>
-			<div id="idFiltHere"></div>
+			<div id="idScrubOne" class="scrubwrap">
+				<div class="classScrub">
+				</div>
+				<div class="classScrubOp">
+				</div>
+			</div>
+			<div id="idScrubPop">
+			</div>
+			<div id="idVolVertAdj">
+				<div id="idVolVerAdjTarg" class="classTargetArea">
+					<div id="idVolDisplayBar"></div>
+				</div>
+				<div id="idVolKnob" class="classVertAdjKnob">
+				</div>
+			</div>
+			<div id="idFiltHere">
+				<div id="idFiltBack">
+				</div>
+				<div id="idBtnCancel" class="classFilterBtn">Reset</div>
+				<div id="idBtnApply" class="classFilterBtn">Save</div>
+			</div>
 			
 			<div id="btnarm"></div>
 			<div id="btneq"></div>	
@@ -292,8 +175,11 @@
 			<div id="btnpause"></div>
 			<div id="btnprev"></div>
 			<div id="btnnext"></div>
-			<div id="btnvol"></div>
-			<div id="btnmute"></div>
+			<div id="btnmute" class="classVolAdjust"></div>
+			<div id="btnsound25" class="classVolAdjust"></div>
+			<div id="btnsound50" class="classVolAdjust"></div>
+			<div id="btnsound75" class="classVolAdjust"></div>
+			<div id="btnsound100" class="classVolAdjust"></div>
 			<div id="btnshuf"></div>
 			<div id="btnrep"></div>
 			<div id="btnnormal"></div>
@@ -306,18 +192,18 @@
 	</div><!-- /page -->
 	
 	
-	<div data-role="page" id="idIndex">
+	<div id="idIndex" class="classPage">
 		<div id="btnheader"></div>
-		<div id="idPlayAllIndex"></div>
-		<div id="idAlbumIndex"></div>
-		<div id="idArtistIndex"></div>
-		<div id="idGenreIndex"></div>
-		<div id="idTitleIndex"></div>
-		<div id="idFolderIndex"></div>
-		<div id="idOptionIndex"></div>
+		<div id="idFirstIndex" class="classPlayAllIndex"></div>
+		<div id="idSecondIndex" class="classAlbumIndex"></div>
+		<div id="idThirdIndex" class="classArtistIndex"></div>
+		<div id="idFourthIndex" class="classGenreIndex"></div>
+		<div id="idFifthIndex" class="classTitleIndex"></div>
+		<div id="idSixthIndex" class="classFolderIndex"></div>
+		<div id="idSeventhIndex" class="classOptionIndex"></div>
 	</div><!-- /page -->
 	
-	<div data-role="page" id="idList">
+	<div id="idList" class="classPage">
 		<div id="idListHeader">
 		</div>
 		<div id="idWrapper">
@@ -328,17 +214,18 @@
 			</div>
 		</div>
 		<div id="idListFooter">
+			<div class="classSearchBar">
 			<form>
 				<input type="search" name="name" id="idListFilter" value=""  />
 			</form>
+			</div>
 			<div id="idOptionButtonList" class="classOptionButton">
 			</div>
 		</div>
 	</div>
 
-	<div data-role="page" id="idPlaylist" class="songlistener">
-		<div id="idPlaylistPicture" style="position:absolute";></div>
-		<div style="height:350px; width:100%; position:relative; overflow:hidden;" id="idPlaylistWrapper">
+	<div id="idPlaylist" class="songlistener classPage">
+		<div id="idPlaylistWrapper">
 			<div id="idPlaylistScroller">
 				<ul data-role="listview" id="idPlyLstUL">
 
@@ -347,15 +234,16 @@
 		</div>
 	</div>
 	
-	<div data-role="dialog" id="idDialog">
-		<div data-role="header">
+	<div id="idDialog" class="classPage">
+		<div class="classDiaHeader">
 			<h1>Dialog</h1>
 		</div><!-- /header -->
-		<div data-role="content">
+		<div class="classMiddle">
 			<p id="idTellUser"></p>
-			<span style="display: block;" id="idButtonGoesHere"><span></span></span>
 		</div>
-
+		<div>
+		<span style="display: block;" id="idButtonGoesHere"><span></span></span>
+		</div>
 	</div><!-- /page -->
 	
 </body>

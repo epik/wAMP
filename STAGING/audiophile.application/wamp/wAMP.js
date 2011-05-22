@@ -7,10 +7,6 @@
  *	as close as possible to that.
  ************************************/
 
- // Stupid JSling stuff
- /*global Mojo*/
- /*global $*/
- /*global window*/
  
 // Stupid javascript for not having constants stuff
 var LIST_TYPE_FF		= true;
@@ -140,19 +136,52 @@ var objOptions =
 
 	optUseBreadC: true,
 	dbOptions: 0,
-	fBass: 1.0,
-	fTreble: 1.0,
+	fBass: 0.5,
+	fTreble: 0.5,
 	bOptVis: false,
 	iOrientationMode: ORIENTATION_UNLOCKED,
+	skinNum: 0,
+	skinOldSkin: 0,
 	
+	PickNextSkin: function()
+	{
+		this.skinOldSkin = this.skinNum;
+		this.skinNum = ++this.skinNum % arraySkins.length;
+		this.SetSkin();
+	},
+	
+	SetSkin: function()
+	{
+		$('body').removeClass(arraySkins[this.skinOldSkin]);
+		$('body').addClass(arraySkins[this.skinNum]);
+	},
+		
 	GetOrientation: function()
 	{
-		if (iOrientationMode == ORIENTATION_PORTRAIT)
+		if (this.iOrientationMode == ORIENTATION_PORTRAIT)
 			return "portrait";
-		else if (iOrientationMode == ORIENTATION_LANDSCAPE)
+		else if (this.iOrientationMode == ORIENTATION_LANDSCAPE)
 			return "landscape";
 		else
-			return window.orientation ? "landscape" : "portrait";
+		{
+			var strCurOrientation = "landscape";
+			if (window.PalmSystem)
+			{
+				strCurOrientation = window.PalmSystem.screenOrientation;
+			
+				if (strCurOrientation == "up" || strCurOrientation == "down")
+					return "landscape";
+				else
+					return "portrait";
+			}
+			else
+			{
+				if (window.innerWidth > 850)
+					return "landscape";
+				else
+					return "portrait";
+			}
+		}
 	},
 	
 	LoadDatabase: function()
@@ -191,20 +220,19 @@ var objOptions =
 										switch (row['optID'])
 										{
 										case OPT_ID_SKIN:
-											objSkin.skinNum = Number(row['val']);
+											objOptions.skinNum = Number(row['val']);
+											objOptions.SetSkin();
 											break;
 										case OPT_ID_BASS:
 											objOptions.fBass = Number(row['val']);
-											objOptions.fSaveBass = row['val'];
+											objwAMP.SetBass(objOptions.fBass * 2);
 											break;
 										case OPT_ID_TREB:
 											objOptions.fTreble = Number(row['val']);
-											objOptions.fSaveTreble = row['val']
+											objwAMP.SetTreble(objOptions.fTreble * 2);
 											break;
 										}
 									}
-									
-									objOptions.SetPluginControls();
 								}	
 							},
 							function(transaction, error) 
@@ -214,18 +242,7 @@ var objOptions =
 		});
 
 	},
-	
-	SetPluginControls: function()
-	{
-		if (!(objwAMP.checkIfPluginInit()))
-		{
-			setTimeout(function() {objOptions.SetPluginControls();}, 1000);
-			return;
-		}
-	
-		objwAMP.SetBass(this.fSaveBass);
-		objwAMP.SetTreble(this.fSaveTreble);
-	},
+
 	
 	SetDefaults: function()
 	{
@@ -234,9 +251,9 @@ var objOptions =
 			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
 							[OPT_ID_SKIN, "1"]);
 			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
-							[OPT_ID_BASS, "1.0"]);
+							[OPT_ID_BASS, "0.5"]);
 			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
-							[OPT_ID_TREB, "1.0"]);
+							[OPT_ID_TREB, "0.5"]);
 		});
 	
 	},
@@ -257,7 +274,7 @@ var objOptions =
 	{
 		this.bOptVis = true;
 		
-		var strCurrentScene = $.mobile.activePage.selector;
+		var strCurrentScene = '#' + $('.classShowPage').get(0).id;
 		
 		var divModalLook = $('<div></div>', 
 							{
@@ -269,39 +286,17 @@ var objOptions =
 									'width':'100%',
 									'height': '100%',
 									'z-index': '9000',
-									'opacity': '0.5',
-									'background': objSkin.theme[objSkin.skinNum].option.modalbg
+									'opacity': '0.5'
 									}
 							}).appendTo($(strCurrentScene));
 							
-		var divOverlay = $('<div></div>', 
-							{
-								"id":"idMainBack",
-								css: {
-									'position': 'fixed',
-									'top': '10%',
-									'background-color': 
-											objSkin.theme[objSkin.skinNum].option.topbgcolor,
-									'left': '10%',
-									'bottom':'10%',
-									'right': '10%',
-									'z-index': '9999',
-									'background-image': 'none',
-									'color': objSkin.theme[objSkin.skinNum].option.txtcolor
-									}
-							}).appendTo($(strCurrentScene));
+		var divOverlay = $('<div id="idMainBack"></div>').appendTo($(strCurrentScene));
 							
-		var btnClose = $('<span id="btnClose" class="' +
-								objSkin.theme[objSkin.skinNum].dialog.btnclstheme +
-								'"><span>' +
+		var btnClose = $('<span id="btnClose" class="wampButtonClose"><span>' +
 								'Close</span></span>)').appendTo(divOverlay);
-		var btnSwitchTheme = $('<span id="btnSwitchTheme" class="' +
-								objSkin.theme[objSkin.skinNum].dialog.btntheme +
-								'"><span>' +
+		var btnSwitchTheme = $('<span id="btnSwitchTheme" class="wampButton"><span>' +
 								'Switch Theme</span></span>)').appendTo(divOverlay);
-		var btnRedoIndex = $('<span id="btnRedoIndex" class="' +
-								objSkin.theme[objSkin.skinNum].dialog.btntheme +
-								'"><span>' +
+		var btnRedoIndex = $('<span id="btnRedoIndex" class="wampButton"><span>' +
 								'Redo Index</span></span>)').appendTo(divOverlay);
 
 		
@@ -309,12 +304,10 @@ var objOptions =
 		btnClose.click(function() {objOptions.Close();});
 		btnSwitchTheme.click(function() 
 		{
-			objSkin.pickNextSkin();
+			objOptions.PickNextSkin();
 			$('#idModelBack').remove();
 			$('#idMainBack').remove();
-			var strCurrentScene = $.mobile.activePage;
-			strCurrentScene.jqmData("Reload", "Refresh");
-			$.mobile.changePage(strCurrentScene, "none", false, false);
+			ChangePage($(strCurrentScene));
 		});
 		btnRedoIndex.click(function() {objOptions.RerunIndex();});
 	
@@ -332,7 +325,7 @@ var objOptions =
 								  "Once it has finished the app will go back" +
 								  " to the indexer.");
 	
-		this.sceneReturnTo = $.mobile.activePage;
+		var strCurrentScene = '#' + $('.classShowPage').get(0).id;
 	
 		$('#idButtonGoesHere').removeClass();
 		$('#idButtonGoesHere').addClass(objSkin.theme[objSkin.skinNum].dialog.btntheme);
@@ -341,10 +334,10 @@ var objOptions =
 	
 		$('#idButtonGoesHere').click(function () 
 		{
-			$.mobile.changePage(objOptions.sceneReturnTo, "slidedown", false, false);
+			ChangePage($(strCurrentScene));
 		});
 	
-		$.mobile.changePage($('#idDialog'), "slideup", false, false);
+		ChangePage($('#idDialog'));
 	
 	},
 	
@@ -868,6 +861,8 @@ var objwAMP =
 	
 	fTransition: 0.0,
 	
+	bReinitInProgress: false,
+	
 // Public:
 
 	checkOS: function()
@@ -1011,7 +1006,7 @@ var objwAMP =
 								}
 							}
 							
-							objScrub.setCurTime(objwAMP.plugIn.iTestVar);
+							//objScrub.setCurTime(objwAMP.plugIn.iTestVar);
 						}, 1000);
 			};
 			this.plugIn.Pause = function() 
@@ -1073,22 +1068,43 @@ var objwAMP =
 		
 	},
 	
+	RecreatePluginHook: function()
+	{
+	    this.pluginObj = window.document.createElement("object");
+    
+		this.pluginObj.id = "wAMPPlugin";
+		this.pluginObj.type = "application/x-palm-remote";
+		this.pluginObj.setAttribute("style", 
+									"position:fixed; top:470px; left:0px; height:1px; width:1px;");
+		this.pluginObj['x-palm-pass-event'] = true;
+    
+        var param1 = window.document.createElement("param");
+		param1.name = "appid";
+		param1.value = "org.epikmayo.audiophile";
+		
+		var param2 = window.document.createElement("param");
+		param2.name = "exe";
+		param2.value = "wAMP_plugin";
+		
+		var param3 = window.document.createElement("param");
+		param3.name = "Param1";
+		param3.value = "1";
+		
+
+		this.pluginObj.appendChild(param1);
+		this.pluginObj.appendChild(param2);
+		this.pluginObj.appendChild(param3);
+	
+		this.df = window.document.createDocumentFragment();
+		this.df.appendChild(this.pluginObj);
+		
+		console.log("Finished creating plugin obj");
+		
+	},
+	
 	FinishPluginInit: function()
 	{
 		$('body').append(objwAMP._df);
-	},
-	
-	/******************************
-	 * Helper Debug function
-	 ******************************/
-	Log: function(str, obj)
-	{
-		console.log(str);
-		
-		if (obj)
-		{
-			console.log(JSON.stringify(obj));
-		}
 	},
 	
 	/******************************
@@ -1129,6 +1145,21 @@ var objwAMP =
 		}
 	},
 	
+	RedowAMP: function()
+	{	
+		objwAMP.bReinitInProgress = true;
+		console.log("Starting Reinit");
+		$('#wAMPPlugin').remove();
+		objwAMP.RecreatePluginHook();
+		$('body').append(objwAMP.df);
+		
+		this.plugIn = document.getElementById('wAMPPlugin');
+		this.plugIn.StartSong = function(str) {objwAMP.StartSong(str);};
+		this.plugIn.FinishIndex = function(str) {objwAMP.FinishIndex(str);};
+		this.plugIn.FinishSeek = function(str) {objwAMP.FinishSeek(str);};
+	},
+	
+	
 	/******************************
 	 * Run the indexer for the first time
 	 ******************************/
@@ -1141,7 +1172,7 @@ var objwAMP =
 			
 		}
 		catch (err) {console.log(err);}
-		
+			
 		return strJSON;
 	},
 
@@ -1171,6 +1202,7 @@ var objwAMP =
 			this.jsonIndex = new Object();
 			this.jsonIndex.iIndexingStatus = -1;
 		}
+	
 		return this.jsonIndex;
 	},
 	
@@ -1367,11 +1399,30 @@ var objwAMP =
 	/*******************************
 	 * This function gets the current state
 	 *******************************/
-	getState: function()
+	GetState: function()
 	{
-		var StateString = this.plugIn.GetState();
+		try
+		{
+			var StateString = this.plugIn.GetState();
+		}
+		catch (e)
+		{
+			console.log(e);
+			if (!objwAMP.bReinitInProgress)
+				objwAMP.RedowAMP();
+			return 0;
+		}
 		
-		this.objPluginState = JSON.parse(StateString);
+		
+		try
+		{
+			this.objPluginState = JSON.parse(StateString);
+		}
+		catch (e)
+		{
+			console.log(e);
+			return 0;
+		}
 		
 		return this.objPluginState;
 	},
@@ -1435,8 +1486,6 @@ var objwAMP =
 	{	
 		objwAMP.strJSON = strJSON;
 		
-		console.log('In callback');
-		
 		setTimeout(function()
 		{
 			objwAMP.AvoidPluginCall()
@@ -1449,6 +1498,8 @@ var objwAMP =
 	AvoidPluginCall: function()
 	{	
 
+		console.log('In Open next song info callback result');
+	
 		var bJSONParseGood = false
 		
 		try
@@ -1458,56 +1509,68 @@ var objwAMP =
 		}
 		catch(e) {console.log("No luck with JSON: " + objwAMP.strJSON);}
 		
-		if ((bJSONParseGood) && this.objSongInfo["error"])
+		try
 		{
-			this.OpenNextSong();
-			return;
-		}
-		
-		if (this.iOpenIndex == -1)
-			this.SetIndex(this.iNextIndex);
-		else
-		{
-			this.SetIndex(this.iOpenIndex);
-			this.iOpenIndex = -1;
-		}
-		
-		this.SetNextSong();
-		var strName;
-		var strArtist;
-		
-		// Given the choice, use the most recent song metadata info
-		if (bJSONParseGood == true)
-		{
-			if (this.objSongInfo.Metadata.title)
-				strName = this.objSongInfo.Metadata.title;
-			else
-				strName = this.objSongInfo.name;
+			if ((bJSONParseGood) && this.objSongInfo["error"])
+			{
+				console.log("Handling Error");
+				this.SetIndex(this.iNextIndex);
+				this.SetIndex(this.GetNextIndex());
+				this.OpenNextSong();
+				return;
+			}
 			
-			if (this.objSongInfo.Metadata.artist)
-				strArtist = this.objSongInfo.Metadata.artist;
+			if (this.iOpenIndex == -1)
+				this.SetIndex(this.iNextIndex);
 			else
-				strArtist = this.objSongInfo.path;
-		
-		}
-		else
-		{
-		
-			if (this.arrayPlaylist[this.GetIndex()].title)
-				strName = this.arrayPlaylist[this.GetIndex()].title;
-			else
-				strName = this.arrayPlaylist[this.GetIndex()].name;
+			{
+				this.SetIndex(this.iOpenIndex);
+				this.iOpenIndex = -1;
+			}
 			
-			if (this.arrayPlaylist[this.iSongIndex].artist)
-				strArtist = this.arrayPlaylist[this.iSongIndex].artist;
+			this.SetNextSong();
+			var strName;
+			var strArtist;
+			
+			// Given the choice, use the most recent song metadata info
+			if (bJSONParseGood == true)
+			{
+				if (this.objSongInfo.Metadata.title)
+					strName = this.objSongInfo.Metadata.title;
+				else
+					strName = this.objSongInfo.name;
+				
+				if (this.objSongInfo.Metadata.artist)
+					strArtist = this.objSongInfo.Metadata.artist;
+				else
+					strArtist = this.objSongInfo.path;
+			
+			}
 			else
-				strArtist = this.arrayPlaylist[this.iSongIndex].path;
-		}
+			{
+			
+				if (this.arrayPlaylist[this.GetIndex()].title)
+					strName = this.arrayPlaylist[this.GetIndex()].title;
+				else
+					strName = this.arrayPlaylist[this.GetIndex()].name;
+				
+				if (this.arrayPlaylist[this.iSongIndex].artist)
+					strArtist = this.arrayPlaylist[this.iSongIndex].artist;
+				else
+					strArtist = this.arrayPlaylist[this.iSongIndex].path;
+			}
 
-		$('#nameGoesHere').text(strName);
-		$('#artistGoesHere').text(strArtist);
-		
-		$('.songlistener').trigger('songtrans');
+			$('#nameGoesHere').text(strName);
+			$('#artistGoesHere').text(strArtist);
+			
+			$('.songlistener').trigger('songtrans');
+		}
+		catch(e) 
+		{
+			console.log(e);
+			$('#nameGoesHere').text(this.arrayPlaylist[this.GetIndex()].title);
+			$('#artistGoesHere').text(this.arrayPlaylist[this.iSongIndex].path);
+		}
 	},
 	
 	/******************************
@@ -1587,7 +1650,7 @@ var objwAMP =
 
 	AddSong: function(objSong, iPosition)
 	{
-		if (iPosition)
+		if ((iPosition) && (this.arrayPlaylist))
 		{
 			switch (iPosition)
 			{
@@ -1642,18 +1705,7 @@ var objwAMP =
 	
 	AddSongNow: function(objSong)
 	{
-		if (!this.arrayPlaylist)
-		{
-			this.AddSongToPlayList(objSong);
-		}
-		else
-		{
-			this.arrayPlaylist.splice(this.GetIndex(),
-									0,
-									objSong);
-			this.OpenSong();
-		}
-		
+		this.AddSong(objSong, this.GetIndex());
 	},
 	
 	setSongTransitionType: function (strTransition)
@@ -1714,7 +1766,7 @@ var objwAMP =
 	 
 		var iRet = this.GetIndex();
 
-		if (his.bShuffle == true)
+		if (this.bShuffle == true)
 			iRet = Math.floor(Math.random()*this.arrayPlaylist.length);
 		else
 		{
@@ -1762,8 +1814,19 @@ var objwAMP =
 		{
 			if (iIndex == -1)
 				return;
-		
-			this.plugIn.SetNext(this.arrayPlaylist[iIndex].path);
+			
+			try
+			{
+				this.plugIn.SetNext(this.arrayPlaylist[iIndex].path);
+			}
+			catch (e)
+			{
+				console.log(e);
+				if (!objwAMP.bReinitInProgress)
+					objwAMP.RedowAMP();
+				return 0;
+			}
+			
 			this.iNextIndex = iIndex;
 			return;
 		}
@@ -1773,8 +1836,21 @@ var objwAMP =
 		if (iNextIndex == -1)
 			return;
 		
-		this.plugIn.SetNext(this.arrayPlaylist[iNextIndex].path, 
-								Number(this.fTransition).toFixed(1));
+		//console.log(Number(this.fTransition).toFixed(1));
+		
+		try
+		{
+			this.plugIn.SetNext(this.arrayPlaylist[iNextIndex].path, 
+								0.0);
+		}
+		catch (e)
+		{
+			console.log(e);
+			if (!objwAMP.bReinitInProgress)
+				objwAMP.RedowAMP();
+			return 0;
+		}					
+							
 		this.iNextIndex = iNextIndex;
 	},
 
@@ -1807,7 +1883,7 @@ var objwAMP =
 	{
 		var iPrevIndex = this.getPreviousIndex();
 	 
-	 	if (iNextIndex == -1)
+	 	if (iPrevIndex == -1)
 		{
 			scenePlay.ForcePause();
 		}

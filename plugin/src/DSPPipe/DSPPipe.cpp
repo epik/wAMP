@@ -6,15 +6,81 @@
  */
 
 #include "DSPPipe.h"
+#include "../WormThread.h"
 
 #define FILTER_PADDING	
+
+SoundPacket *SoundPacketAllocator::StereoPacket(void *pHelper)
+{
+
+	//ReportError("Entering Stereo Packet");
+	m_uiNumUsed++;
+	
+	/*ReportError2("Allocating Num: %i, Num Allocated: %i",
+				 m_uiEnd,
+				 m_uiNumUsed);*/
+				 
+	if (m_uiNumUsed == m_uiNumAllocated)
+	{
+		SDL_LockAudio();
+
+		/*ReportError2("Reallocating SoundPacketAlloc to %i (%i)",
+					m_uiNumAllocated,
+					m_uiNumAllocated * sizeof(SoundPacket));*/
+		m_pspPacketArray = (SoundPacket *) REALLOC(m_pspPacketArray,
+									((m_uiNumAllocated * 2) + 2) * sizeof(SoundPacket));
+
+		if (m_uiStart)
+		{
+			while(m_uiStart != m_uiNumAllocated)
+			{
+				memcpy(&m_pspPacketArray[m_uiStart+m_uiNumAllocated],
+					   &m_pspPacketArray[m_uiStart],
+					   sizeof(SoundPacket));
+				m_uiStart++;
+			}
+		}
+		
+		m_uiNumAllocated *= 2;
+
+#ifdef DEBUG
+		for (uint32_t i=0; i<m_uiNumAllocated; i++)
+		{
+			m_pspPacketArray[i].AllocPos = i;
+			m_pspPacketArray[i]._FIRST = 0xBAADC0DE;
+			m_pspPacketArray[i]._LAST = 0xBAADC0DE;
+		}
+#endif
+		
+		SDL_UnlockAudio();
+	}
+	
+	SoundPacket *pspRetVal = &m_pspPacketArray[m_uiEnd++];		
+	m_uiEnd &= (m_uiNumAllocated - 1);
+
+
+#ifdef DEBUG
+	pspRetVal->_FIRST = 0xBAADC0DE;
+	pspRetVal->_LAST = 0xBAADC0DE;
+#endif
+
+	pspRetVal->NumChan = 2;
+	pspRetVal->_Helper = pHelper;
+
+	//ReportError("Done Stereo");
+
+	return pspRetVal;
+}
 
 void CircularBuffer::Init(int32_t iNumChan, size_t uiBufferSize)
 {
 	assert(uiBufferSize*2 > (CBUF_PCKT_SIZE_NEED + 
 							 SUFFICIENT_BUFFER_SIZE));
+	m_spaAllocator.Init();
 
 	m_llClock = 0;
+	m_puiDataEnd = 0;
+	m_puiDataCur = 0;
 	
 	m_iNumChan = iNumChan;
 
@@ -40,9 +106,19 @@ void CircularBuffer::Init(int32_t iNumChan, size_t uiBufferSize)
 uint32_t *CircularBuffer::GetSamples(int32_t iChan)
 {
 	if (m_puiDataCur >= m_uiBufferSize)
-		m_puiDataCur -= m_uiBufferSize;
+	{
+		int32_t 	iLen = MUS_BUFFER_SIZE;
+		uint32_t	*iterDest0 = &m_puiBuffer[0][m_uiBufferSize];
+		uint32_t	*iterDest1 = &m_puiBuffer[1][m_uiBufferSize];
 
-	ReportError1("m_puiDataCur=%i", m_puiDataCur);
+		while(iLen--)
+		{
+			*(iterDest1++) = (*(iterDest0++) = 0);
+		}
+		m_puiDataCur -= m_uiBufferSize;
+	}
+
+	//ReportError1("m_puiDataCur=%i", m_puiDataCur);
 
 	return &m_puiBuffer[iChan][m_puiDataCur];
 }
@@ -51,19 +127,23 @@ MUS_MESSAGE CircularBuffer::AdvanceCurPnt(size_t uiAmt)
 {
 	m_llClock += uiAmt * 2;
 
-	/*ReportError3("Entering AdvanceCurPnt With Values Cur=%i End=%i uiAmt=%i",
+	ReportError3("Entering AdvanceCurPnt With Values Cur=%i uiAmt=%i buffer=%i",
 				m_puiDataCur,
-				m_puiDataEnd,
-				uiAmt);*/
+				uiAmt,
+				m_uiBufferSize);
 
-	if (m_pspCurPacket == NULL)
-		return MUS_STATUS_WAITING_FOR_SONG;
-		
 	while ((uiAmt = CheckIfOverCurPckt(uiAmt)) != 0)
 	{
-		if (AdvanceToNextPacket() == MUS_INTMES_END_OF_SONG_REACHED)
+
+		MUS_MESSAGE msg = AdvanceToNextPacket();
+
+		if (msg == MUS_INTMES_END_OF_SONG_REACHED)
 		{
 			return MUS_INTMES_END_OF_SONG_REACHED;
+		}
+		else if (msg == MUS_INTMES_BUFFER_UNDERFLOW)
+		{
+			return MUS_INTMES_BUFFER_UNDERFLOW;
 		}
 	}
 
@@ -80,139 +160,98 @@ MUS_MESSAGE CircularBuffer::AdvanceToNextPacket()
 {
 	//ReportError("Entering AdvanceToNextPacket");
 
-	if (m_pspCurPacket->Next == NULL)
+	int32_t iErr = m_spaAllocator.FinishPckt();
+
+	if (iErr == BUFFER_SONG_END)
 	{
-		SoundPacket::FreePacket(m_pspCurPacket);
-
-		//ReportError("Done all the freeing");
-
-		m_pspCurPacket = NULL;
 		m_puiDataCur = m_puiDataEnd;
 		return MUS_INTMES_END_OF_SONG_REACHED;
 	}
-	else
+	else if (iErr == BUFFER_UNDERFLOW)
 	{
-
-		SoundPacket *pspTemp = m_pspCurPacket;
-		m_pspCurPacket = m_pspCurPacket->Next;
-
-		m_puiDataCur = m_pspCurPacket->DataStartPoint;
-
-		SoundPacket::FreePacket(pspTemp);
-
-		//ReportError("Done all the freeing");
-		return MUS_INTMES_NEXT_FRAME;
+		return MUS_INTMES_BUFFER_UNDERFLOW;
 	}
+
+	SoundPacket *pspTemp = m_spaAllocator.GetCurPacket();
+	m_puiDataCur = pspTemp->DataStartPoint;
+
+	//ReportError("Done all the freeing");
+	return MUS_INTMES_NEXT_FRAME;
+
 }
 
 MUS_MESSAGE CircularBuffer::AddStereoPacket(SoundPacket *pspNextPacket,
 									  uint16_t *pcData,
 									  int32_t iSize)
 {	
-	/*ReportError3("Entering AddStereoPacket With Values Cur=%i End=%i Size=%i",
+	ReportError3("Entering AddStereoPacket With Values Cur=%i End=%i Size=%i",
 				m_puiDataCur,
 				m_puiDataEnd,
-				iSize);*/
+				iSize);
 	
 	if (pspNextPacket->Size == 0)
 	{
-		//ReportError("Here Adding a packet");
-
 		pspNextPacket->DataStartPoint = m_puiDataEnd;	
-		
-		pspNextPacket->Next = NULL;
-	
-		if (m_pspCurPacket == NULL)
-		{
-			m_pspCurPacket = pspNextPacket;
-		}
-		else
-		{
-			SoundPacket *pspIter = m_pspCurPacket;
-
-			while (pspIter->Next != NULL)
-				pspIter = pspIter->Next;
-			
-			pspIter->Next = pspNextPacket;
-		}
 	}
 	pspNextPacket->Size += iSize;
 	
 	uint16_t *puiPointer0 	= (uint16_t *) &m_puiBuffer[0][m_puiDataEnd];
 	uint16_t *puiPointer1 	= (uint16_t *) &m_puiBuffer[1][m_puiDataEnd];
-	uint16_t *puiStart0 	= (uint16_t *) m_puiBuffer[0];
-	uint16_t *puiStart1 	= (uint16_t *) m_puiBuffer[1];
-	uint16_t *puiEnd0		= (uint16_t *) &m_puiBuffer[0][m_uiBufferSize];
-	uint16_t *puiEnd1		= (uint16_t *) &m_puiBuffer[1][m_uiBufferSize];
 	
 	uint32_t iTrigger = 0;
-
-	assert(iSize%8 == 0);
 	
-	for (uint32_t i=m_puiDataEnd; i<(m_puiDataEnd + iSize/8); i++)
+	int32_t iTemp = m_puiDataEnd + iSize/8;
+	
+	if ((m_puiDataEnd < MUS_BUFFER_SIZE) && (iTemp > MUS_BUFFER_SIZE))
+		iTrigger = 1;
+
+	while (m_puiDataEnd < iTemp)
 	{
+		assert(m_puiDataEnd<(m_uiBufferSize+MUS_BUFFER_SIZE + RESAMPLE_PADDING));
 
-		if(i>=(m_uiBufferSize+MUS_BUFFER_SIZE + RESAMPLE_PADDING))
-		{
+		*(puiPointer0++) = *(pcData++);
+		*(puiPointer1++) = *(pcData++);
+		*(puiPointer0++) = *(pcData++);
+		*(puiPointer1++) = *(pcData++);
 
-			*(puiStart0++) = *(pcData++);
-			*(puiStart1++) = *(pcData++);
-			*(puiStart0++) = *(pcData++);
-			*(puiStart1++) = *(pcData++);
+		m_puiDataEnd++;
+	}
 
-		}
-		else if (i>=m_uiBufferSize)
+	if ((iTrigger) && ((m_puiDataCur + MUS_BUFFER_SIZE) < m_uiBufferSize))
+	{
+		for (int i=0; i<NUM_CHANNELS; i++)
 		{
-			iTrigger = 1;
-			*(puiStart0++) = *(puiPointer0++) = *(pcData++);
-			*(puiStart1++) = *(puiPointer1++) = *(pcData++);
-			*(puiStart0++) = *(puiPointer0++) = *(pcData++);
-			*(puiStart1++) = *(puiPointer1++) = *(pcData++);
-		}
-		else if(i>=(MUS_BUFFER_SIZE + RESAMPLE_PADDING))
-		{
-			*(puiPointer0++) = *(pcData++);
-			*(puiPointer1++) = *(pcData++);
-			*(puiPointer0++) = *(pcData++);
-			*(puiPointer1++) = *(pcData++);
-		}
-		else
-		{
-			*(puiEnd0++) = *(puiPointer0++) = *(pcData++);
-			*(puiEnd1++) = *(puiPointer1++) = *(pcData++);
-			*(puiEnd0++) = *(puiPointer0++) = *(pcData++);
-			*(puiEnd1++) = *(puiPointer1++) = *(pcData++);
+			int32_t 	iLen = MUS_BUFFER_SIZE;
+			uint32_t	*iterSource = &m_puiBuffer[i][0];
+			uint32_t	*iterDest = &m_puiBuffer[i][m_uiBufferSize];
+
+			while(iLen--)
+			{
+				*(iterDest++) = *(iterSource++);
+			}
 		}
 	}
-	
-	if (iTrigger)
-	{
-		/*for (int i=0; i<3; i++)
-			m_puiBuffer[0][m_uiBufferSize];*/
-		ReportError1("********** BufferSize - %i", m_uiBufferSize);
+	else if ((m_puiDataEnd>m_uiBufferSize))
+	{	
+		m_puiDataEnd = m_puiDataEnd - m_uiBufferSize;
 
-		m_puiDataEnd = (m_puiDataEnd + iSize/8) - m_uiBufferSize;
-		
-		for(int i=0; i<RESAMPLE_PADDING; i++)
+		for (int i=0; i<NUM_CHANNELS; i++)
 		{
-			m_puiActualBuffer[0][i] = 
-							m_puiBuffer[0][m_uiBufferSize -
-										   RESAMPLE_PADDING +
-										   i];
-			m_puiActualBuffer[1][i] = 
-							m_puiBuffer[1][m_uiBufferSize -
-										   RESAMPLE_PADDING +
-										   i];
+			int32_t 	iLen = m_puiDataEnd + MEM_ALIGN_AMT/sizeof(uint32_t);
+			uint32_t	*iterDest = &m_puiActualBuffer[i][0];
+			uint32_t	*iterSource =
+								&m_puiBuffer[i][m_uiBufferSize -
+			        	                       MEM_ALIGN_AMT/sizeof(uint32_t)];
+
+			while(iLen--)
+			{
+				*(iterDest++) = *(iterSource++);
+			}
 		}
 	}
-	else
-		m_puiDataEnd += iSize/8;
 
 	
-	/*ReportError3("Exiting AddStereoPacket With Values Cur=%i End=%i Size=%i",
-				m_puiDataCur,
-				m_puiDataEnd
-				iSzie);*/
+	//ReportError("End");
 	return 0;
 }
 
@@ -231,24 +270,31 @@ MUS_MESSAGE SoundPipe::PipeIn()
 	if (m_cbBuf.GetAvailableSize() > CBUF_PCKT_SIZE_NEED)
 	{
 
-		SoundPacket *pspNextPacket = SoundPacket::StereoPacket(&m_cbBuf);
+		SoundPacket *pspNextPacket = m_cbBuf.GetPacket();
 	
 		MusMessage msg = m_FFmpegDecoder.GetNextPacket(pspNextPacket);
-	
+
+		pspNextPacket->_Helper = NULL;
+
 		if (msg == MUS_MOD_Success)
 		{
-			if (m_msgPipeInStatus != MUS_STATUS_INITIAL_BUFFERING)
+			if (!IsEnoughBuffer())
 				m_msgPipeInStatus = MUS_STATUS_BUFFERING;
+			else
+				m_msgPipeInStatus = MUS_STATUS_INITIAL_BUFFERING;
+			//ReportError("Success");
 			return MUS_PIPEINMES_PACKET_ADDED;
 		}
 		else if (msg == MUS_MOD_Done)
 		{
 			ReportError("Song Done");
 			m_msgPipeInStatus = MUS_STATUS_SOURCE_EOF;
+			pspNextPacket->_Helper = (void *) 0xC0DE0000;
 			return MUS_PIPEINMES_NO_MORE_PACKETS;
 		}
 		else if (MUS_MOD_Error)
 		{
+			//ReportError("Error");
 			m_msgPipeInStatus = MUS_STATUS_ERROR;
 			return MUS_PIPEINMES_NO_MORE_PACKETS;
 		}
@@ -279,13 +325,14 @@ MUS_MESSAGE SoundPipe::PipeOut(uint32_t **puiBuffToFill,
 		 (!(IsEnoughBuffer()))))
 	{
 
-		ReportError("Meep");
-
 		for (int i=0; i<m_iNumChan; i++)
 		{
-			memset(&puiBuffToFill[i][uiStartPos],
-				   0,
-				   uiFetchAmt*4);
+			int32_t iLen = uiFetchAmt;
+			uint32_t *iter = &puiBuffToFill[i][uiStartPos];
+
+			while(iLen--)
+				*(iter++) = 0;
+
 		}
 
 		*puiNumWrittem = 0;
@@ -309,9 +356,11 @@ MUS_MESSAGE SoundPipe::PipeOut(uint32_t **puiBuffToFill,
 		
 		for (int i=0; i<m_iNumChan; i++)
 		{
-			memset(&puiBuffToFill[i][uiStartPos],
-				   0,
-				   uiFetchAmt * 4);
+			int iLen = uiFetchAmt;
+			uint32_t *iter = &puiBuffToFill[i][uiStartPos];
+			
+			while(iLen--)
+				*(iter++) = 0;
 		}
 	}
 	
@@ -351,37 +400,24 @@ MUS_MESSAGE SoundPipe::PipeOut(uint32_t **puiBuffToFill,
 	
 	*msg = m_cbBuf.AdvanceCurPnt(uiNumRead);
 	
+	if (*msg == MUS_STATUS_INITIAL_BUFFERING)
+		m_msgPipeInStatus = MUS_STATUS_INITIAL_BUFFERING;
+
 	//ReportError("End of pipeout");
 
 	return *msg;
 }
 
 
-MUS_MESSAGE SoundPipe::PrefetchOut()
-{
-	// Implement eventually, but need mutex and stuff
-	/*	m_uiPreFetchEndPos = m_cbBuf->GetSamples(m_puiWriteBuf,
-											RESAMPLE_PADDING,
-											m_rfResample->AdvanceByAmount(
-																	MUS_BUFFER_SIZE),
-											RESAMPLE_PADDING);*/
-
-	return 0;
-}
-
-
 MUS_MESSAGE SoundPipe::Init(int32_t iNumChan, 
-							size_t uiBufferSize,
-							float fCurSpeed,
-							int32_t iPrefetch)
+							size_t uiBufferSize)
 {
-	m_rfResample.SetFilterRate(fCurSpeed);
-	m_btfSongLvlEQ = 
+	m_rfResample.SetFilterRate(1.0);
+	/*m_btfSongLvlEQ =
 				(BassTrebleFilter *) MALLOC(sizeof(BassTrebleFilter) *
-											iNumChan);
+											iNumChan);*/
 		
 	m_cbBuf.Init(iNumChan, uiBufferSize);
-	m_iUsePrefetching = iPrefetch;
 	m_iNumChan = iNumChan;
 	m_iFadeHelper = -1;
 	
@@ -400,6 +436,9 @@ MUS_MESSAGE SoundPipe::Init(int32_t iNumChan,
 
 	m_cbBuf.Flush();
 
+	m_cstrCurSongPath = (char *) MALLOC(2048);
+	m_iCurSongAlloc = 2048;
+	
 	m_msgPipeInStatus 		= MUS_STATUS_WAITING_FOR_SONG;
 	m_msgPipeOutStatus 		= MUS_STATUS_WAITING_FOR_SONG;	
 	return MUS_STATUS_WAITING_FOR_SONG;
@@ -410,9 +449,11 @@ MUS_MESSAGE SoundPipe::Flush()
 {
 	//ReportError("Flushing Pipe");
 	m_cbBuf.Flush();
-	free(m_cstrCurSongPath);
-	m_cstrCurSongPath = NULL;
 	
+	m_cstrCurSongPath[0] = '\0';
+	
+	m_dResampConvFactor = 1.0;
+
 	free(m_cstrMetaJSON);
 	m_cstrMetaJSON = NULL;
 	m_FFmpegDecoder.Close();
@@ -426,11 +467,12 @@ MUS_MESSAGE SoundPipe::Flush()
 
 uint32_t SoundPipe::Seek(double dTime)
 {
-	m_msgPipeInStatus 	= MUS_STATUS_BUFFERING;
+	m_msgPipeInStatus 	= MUS_STATUS_INITIAL_BUFFERING;
 	m_msgPipeOutStatus 	= MUS_STATUS_PLAYING;
 
-	Flush();
-
+	m_cbBuf.Flush();
+	ResetFilters();
+	
 	return m_FFmpegDecoder.Seek(dTime);
 }
 
@@ -457,9 +499,9 @@ MUS_MESSAGE SoundPipe::Open(const char *cstrFileName)
 		return MUS_STATUS_ERROR;
 	}
 
-	m_cstrCurSongPath = (char *) MALLOC (strlen(cstrFileName) + 2);
-
-	strcpy(m_cstrCurSongPath, cstrFileName);
+	m_cstrCurSongPath = ReallocStringCopy(m_cstrCurSongPath, 
+										  &m_iCurSongAlloc, 
+										  cstrFileName);
 
 	m_fSampleRate = m_FFmpegDecoder.GetSampleRate();
 
@@ -469,6 +511,8 @@ MUS_MESSAGE SoundPipe::Open(const char *cstrFileName)
 
 	float fCurSpeed = m_rfResample.GetSpeed();
 	
+	ReportError2("fCurSpeed=%f, resampconv=%f", fCurSpeed, m_dResampConvFactor);
+
 	m_rfResample.SetFilterRate(fCurSpeed * m_dResampConvFactor);
 
 	m_lSongEndInSec = m_FFmpegDecoder.GetDuration();
@@ -476,7 +520,7 @@ MUS_MESSAGE SoundPipe::Open(const char *cstrFileName)
 	if (m_lSongEndInSec == 0)
 		m_lSongEndInSec = UINT_MAX;
 
-	char *cstrTempMeta = m_FFmpegDecoder.GetMetadata();
+	const char *cstrTempMeta = m_FFmpegDecoder.GetMetadata();
 
 	m_cstrMetaJSON = (char *) MALLOC(strlen(cstrTempMeta) +
 									 strlen(m_cstrCurSongPath) + 
@@ -487,17 +531,67 @@ MUS_MESSAGE SoundPipe::Open(const char *cstrFileName)
 			"\"Metadata\":%s}",
 			m_cstrCurSongPath,
 			cstrTempMeta);
-				
-	FREE(cstrTempMeta);
+
 
 	// Create message to start song
 
 	m_msgPipeInStatus 	= MUS_STATUS_INITIAL_BUFFERING;
 	m_msgPipeOutStatus 	= MUS_STATUS_PLAYING;
-
+	
 	//ReportError("Made it through Pipe Open Routine");
 
 	return MUS_STATUS_INITIAL_BUFFERING;
+}
+
+
+int16_t AudioPipeline::SetNext(const char *cstrFileName, float fTransition)
+{
+	ReportError1("Set Next=%s", cstrFileName);
+
+	if (m_spPipe[m_iActivePipe].GetInStatus() ==
+								MUS_STATUS_WAITING_FOR_SONG)
+	{
+		return Open(cstrFileName);
+	}
+
+	if ((fTransition > 0.5) || (fTransition < -0.5))
+	{
+		if (fTransition < 0)
+		{
+			fTransition *= -1;
+			m_iEndType = END_TYPE_CROSSFADE;
+
+		}
+		else
+		{
+			m_iEndType = END_TYPE_GAP;
+		}
+
+		m_iCurScale = END_MAX_GAP;
+		m_iEndLength = (fTransition * DEST_FREQ);
+		if (m_iEndLength > END_MAX_GAP)
+		{
+			m_iEndType |= 1;
+			m_iEndLength = END_MAX_GAP;
+
+		}
+		else
+		{
+			int32_t iTemp = END_MAX_GAP/(fTransition*DEST_FREQ);
+			m_iEndType |= iTemp;
+		}
+	}
+	else
+	{
+		m_iEndType = 0;
+	}
+	SDL_LockAudio();
+	m_spPipe[_GetInactivePipe()].Flush();
+	m_spPipe[_GetInactivePipe()].SetFilterRate(m_fRate);
+	MUS_MESSAGE Msg = m_spPipe[_GetInactivePipe()].Open(cstrFileName);
+	SDL_UnlockAudio();
+	return Msg;
+
 }
 
 
@@ -507,12 +601,38 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 
 	size_t uiEndPnt = 0;
 
+	if ((END_GAP_TRIGGER & m_iEndType) && (m_iEndLength >= lRequested/8))
+	{
+		assert(0);
+	
+		for (int i=0; i<m_iNumChan; i++)
+		{
+			memset(puiBuffToFill[i],
+				   0,
+				   lRequested/2);
+		}
+	
+		m_iEndLength -= lRequested/8;
+		if (m_iEndLength < lRequested/8)
+		{
+			m_iEndLength = 0;
+			m_iEndType = 0;
+			m_spPipe[m_iActivePipe].MarkDone();
+			m_iActivePipe = _GetInactivePipe();
+			_PassSongTransMsgGood(m_spPipe[m_iActivePipe].GetMeta());
+		}
+		return;
+	}
+	
 	Msg = m_spPipe[m_iActivePipe].PipeOut(puiBuffToFill,
 										  lRequested/8,
 										  &Msg,
 										  &uiEndPnt);
 
-	if (Msg == MUS_STATUS_WAITING_FOR_SONG)
+	assert(uiEndPnt < (MUS_BUFFER_SIZE/LOW_SPEED_RATIO_LIM));
+										  
+	if ((Msg == MUS_STATUS_WAITING_FOR_SONG) ||
+		(Msg == MUS_INTMES_BUFFER_UNDERFLOW))
 		return;
 
 	if ((END_TYPE_CROSSFADE & m_iEndType) &&
@@ -520,15 +640,22 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 	{
 		int64_t llSampsLeft = m_spPipe[m_iActivePipe].GetEndCntdwn();
 
-		/*ReportError2("Current llSampsLeft=%i, m_iEndLength=%i",
+		ReportError2("Current llSampsLeft=%i, m_iEndLength=%i",
 					   (int32_t) llSampsLeft,
-					   (int32_t) m_iEndLength);*/
+					   (int32_t) m_iEndLength);
 
 		if (llSampsLeft == SONG_END_UNKNOWN)
 			return;
-
+			
 		if (llSampsLeft <= m_iEndLength)
 		{
+			if (m_spPipe[_GetInactivePipe()].GetOutStatus() == MUS_STATUS_ERROR)
+			{
+				m_iEndType = 0;
+				m_iEndLength = 0;
+				return;
+			}
+			
 			size_t uiSecEndPnt = 0;
 
 			Msg = m_spPipe[_GetInactivePipe()].PipeOut(m_puiMixBuf,
@@ -536,39 +663,14 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 												&Msg,
 												&uiSecEndPnt);
 
-			/*//ReportError2("Current uiEndPnt=%i, uiSecEndPnt=%i",
-										 uiEndPnt,
-										 uiSecEndPnt);*/
-
-			for (int i=0; i<m_iNumChan; i++)
-			{
-				int16_t *psOld = (int16_t *) puiBuffToFill[i];
-				int16_t *psNew = (int16_t *) m_puiMixBuf[i];
-				int8_t *psStop = (int8_t *) psOld + lRequested/2;
-
-				while ((int8_t *) psOld < psStop)
-				{
-					int64_t uiTemp = *(psOld);
-					uiTemp *= (int64_t) (m_iCurScale);
-					uiTemp >>= END_SCALE_Q;
-					*(psOld) = uiTemp;
-
-					uiTemp = *(psNew++);
-					uiTemp *= (int64_t) (END_MAX_GAP - m_iCurScale);
-					uiTemp >>= END_SCALE_Q;
-
-					*(psOld++) += uiTemp;
-				}
-			}
-
 			m_iCurScale -= (lRequested/8 * (m_iEndType & END_STEP_MASK));
 
 			m_iEndLength -= lRequested/8;
 
 			if (m_iEndLength <= 0)
 			{
-				//ReportError("Beep");
-
+				m_iEndLength = 0;
+				m_iEndType = 0;
 				m_spPipe[m_iActivePipe].MarkDone();
 				m_iActivePipe = _GetInactivePipe();
 				_PassSongTransMsgGood(m_spPipe[m_iActivePipe].GetMeta());
@@ -579,30 +681,70 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 	{
 		ReportError("Transitioning to the next song");
 		
-		size_t uiNumToWrite = lRequested/8 - uiEndPnt;
-
-		if (uiNumToWrite > 0)
+		if (m_spPipe[_GetInactivePipe()].GetOutStatus() == MUS_STATUS_ERROR)
 		{
-			Msg = m_spPipe[_GetInactivePipe()].PipeOut(puiBuffToFill,
-											uiNumToWrite,
-											&Msg,
-											&uiEndPnt);
+			m_spPipe[m_iActivePipe].MarkDone();
+			m_iActivePipe = _GetInactivePipe();
+			_PassSongTransMsgBad();		
+			return;
 		}
-
-		m_spPipe[m_iActivePipe].MarkDone();
-		m_iActivePipe = _GetInactivePipe();
 		
-		if (m_spPipe[m_iActivePipe].GetOutStatus() != MUS_STATUS_ERROR)
+		int32_t uiNumToWrite = lRequested/8 - uiEndPnt;
+
+		if (END_TYPE_GAP & m_iEndType)
 		{
-			//ReportError("Tracking down where the plugin is called from");
-			_PassSongTransMsgGood(m_spPipe[m_iActivePipe].GetMeta());
+			if (uiNumToWrite > 0)
+			{
+				for (int i=0; i<m_iNumChan; i++)
+				{
+					memset(&puiBuffToFill[i][uiEndPnt],
+						   0,
+						   uiNumToWrite * 4);
+				}
+			
+				m_iEndLength -= lRequested/8;
+			}
+		
+			m_iEndType |= END_GAP_TRIGGER;
+			return;
 		}
 		else
 		{
-			_PassSongTransMsgBad();
+			ReportError1("uiNumToWrite=%i", uiNumToWrite);
+
+			if (uiNumToWrite > 0)
+			{
+				Msg = m_spPipe[_GetInactivePipe()].PipeOut(puiBuffToFill,
+												uiNumToWrite,
+												&Msg,
+												&uiEndPnt);
+			}
+
+			m_spPipe[m_iActivePipe].MarkDone();
+			m_iActivePipe = _GetInactivePipe();
+			m_iEndLength = 0;
+			m_iEndType = 0;
+
+			_PassSongTransMsgGood(m_spPipe[m_iActivePipe].GetMeta());
+
 		}
 	}
 
 	//ReportError("Here at end of this");
+}
 
+void AudioPipeline::RunDecodeStage()
+{
+	//ReportError("In RunDecodeState");
+
+	MUS_MESSAGE msg = m_spPipe[m_iActivePipe].PipeIn();
+
+	if ((msg != MUS_PIPEINMES_PACKET_ADDED) ||
+		(m_spPipe[m_iActivePipe].IsEnoughBuffer()))
+	{
+		//ReportError("Inactive Work Performed");
+		m_spPipe[_GetInactivePipe()].PipeIn();
+	}
+
+	//ReportError("Finished RunDecodeStage");
 }

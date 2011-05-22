@@ -3,7 +3,6 @@ palm-log -d usb --system-log-level=info
 palm-log -f -d usb com.epikmayo.audiophile
 */ 
 
-
 var backManager = 
 {
 
@@ -18,28 +17,34 @@ var backManager =
 		e.preventDefault();
 		e.stopPropagation();
 	
+		if ($('#idFiltHere').hasClass('classAnimateFilterUp'))
+		{
+			$('#idFiltHere').removeClass('classAnimateFilterUp');
+			return;
+		}
+	
 		if (objOptions.bOptVis)
 		{
 			objOptions.Close();
 			return;
 		}
 	
-		var strCurrentScene = $.mobile.activePage.selector;
+		var strCurrentScene = $('.classShowPage').get(0).id;
 
-		if (strCurrentScene == "#idSplash")
+		if (strCurrentScene == "idSplash")
 			return;
-		else if (strCurrentScene == "#idIndex")
+		else if (strCurrentScene == "idIndex")
 		{
 			if (scenePlay.iFirstRun == 0)
 				return;
 			else
-				$.mobile.changePage($('#idPlayer'), "slide", true, false);
+				ChangePage($('#idPlayer'));
 		}
-		else if (strCurrentScene == "#idList")
+		else if (strCurrentScene == "idList")
 		{
-			$.mobile.changePage($('#idIndex'), "slide", true, false);
+			ChangePage($('#idIndex'));
 		}
-		else if (strCurrentScene == "#idPlayer")
+		else if (strCurrentScene == "idPlayer")
 		{
 			if (scenePlay.bFilterUp)
 			{
@@ -48,11 +53,11 @@ var backManager =
 				scenePlay.bFilterUp = false;
 			}
 			else
-				$.mobile.changePage($('#idIndex'), "slide", false, false);
+				ChangePage($('#idIndex'));
 		}
-		else if (strCurrentScene = "#idPlaylist")
+		else if (strCurrentScene = "idPlaylist")
 		{
-			$.mobile.changePage($('#idPlayer'), "slide", true, false);
+			ChangePage($('#idPlayer'));
 		}
 	}
 
@@ -61,6 +66,7 @@ var backManager =
 
 var scenePlaylist =
 {
+	ScrollBox: new wScroll(),
 
 	Init: function()
 	{
@@ -89,25 +95,15 @@ var scenePlaylist =
 		});
 	},
 
-	SkinMyDiv: function()
-	{
-		$('#idPlaylistPicture').css({
-			'background-image': "url(" + 
-					objSkin.theme[objSkin.skinNum].playlist.bgimg +
-					")"
-		});
-	},
-
 	BuildPlaylist: function()
 	{
-		$('#idPlyLstUL').children().remove();
-		
-		var strBuildLI = "";
+		var test = $('#idPlyLstUL').children().remove();
+		var ulPlyLs = $('#idPlyLstUL').get(0);
 		
 		var arrayPlList = objwAMP.getPlayList();
 		
 		var strListHTML = "";
-		
+				
 		for(var i=0; i<arrayPlList.length; i++)
 		{
 		
@@ -138,23 +134,22 @@ var scenePlaylist =
 		
 		}
 		
-		$('#idPlyLstUL').html(strListHTML);
+		ulPlyLs.innerHTML = strListHTML;
 		
-		this.ScrollBox = new ScrollBox();
 		$('#plyls_' + objwAMP.GetIndex()).addClass('nowplaying');
 		
 		var liClone = 0;
 		
-		$('.playlistSideImg')
+		$('#idPlyLstUL li').children('.playlistSideImg')
 			.drag("init",
 				  function(ev, dd)
 				  {
 				  	var liParent = $(this).parent();
 					liClone = liParent.clone();
 					var posOffset = liParent.offset();
-					liClone.jqmData("TopOffset", 
+					liClone.data("TopOffset", 
 									posOffset.top);
-					liClone.jqmData("LeftOffset",
+					liClone.data("LeftOffset",
 									posOffset.left);
 					liClone.addClass('classDragging')
 							.appendTo($('#idPlaylist'));
@@ -176,8 +171,8 @@ var scenePlaylist =
 				  {
 					clearInterval(scenePlaylist.intScroll);
 				  
-					var iTopOffset = $( dd.proxy ).jqmData("TopOffset");
-					var iLeftOffset = $( dd.proxy ).jqmData("LeftOffset");
+					var iTopOffset = $( dd.proxy ).data("TopOffset");
+					var iLeftOffset = $( dd.proxy ).data("LeftOffset");
 					$( dd.proxy ).css({
 						top: iTopOffset + dd.deltaY,
 						left: iLeftOffset + dd.deltaX
@@ -344,11 +339,8 @@ var scenePlaylist =
 				domTarget = jqobjParent.get(0);
 		}
 		
-		
-		if ($(domTarget).children('div').jqmData("DeleteShown") != "true")
+		if ($(domTarget).children('div').length == 0)
 		{
-			$(domTarget).children('div').jqmData("DeleteShown", "true");
-			
 			$(domTarget).children(
 				'.playlistSideImg').animate(
 					{'clip':
@@ -359,9 +351,7 @@ var scenePlaylist =
 			divElem.animate({'clip':'rect(0px, 110px, 50px, 0px)'}, 200);
 		}
 		else
-		{
-			$(domTarget).children('div').jqmData("DeleteShown", "false");
-			
+		{			
 			$(domTarget).children(
 				'.playlistSideImg').animate(
 					{'clip':
@@ -396,37 +386,70 @@ var scenePlay = {
 
 	iCurSkin: 0,
 	iFirstRun: 0,
-	iPausePlayState: PLAYER_PAUSED_STATE,
-	bSoundVis: false,
+	iPausePlayState: PLAYER_PLAY_STATE,
 	bHideVol: false,
 	bPlayOnLoad: false,
 	bFilterUp: false,
+	bSoundVis: false,
+	fVolScale: 0,
+	fVolAmt: 0.5,
 	
-	Initialize: function()
+	InitMyDiv: function()
 	{
 		this.Record = new RecordSpin();
 		this.Record.init(60, 73, 200, 44, "idRecord");
 		
-		objScrub.init(10, 300, 300, 1.5, "idScrubber");
+		this.ScrubOne = new MusScrubber();
+		this.ScrubOne.Init($('#idScrubOne'));
 		
-		$('#btnplay').click(function() {scenePlay.PlayPauseChange();});
-		$('#btnpause').click(function() {scenePlay.PlayPauseChange();});
-		$('#btndir').click(function() {$.mobile.changePage($('#idIndex'), "slide", false, false)});
-		$('#btnvol').click(function() {scenePlay.VolumeControl();});
-		$('#btnmute').click(function() {scenePlay.VolumeControl();});
+		$('#idPlayer').children(".classVolAdjust").bind(START_EV, function()
+		{
+			if (scenePlay.bSoundVis = !(scenePlay.bSoundVis))
+			{			
+				$('#idVolVertAdj').show(200);
+			}
+			else
+				$('#idVolVertAdj').hide(200);
+		});
+		
+		$('#idVolKnob').drag("start",function( ev, dd )
+		{
+			var div = $(this).prev(); 
+	
+			dd.limit = div.offset();
+			dd.limit.bottom = dd.limit.top + div.outerHeight() - $( this ).outerHeight()/2;
+			dd.limit.top -= $( this ).outerHeight()/2;
+		})
+		.drag(function( ev, dd )
+		{
+			var iTop = Math.min(dd.limit.bottom, 
+								Math.max(dd.limit.top, dd.offsetY));
+			
+			var iRelTop = iTop - dd.limit.top;
+			var fVal = iRelTop * scenePlay.fVolScale;
+			$(this).css("top", iRelTop);
+			$('#idVolDisplayBar').attr("style", 
+									   "clip: rect(" + 
+											iRelTop +
+											"px, auto, 400px, auto);");
+			scenePlay.SetVol(fVal);
+			
+		});
+		
+		this.SetVol(this.fVolAmt);
+		
+		$('#btnplay').click(function() {scenePlay.PlayPauseChange(PLAYER_PLAY_STATE);});
+		$('#btnpause').click(function() {scenePlay.PlayPauseChange(PLAYER_PAUSED_STATE);});
+		$('#btndir').click(function() {ChangePage($('#idIndex'));});
 		$('#btnnext').click(function() {objwAMP.OpenNextSong();});
 		$('#btnprev').click(function() {objwAMP.OpenPrevSong();});
 		$('#btneq').click(function() 
 		{
-			if (scenePlay.bFilterUp)
-			{
-				SpinningWheel.cancelAction();		
-				SpinningWheel.close();
-				scenePlay.bFilterUp = false;
-			}
-			else
 				scenePlay.ShowFilters();
 		});
+		
+		$('#idBtnApply').click(function() {scenePlay.FilterDone();});
+		$('#idBtnCancel').click(function() {scenePlay.FilterReset();});
 		
 		$('#btnshuf').click(function() 
 		{
@@ -445,16 +468,11 @@ var scenePlay = {
 		
 		$('#btnplylst').click(function()
 		{
-			$.mobile.changePage($('#idPlaylist'), "slide", false, false);
+			ChangePage($('#idPlaylist'));
 		});
-		
-		this.SoundAdjust = new VertAdjust();
-		this.SoundAdjust.init("idVolControl", function (val) {scenePlay.ChangeVol(val);});
-		
-		setTimeout(function() {scenePlay.UpdateState();}, 300);
-		
+					
 		this.objBassControl = new PalmKnobControl(objOptions.fBass);
-		this.objBassControl.init(0, 300, 160, "idFiltHere", 
+		this.objBassControl.init(-10, 120, 160, "idFiltHere", 
 								function(fSet) 
 								{
 									scenePlay.SetBass(fSet);
@@ -463,7 +481,7 @@ var scenePlay = {
 								);		
 		
 		this.objTrebControl = new PalmKnobControl(objOptions.fTreble);
-		this.objTrebControl.init(161, 300, 160, "idFiltHere", 
+		this.objTrebControl.init(161, 120, 160, "idFiltHere", 
 								function(fSet) 
 								{
 									scenePlay.SetTreble(fSet);
@@ -471,135 +489,95 @@ var scenePlay = {
 								"Treble"
 								);
 		
-		SpinningWheel.addSlot({"0.0": 'Gapless Transition', "-4.0": 'Crossfade' }, 'right');
-		
-		SpinningWheel.setCancelAction(function() {scenePlay.FilterCancel();});
-		SpinningWheel.setDoneAction(function() {scenePlay.FilterDone();});
-		SpinningWheel.setScrollEndAction(function() {scenePlay.FilterDone();});
-		
 	},
 	
-	LoadImages: function()
+	Display: function()
 	{
-		if ((this.iCurSkin != objSkin.skinNum) || (this.iFirstRun == 0))
-		{
-			this.iCurSkin = objSkin.skinNum;
-			
-			this.iFirstRun = 1;
-			
-			$('#divNameplate').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.nameplate + ")"); 
-			$('#btneq').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.eqbtn + ")"); 
-			$('#btnplay').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.playbtn + ")"); 		
-			$('#btnprev').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.prevsongbtn + ")"); 
-			$('#btnpause').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.pausebtn + ")"); 
-			$('#btnnext').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.nextsongbtn + ")"); 							
-			$('#btnvol').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.volbtn + ")"); 
-			$('#btnmute').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.mutebtn + ")"); 
-			$('#btnshuf').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.shufflebtn + ")"); 
-			$('#btnnormal').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.normalbtn + ")"); 
-			$('#btnrep').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.repeatbtn + ")");
-			$('#btndir').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.indexbtn + ")");
-			$('#btnplylst').css("background-image", "url(" + 
-								objSkin.theme[objSkin.skinNum].player.playlistbtn + ")");								
-		}
+		this.ScrubOne.bScrubInProgress = false;
+	
+		this.fVolScale = 1/($('#idVolVerAdjTarg').height());
+		var iHeight = $('#idVolVerAdjTarg').height();
 		
-		if (this.bPlayOnLoad)
-		{
-			if (this.iPausePlayState == PLAYER_PAUSED_STATE)
-			{
-				this.PlayPauseChange();
-			}
-		}
+		iHeight = $('#idVolKnob').height();
 		
-		
+		var iRelTop = $('#idVolVerAdjTarg').height() * 
+							scenePlay.fVolAmt - 
+						$('#idVolKnob').height()/2;
+		$('#idVolKnob').css("top", iRelTop);
+		$('#idVolDisplayBar').attr("style", "clip: rect(" + iRelTop + "px, auto, 400px, auto);");
+		$('#idVolVertAdj').hide();
+	
+		this.ScrubOne.OrientChange();
+		this.PlayPauseChange(scenePlay.iPausePlayState);	
 		this.ModeControl(objwAMP.GetMode());
+		scenePlay.UpdateState();
 	},
 	
 	UpdateState: function()
 	{
-		this.PluginState = objwAMP.getState();
-	
-		if ((this.PluginState["SongState"] == 103) || 
-			(this.PluginState["SongState"] == 102))
+		try
 		{
-			if (this.iPausePlayState == PLAYER_PLAY_STATE)
+			if (objwAMP.bReinitInProgress == true)
 			{
-				this.PlayPauseChange();
+				console.log("Checking on reinit");
+				if (objwAMP.checkIfPluginInit())
+				{
+					scenePlay.ScrubOne.bScrubInProgress = false;
+					objwAMP.bReinitInProgress = false;					
+				}
+				setTimeout(function() {scenePlay.UpdateState();}, STATE_WAIT_PERIOD);
+				return;			
 			}
-			
-			$('#nameGoesHere').text("");
-			$('#artistGoesHere').text("");
-			objScrub.setEndTime(0);
-			objScrub.setCurTime(0);
-			this.bPlayOnLoad = false;
-			return;
-		}
-	
-		if (this.PluginState["EndAmt"] != objScrub.iEndTime)
-			objScrub.setEndTime(this.PluginState["EndAmt"]);
-	
-		objScrub.setCurTime(this.PluginState["CurPos"]);
 		
-		setTimeout(function() {scenePlay.UpdateState();}, STATE_WAIT_PERIOD);
+			this.PluginState = objwAMP.GetState();
+			
+			if (!this.PluginState)
+			{
+				console.log("No state");
+				if (!objwAMP.bReinitInProgress && !(objwAMP.checkIfPluginInit()))
+				{
+					console.log("Need a restart");
+					objwAMP.RedowAMP();
+				}
+				
+				setTimeout(function() {scenePlay.UpdateState();}, STATE_WAIT_PERIOD);
+				return;
+			}
+		
+			if (this.PluginState["EndAmt"] != this.ScrubOne.iEndTime)
+				this.ScrubOne.SetEndTime(this.PluginState["EndAmt"]);
+
+			this.ScrubOne.SetCurTime(this.PluginState["CurPos"]);
+				
+			setTimeout(function() {scenePlay.UpdateState();}, STATE_WAIT_PERIOD);
+		}
+		catch(e)
+		{
+			console.log(e);
+			setTimeout(function() {scenePlay.UpdateState();}, STATE_WAIT_PERIOD);
+		}
 	},
 
 	ShowFilters: function () 
 	{
-		try
-		{	
-			this.bFilterUp = true;
-		
-			SpinningWheel.open();
-			
-			this.fOldBassVal = this.objBassControl.GetVal();
-			this.fOldTrebVal = this.objTrebControl.GetVal();
-			
-			this.objBassControl.setVisible(true);
-			this.objTrebControl.setVisible(true);
-			
-			
-
-		} catch (e) { 
-			console.log("Error happened: %j", e); 
-		};
+		$('#idFiltHere').addClass('classAnimateFilterUp');
 	},
 	
 	FilterDone: function() 
 	{
-		this.bFilterUp = false;
+		$('#idFiltHere').removeClass('classAnimateFilterUp');
 	
-		var results = SpinningWheel.getSelectedValues();
-		objwAMP.setSongTransitionType(results.keys);
-		this.objBassControl.setVisible(false);
 		objOptions.UpdateOption(OPT_ID_BASS, this.objBassControl.GetVal());
-		this.objTrebControl.setVisible(false);
 		objOptions.UpdateOption(OPT_ID_TREB, this.objTrebControl.GetVal());
 	},
 
-	FilterCancel: function() 
-	{
-		this.bFilterUp = false;
-	
-		this.objBassControl.setVisible(false);
-		this.objTrebControl.setVisible(false);
+	FilterReset: function() 
+	{		
+		this.objBassControl.RestoreVal(0.5);
+		objwAMP.SetBass(1.0);
 		
-		this.objBassControl.RestoreVal(this.fOldBassVal);
-		objwAMP.SetBass(this.fOldBassVal);
-		
-		this.objTrebControl.RestoreVal(this.fOldBassVal);
-		objwAMP.SetTreble(this.fOldTrebleVal);
+		this.objTrebControl.RestoreVal(0.5);
+		objwAMP.SetTreble(1.0);
 	},
 	
 	SetTreble: function(event)
@@ -616,48 +594,39 @@ var scenePlay = {
 	
 	ForcePause: function()
 	{
-		this.iPausePlayState = PLAYER_PAUSED_STATE
-		objwAMP.pause();
-		this.Record.stop();
-		$('#btnplay').show();
-		$('#btnpause').hide();
-	},
-	
-	VolumeControl: function(event)
-	{	
-		if (this.bSoundVis)
-		{
-			this.SoundAdjust.cleanUp();
-		}
-			
-		this.bSoundVis = !(this.bSoundVis);
-		this.SoundAdjust.setVisibility(this.bSoundVis);
+		this.PlayPauseChange(PLAYER_PAUSED_STATE);
 	},
 		
 		
-	ChangeVol: function(fVal)
+	SetVol: function(fVol)
 	{
-		if (fVal < .05)
-		{
-			document.getElementById("btnvol").style.visibility = "hidden";
-			this.bHideVol = true;
-		}
+		fVol = 1 - fVol;
+	
+		$('#idPlayer').children(".classVolAdjust").hide();
+		if (fVol > 0.75)
+			$('#btnsound100').show();
+		if (fVol > 0.5)
+			$('#btnsound75').show();
+		else if (fVol > 0.25)
+			$('#btnsound50').show();
+		else if (fVol > 0.01)
+			$('#btnsound25').show();
 		else
 		{
-			document.getElementById("btnvol").style.visibility = "visible";
-			this.bHideVol = false;
+			fVol = 0;
+			$('#btnmute').show();
 		}
-	
-		var myvalue = (fVal * 0.87);
-		myvalue = myvalue.toString();
-		objwAMP.SetVol(myvalue);
+		
+		scenePlay.fVolAmt = fVol;
+
+		objwAMP.SetVol(fVol);
 	},
 	
-	PlayPauseChange: function()
+	PlayPauseChange: function(iState)
 	{
-		if (this.iPausePlayState == PLAYER_PAUSED_STATE)
+		if (iState == PLAYER_PLAY_STATE)
 		{
-			this.iPausePlayState = PLAYER_PLAY_STATE
+			this.iPausePlayState = PLAYER_PLAY_STATE;
 			objwAMP.play();
 			this.Record.spin();
 			$('#btnplay').hide();
@@ -665,7 +634,7 @@ var scenePlay = {
 		}
 		else
 		{
-			this.iPausePlayState = PLAYER_PAUSED_STATE
+			this.iPausePlayState = PLAYER_PAUSED_STATE;
 			objwAMP.pause();
 			this.bPlayOnLoad = false;
 			this.Record.stop();
@@ -674,12 +643,6 @@ var scenePlay = {
 		}
 	},
 	
-	/******************************
-	* Deal with playback mode
-	* var PLAY_MODE_NORMAL = 0;
-	* var PLAY_MODE_REPEAT = 0;
-	* var PLAY_MODE_SHUFFLE = 0;	
-	******************************/
 	ModeControl: function(iMode)
 	{
 		objwAMP.SetMode(iMode);
@@ -709,93 +672,76 @@ var sceneList = {
 	
 	arrayBreadC: new Array(),
 	
-	SetTopImg: function(iImagePath)
+	InitMyDiv: function()
 	{
+		$("#idListFilter" ).keyup(function(event, ui)
+		{
+			sceneList.ScrollBox.filterList(this.value.toLowerCase());
+		});
+		
+		this.ScrollBox = new wScroll();
+	},
 	
+	SetTopImg: function(iImagePath)
+	{	
 		this.iImagePath = iImagePath;
 	
 		if (isNaN(iImagePath))
 		{
-			this.strImgPath = objSkin.theme[objSkin.skinNum].index.file;
+			$('#idListHeader').attr('class', 'classFolderIndex');
 		}
 		else
 		{
 			switch (iImagePath)
 			{
 				case 0:
-					this.strImgPath = objSkin.theme[objSkin.skinNum].index.title;
+					$('#idListHeader').attr('class', 'classTitleIndex');
 					break;
 				case 1:
-					this.strImgPath = objSkin.theme[objSkin.skinNum].index.album;
+					$('#idListHeader').attr('class', 'classAlbumIndex');
 					break;
 				case 2:
-					this.strImgPath = objSkin.theme[objSkin.skinNum].index.artist;
+					$('#idListHeader').attr('class', 'classArtistIndex');
 					break;
 				case 3:
-					this.strImgPath = objSkin.theme[objSkin.skinNum].index.genre;
+					$('#idListHeader').attr('class', 'classGenreIndex');
 			}
 		}
 	},
 	
 	LoadImages: function()
-	{	
-	
-		$('<img />',{
-				"src": this.strImgPath,
-				"class": "indexviewButton"
-			}).appendTo($('#idListHeader'));
-		
-		$('#idListFooter').css("background", 
-							objSkin.theme[objSkin.skinNum].list.footerColor);
-			
-		$("#idListFilter" ).keyup(function(event, ui)
-		{
-			sceneList.ScrollBox.filterList(this.value.toLowerCase());
-		});
-	
+	{		
 		if (this.iDisplayType == LIST_TYPE_INDEX)
 		{
-			this.ScrollBox = new ScrollBox();
-			
-			this.ScrollBox.IndexDraw(this.arrayFirst, "idScroller");
+			this.ScrollBox.IndexDraw(this.arrayFirst, 
+									 $("#idScroller").get(0),
+									 function(e, domTarget)
+									 {
+										sceneList.IndexClick(e, domTarget);
+									 });
 		}
 		else
 		{
-			this.ScrollBox = new ScrollBox();
-			
-			this.ScrollBox.FileDraw(this.objFirst, "idScroller");
+			this.ScrollBox.FileDraw(this.objFirst, 
+									$("#idScroller").get(0),
+									function(e, domTarget)
+									 {
+										sceneList.FFClick(e, domTarget);
+									 });
 		}
 			
 	},
 	
 	ClearImages: function()
 	{
-	
-		$('#idListHeader').empty();
-		$('#idOptionButton').empty();
-		$("#idListFilter" ).unbind('keyup');
 		$("#idListFilter" ).val("");
-		
-		this.ScrollBox.ListDestroy();
-		
-		this.ScollBox = 0;
+		$("#idUlList").empty();
 	},
 	
-	FastChangeImages: function()
+	IndexClick: function(event, domTarget)
 	{
-		$('#idListHeader').empty();
-		this.SetTopImg(this.iImagePath);
-		$('<img />',{
-				"src": this.strImgPath,
-				"class": "indexviewButton"
-			}).appendTo($('#idListHeader'));
-		$('#idListFooter').css("background", 
-				objSkin.theme[objSkin.skinNum].list.footerColor);
-	},
+		var strID = domTarget.id;
 	
-	IndexClick: function(strID, bLongPress)
-	{
-
 		var iAddType = ADD_TYPE_CLEAR_PLAYLIST;
 
 		if (strID == "sel_all")
@@ -813,8 +759,8 @@ var sceneList = {
 			var arrayNewPlaylist = objSongIndex.buildPlayList(arraySelected);
 			objwAMP.setPlayList(arrayNewPlaylist);
 			objwAMP.OpenSong(0);
-			scenePlay.bPlayOnLoad = true;
-			$.mobile.changePage($('#idPlayer'), "slide", true, false);
+			scenePlay.iPausePlayState = PLAYER_PLAY_STATE;
+			ChangePage($('#idPlayer'));
 			return;
 		}
 		
@@ -840,17 +786,19 @@ var sceneList = {
 				arrayNewPlaylist.push(retObj);
 				objwAMP.setPlayList(arrayNewPlaylist);
 				objwAMP.OpenSong(0);
-				scenePlay.bPlayOnLoad = true;
-				$.mobile.changePage($('#idPlayer'), "slide", true, false);
+				scenePlay.iPausePlayState = PLAYER_PLAY_STATE;
+				ChangePage($('#idPlayer'));
 				break;
 			}
 		}
 	},
 
-	FFClick: function(strID, bLongPress)
+	FFClick: function(event, domTarget)
 	{
 		var iAddType = ADD_TYPE_CLEAR_PLAYLIST;
 
+		var strID = domTarget.id;
+		
 		if (strID == "sel_all")
 		{
 			var arrayListItems = $('#idUlList').children(':visible');
@@ -874,8 +822,8 @@ var sceneList = {
 			
 			objwAMP.setPlayList(arrayNewPlaylist);
 			objwAMP.OpenSong(0);
-			scenePlay.bPlayOnLoad = true;
-			$.mobile.changePage($('#idPlayer'), "slide", true, false);
+			scenePlay.iPausePlayState = PLAYER_PLAY_STATE;
+			ChangePage($('#idPlayer'));
 			return;
 		}
 		
@@ -902,8 +850,8 @@ var sceneList = {
 				arrayNewPlaylist.push(this.objFirst.Playable[iIndex]);
 				objwAMP.setPlayList(arrayNewPlaylist);
 				objwAMP.OpenSong(0);
-				scenePlay.bPlayOnLoad = true;
-				$.mobile.changePage($('#idPlayer'), "slide", true, false);
+				scenePlay.iPausePlayState = PLAYER_PLAY_STATE;
+				ChangePage($('#idPlayer'));
 				break;
 			}
 		}
@@ -914,8 +862,8 @@ var sceneList = {
 			case ADD_TYPE_CLEAR_PLAYLIST:
 				var iIndex = Number(strID.slice(4));			
 				objwAMP.AddSongNow(this.objFirst.Unknown[iIndex]);
-				scenePlay.bPlayOnLoad = true;
-				$.mobile.changePage($('#idPlayer'), "slide", true, false);
+				scenePlay.iPausePlayState = PLAYER_PLAY_STATE;
+				ChangePage($('#idPlayer'));
 				break;
 			}
 		}
@@ -933,13 +881,13 @@ var sceneIndex = {
 
 	InitMyDiv: function()
 	{
-		this.btnPlayAll = new widwAMPIndex($("#idPlayAllIndex"), PlayAll);
-		this.btnAlbumIndex = new widwAMPIndex($("#idAlbumIndex"), DrawAlbum);
-		this.btnArtistIndex = new widwAMPIndex($("#idArtistIndex"), DrawArtist);
-		this.btnGenreIndex = new widwAMPIndex($("#idGenreIndex"), DrawGenre);
-		this.btnTitleIndex = new widwAMPIndex($("#idTitleIndex"), DrawTitle);
-		this.btnFolderIndex = new widwAMPIndex($("#idFolderIndex"), DrawDir);			
-		this.btnOptionIndex = new widwAMPIndex($('#idOptionIndex'),
+		this.btnPlayAll = new widwAMPIndex($("#idFirstIndex"), PlayAll);
+		this.btnAlbumIndex = new widwAMPIndex($("#idSecondIndex"), DrawAlbum);
+		this.btnArtistIndex = new widwAMPIndex($("#idThirdIndex"), DrawArtist);
+		this.btnGenreIndex = new widwAMPIndex($("#idFourthIndex"), DrawGenre);
+		this.btnTitleIndex = new widwAMPIndex($("#idFifthIndex"), DrawTitle);
+		this.btnFolderIndex = new widwAMPIndex($("#idSixthIndex"), DrawDir);			
+		this.btnOptionIndex = new widwAMPIndex($('#idSeventhIndex'),
 												function()
 												{
 													objOptions.Draw();
@@ -955,42 +903,7 @@ var sceneIndex = {
 		{
 			DrawDir();
 			return;
-		}
-	
-		var me = this;
-		
-		
-		var strImgPlayAll = objSkin.theme[objSkin.skinNum].index.playAll;
-		var strImgAlbum = objSkin.theme[objSkin.skinNum].index.album;
-		var strImgArtist = objSkin.theme[objSkin.skinNum].index.artist;
-		var strImgGenre = objSkin.theme[objSkin.skinNum].index.genre;
-		var strImgTitle = objSkin.theme[objSkin.skinNum].index.title;
-		var strImgFile = objSkin.theme[objSkin.skinNum].index.file;
-		
-		$('#idPlayAllIndex').css("background-image", "url(" +
-										strImgPlayAll +
-										")");
-		
-		$('#idAlbumIndex').css("background-image", "url(" +
-										strImgAlbum +
-										")");
-
-		$('#idArtistIndex').css("background-image", "url(" +
-										strImgArtist +
-										")");
-
-		$('#idGenreIndex').css("background-image", "url(" +
-										strImgGenre +
-										")");
-			
-		$('#idTitleIndex').css("background-image", "url(" +
-										strImgTitle +
-										")");
-
-		$('#idFolderIndex').css("background-image", "url(" +
-										strImgFile +
-										")");
-		
+		}	
 	},
 
 	resetButtons: function()
@@ -1022,8 +935,21 @@ var sceneIndex = {
 
 var sceneSplash = {
 
+	InitWAMP: function()
+	{
+	try
+	{
+		objOptions.LoadDatabase();
+		sceneIndex.InitMyDiv();
+		sceneList.InitMyDiv();
+		scenePlay.InitMyDiv();
+		scenePlaylist.Init();
+	} catch (e) {alert(e);}
+	},
+
 	LoadSplash: function()
 	{
+
 		var me = this;
 		
 		if (!(objwAMP.checkIfPluginInit()))
@@ -1040,36 +966,34 @@ var sceneSplash = {
 			return;
 		}
 		
-		StatusPill.Init(340);
-		
-		console.log("Test");
+		this.InitWAMP();
 		
 		if ((jsonIndexer.iIndexingStatus == 1) || (jsonIndexer.iIndexingStatus == 3))
 		{
 		
-			$('#idTellUser').html("This appears to be the first time you have run " +
+			$('#idTellUser').html("<p>This appears to be the first time you have run " +
 								  "Audiophile or you are using an old version." +
-								  "The program will now take a few minutes to " +
+								  " The program will now take a few minutes to " +
 								  "search through your memory card " +
 								  "and locate any media files.  Once it has finished, it" +
 								  " will create two files on your memory card, ~wamp.tmp " +
-								  " and wamp.index.<p>  If the process fails for some reason" +
+								  " and wamp.index.</p><p>  If the process fails for some reason" +
 								  " or the indexing takes longer than 5 minutes, you can" +
 								  " restart Audiophile and it will run without an" +
-								  " Index.<p>");
+								  " Index.</p>");
 		
 			$('#idButtonGoesHere').removeClass();
-			$('#idButtonGoesHere').addClass(objSkin.theme[objSkin.skinNum].dialog.btntheme);
+			$('#idButtonGoesHere').addClass('wampButton');
 			
 			$('#idButtonGoesHere span').text("Run Index");
 		
 			$('#idButtonGoesHere').click(function () 
 			{
 				setTimeout(function() {sceneSplash.WaitForFirstIndex();}, 20);
-				$.mobile.changePage($('#idSplash'), "slidedown", false, false);
+				ChangePage($('#idSplash'));
 			});
 	
-			$.mobile.changePage($('#idDialog'), "slideup", false, false);
+			ChangePage($('#idDialog'));
 		}
 		else if (jsonIndexer.iIndexingStatus == -1)
 		{
@@ -1081,20 +1005,16 @@ var sceneSplash = {
 									  "options menu.");
 									  
 				$('#idButtonGoesHere').removeClass();
-				$('#idButtonGoesHere').addClass(objSkin.theme[objSkin.skinNum].dialog.btntheme);
+				$('#idButtonGoesHere').addClass('wampButton');
 			
 				$('#idButtonGoesHere span').text("OK");
 									  
 				$('#idButtonGoesHere').click(function () 
 				{
 					sceneIndex.bFileOnly = true;
-				
-					$.mobile.changePage($('#idIndex'), 
-										"slide", 
-										false, 
-										false);
+					ChangePage($('#idIndex'));
 				});
-				$.mobile.changePage($('#idDialog'), "slideup", false, false);
+				ChangePage($('#idDialog'));
 		}
 		else
 		{
@@ -1110,10 +1030,7 @@ var sceneSplash = {
 		if (jsonIndexer.iIndexingStatus == 4)
 		{
 			objSongIndex.addArray(jsonIndexer.arrayFileList);
-			$.mobile.changePage($('#idIndex'), 
-								"slide", 
-								false, 
-								false);
+			ChangePage($('#idIndex'));
 		}
 		else if (jsonIndexer.iIndexingStatus == -1)
 		{
@@ -1126,72 +1043,69 @@ var sceneSplash = {
 								  "options menu.");
 			
 			$('#idButtonGoesHere').removeClass();
-			$('#idButtonGoesHere').addClass(objSkin.theme[objSkin.skinNum].dialog.btntheme);
+			$('#idButtonGoesHere').addClass('.wampButton');
 			$('#idButtonGoesHere span').text("OK");
 								
 			$('#idButtonGoesHere').click(function () 
 			{
 				sceneIndex.bFileOnly = true;
-			
-				$.mobile.changePage($('#idIndex'), 
-									"slide", 
-									false, 
-									false);
+				ChangePage($('#idIndex'), SLIDE_DOWN);
 			});
-			$.mobile.changePage($('#idDialog'), "slideup", false, false);
+			ChangePage($('#idDialog'));
 		}
 		else
 		{
-			StatusPill.Animate("Loading: Checking For Changes");
+			widStatusPill.Animate();
+			widStatusPill.DisplayText("Loading: Checking For Changes");
 			setTimeout(function() {sceneSplash.WaitForIndexUpdate();}, 20);
 		}
 	},
 	
 	WaitForFirstIndex: function()
 	{
-		var jsonIndexer = objwAMP.GetIndexerStatus();
-		if (jsonIndexer.iIndexingStatus == 4)
+		try
 		{
-			objSongIndex.addArray(jsonIndexer.arrayFileList);
-			$.mobile.changePage($('#idIndex'), 
-								"slide", 
-								false, 
-								false);
-		}
-		else if ((jsonIndexer.iIndexingStatus == -1) ||
-				 (jsonIndexer.iIndexingStatus == 0))
-		{
-			objwAMP.bFolderOnly = true; 
-			$('#idTellUser').text("A problem occured while the indexer was " +
-								  " running.  Audiophile will only be able to" +
-								  " run in Folder Only View until you are" + 
-								  "able to successfully run the indexer. " +
-								  "You can rerun the indexer from the " +
-								  "options menu.");
-			
-			$('#idButtonGoesHere').removeClass();
-			$('#idButtonGoesHere').addClass(objSkin.theme[objSkin.skinNum].dialog.btntheme);
-			$('#idButtonGoesHere span').text("OK");
-								  
-			$('#idButtonGoesHere').click(function () 
+			var jsonIndexer = objwAMP.GetIndexerStatus();
+			if (jsonIndexer.iIndexingStatus == 4)
 			{
-				sceneIndex.bFileOnly = true;
-			
-				$.mobile.changePage($('#idIndex'), 
-									"slide", 
-									false, 
-									false);
-			});
-			$.mobile.changePage($('#idDialog'), "slideup", false, false);
+				objSongIndex.addArray(jsonIndexer.arrayFileList);
+				ChangePage($('#idIndex'));
+			}
+			else if ((jsonIndexer.iIndexingStatus == -1) ||
+					 (jsonIndexer.iIndexingStatus == 0))
+			{
+				objwAMP.bFolderOnly = true; 
+				$('#idTellUser').text("A problem occured while the indexer was " +
+									  " running.  Audiophile will only be able to" +
+									  " run in Folder Only View until you are" + 
+									  "able to successfully run the indexer. " +
+									  "You can rerun the indexer from the " +
+									  "options menu.");
+				
+				$('#idButtonGoesHere').removeClass();
+				$('#idButtonGoesHere').addClass('wampButton');
+				$('#idButtonGoesHere span').text("OK");
+									  
+				$('#idButtonGoesHere').click(function () 
+				{
+					sceneIndex.bFileOnly = true;
+					ChangePage($('#idIndex'));
+				});
+				ChangePage($('#idDialog'));
+			}
+			else
+			{
+				var iStrLen = jsonIndexer.strCurSearchDir.length;
+				var strStatus = "Indexing: " + 
+								jsonIndexer.strCurSearchDir.substr(iStrLen - 18);
+				widStatusPill.DisplayText(strStatus);
+				widStatusPill.Animate();
+				setTimeout(function() {sceneSplash.WaitForFirstIndex();}, 20);
+			}
 		}
-		else
+		catch (e)
 		{
-			var iStrLen = jsonIndexer.strCurSearchDir.length;
-			var strStatus = "Indexing: " + 
-							jsonIndexer.strCurSearchDir.substr(iStrLen - 18);
-		
-			StatusPill.Animate(strStatus);
-			setTimeout(function() {sceneSplash.WaitForFirstIndex();}, 20);
+			console.log("Error:" + e);
 		}
 	}
 		
@@ -1203,144 +1117,12 @@ var sceneSplash = {
  * WIDGETS
 ******************************************************************************
  *****************************************************************************/
-function wAMPIndex(strImgPath, strDiv, iTop, funcButtonUp)
-{
-	this.iButtonDown = 0;
-	this.strDiv = "#" + strDiv;
-	this.strDivName = strDiv;
-	this.iTop = iTop;
-	this.strImgPath = strImgPath;
-	
-	this.funcButtonUp = funcButtonUp;
-	
-	this.bMouseDownLis = true;
-	this.bMouseOutLis = false;
-	this.bMouseUpLis = true;
-	
-	this.bGreyChild = false;
-	
-	this.handleEvent = function (e) 
-	{ 
-	
-		if (e.type == START_EV)
-		{
-			this.ButtonDown(e);
-		} 
-		else if (e.type == END_EV)
-		{
-			this.ButtonUp(e);
-		}
-		else if (e.type == 'mouseout')
-		{
-			this.MouseOut(e);
-		}
-	
-	}
-	
-	wAMPIndex.prototype.ButtonUp = function()
-	{
-		if(this.iButtonDown)
-		{
-			var str = "delete_" + this.strDivName;
-			this._unbind("mouseout", document.getElementById(str));
-			this.bMouseOutLis = false;
-			$("#delete_" + this.strDivName).remove();
-			this.bGreyChild = false;
-				
-			this.funcButtonUp();
-		}
-		else
-		{
-			var str = "delete_" + this.strDivName;
-			this._unbind("mouseout", document.getElementById(str));
-			this.bMouseOutLis = false;
-			$("#delete_" + this.strDivName).remove();
-			this.bGreyChild = false;
-		}
-	};
-		
-	wAMPIndex.prototype.ButtonDown = function()
-	{
-		this.iButtonDown = 1;
-		
-		var add = $("<div />", {
-						"id":"delete_" + this.strDivName,
-						"style":"top:" + 
-							Number(this.iTop+3).toString() + 
-							"px; left:5px; position:fixed; " +
-							"background-color: #444; opacity:" +
-							" 0.50; height:66px; width:310px;" +
-							" z-index:2;"
-					});
-		$(this.strDiv).append(add);
-		this.bGreyChild = true;
-		
-		var str = "delete_" + this.strDivName;
-		this._bind("mouseout", document.getElementById(str));
-		this.bMouseOutLis = true;
-	};
-	
-	wAMPIndex.prototype.MouseOut = function()
-	{
-		this.iButtonDown = 0;
-		
-		var str = "delete_" + this.strDivName;
-		this._unbind("mouseout", document.getElementById(str));
-		this.bMouseOutLis = false;
-		$("#delete_" + this.strDivName).remove();
-		this.bGreyChild = false;
-	};
-
-	wAMPIndex.prototype.resetButton = function()
-	{
-		if (this.bGreyChild)
-		{
-			var str = "delete_" + this.strDivName;
-			
-			if (this.bMouseOutLis)
-			{
-				this._unbind("mouseout", document.getElementById(str));
-			}
-			
-			$("#delete_" + this.strDivName).remove();
-		}
-	}
-
-	wAMPIndex.prototype.CleanUp = function()
-	{
-	
-		this.resetButton();
-		
-		this._unbind(START_EV);
-		this._unbind(END_EV);
-		
-	}
-
-	wAMPIndex.prototype._bind = function (type, el)
-	{
-		if (!(el))
-			el = document.getElementById(this.strDivName); //this.strParent);
-		el.addEventListener(type, this, false);
-	}
-
-	wAMPIndex.prototype._unbind = function (type, el)
-	{
-		if (!(el))
-			el = document.getElementById(this.strDivName); //this.strParent);
-		el.removeEventListener(type, this, false);
-	}
-
-	this._bind(START_EV);
-	this._bind(END_EV);
-	
-}
-
 function DrawArtist()
 {
 	sceneList.iDisplayType = LIST_TYPE_INDEX;
 	sceneList.arrayFirst = objSongIndex.buildAristList();
 	sceneList.SetTopImg(2);
-	$.mobile.changePage($('#idList'), "slide", false, false);
+	ChangePage($('#idList'));
 }
 
 function DrawGenre()
@@ -1348,7 +1130,7 @@ function DrawGenre()
 	sceneList.iDisplayType = LIST_TYPE_INDEX;
 	sceneList.arrayFirst = objSongIndex.buildGenreList();
 	sceneList.SetTopImg(3);
-	$.mobile.changePage($('#idList'), "slide", false, false)
+	ChangePage($('#idList'));
 }
 
 function DrawTitle()
@@ -1356,7 +1138,7 @@ function DrawTitle()
 	sceneList.iDisplayType = LIST_TYPE_INDEX;
 	sceneList.arrayFirst = objSongIndex.buildTitleList();
 	sceneList.SetTopImg(0);
-	$.mobile.changePage($('#idList'), "slide", false, false)
+	ChangePage($('#idList'));
 }
 
 function DrawAlbum()
@@ -1364,7 +1146,7 @@ function DrawAlbum()
 	sceneList.iDisplayType = LIST_TYPE_INDEX;
 	sceneList.arrayFirst = objSongIndex.buildAlbumList();
 	sceneList.SetTopImg(1);
-	$.mobile.changePage($('#idList'), "slide", false, false)
+	ChangePage($('#idList'));
 }
 
 function DrawDir()
@@ -1372,7 +1154,7 @@ function DrawDir()
 	sceneList.iDisplayType = LIST_TYPE_FF;
 	sceneList.SetTopImg("f");
 	sceneList.objFirst = objwAMP.getDirFileList();
-	$.mobile.changePage($('#idList'), "slide", false, false);
+	ChangePage($('#idList'));
 }
 
 function PlayAll()
@@ -1380,8 +1162,8 @@ function PlayAll()
 	objwAMP.SetMode(PLAY_MODE_SHUFFLE);
 	objwAMP.setPlayList(objSongIndex.PlayAll());
 	objwAMP.OpenNextSong();
-	scenePlay.bPlayOnLoad = true;
-	$.mobile.changePage($('#idPlayer'), "slide", true, false);
+	scenePlay.iPausePlayState = PLAYER_PLAY_STATE;
+	ChangePage($('#idPlayer'));
 }
 
 
@@ -1537,573 +1319,10 @@ function RecordSpin()
 	}
 }
 
-
-var SCRUB_IN_PROCSS 	= -2;
-var SCRUB_NORMAL 		= -1;
-var SCRUB_WAIT_FOR_PLUG = -3
-
-var ARM_DEG_FINISH		= 22;
-		 		 		 
-var objScrub = 
-{
-
-	// Create a name for the div.  To make it transparent
-	//	to the user in case we want to create multiples,
-	//	we add a random number to the div so we don't
-	//	have two with the same name.
-	strDivWrapperID: "divScrubControl" + 
-					 Number(Math.floor(Math.random() * 1000)).toString(),
-	strDivBlckScrub: "divBlckScrub" + 
-					 Number(Math.floor(Math.random() * 1000)).toString(),
-	strDivWhteScrub: "divWhteScrub" + 
-					 Number(Math.floor(Math.random() * 1000)).toString(),
-	strEndTime: "0:00",
-	strCurTime: "0:00",
-	
-	iEndTime: -1,
-	
-	strDivParent: null,
-	strStyleString: null,
-	
-	fEndConvertDist: 0,
-	
-	iWaitForUpdate: -1,
-	
-	handleEvent: function (e) 
-	{ 
-		if (e.type == START_EV) 
-		{
-			this.pickStart(e);
-		} 
-		else if (e.type == MOVE_EV) 
-		{
-			this.pickMove(e);
-		} 
-		else if (e.type == END_EV)
-		{
-			this.pickStop(e);
-		}
-		
-	},
-
-	setEndTime: function(iEndTimeInSec)
-	{
-		try
-		{
-			if (isNaN(iEndTimeInSec))
-				iEndTimeInSec = 0;
-		
-			this.iEndTime = iEndTimeInSec;
-			// create a factor to convert scrubber loc to secs
-			this.fSecToDist = this.iWidth / iEndTimeInSec;
-			this.fDistToSec = iEndTimeInSec * this.iInvWidth;			
-			this.fInvEnd = 1/iEndTimeInSec;
-			this.strEndTime = this.convertNumSecToString(iEndTimeInSec);
-		}
-		catch(e)
-		{
-			console.log(e);
-		}
-	},
-	
-	setCurTime: function(iCurTimeInSec)
-	{
-		if (this.iWaitForUpdate == SCRUB_IN_PROCSS)
-		{
-			return;
-		}
-		else if (this.iWaitForUpdate == SCRUB_WAIT_FOR_PLUG)
-		{
-			this.iCurTime += STATE_WAIT_PERIOD/1000;
-			this.strCurTime = 
-						this.convertNumSecToString(this.iCurTime);
-			this.draw(this.iCurTime * this.fSecToDist);
-			return;
-		}
-		else if (this.iWaitForUpdate == SCRUB_NORMAL)
-		{
-			this.iCurTime = iCurTimeInSec;
-			this.strCurTime = this.convertNumSecToString(iCurTimeInSec);
-			this.draw(iCurTimeInSec * this.fSecToDist );
-		}
-		else if (this.iWaitForUpdate >= 0)
-		{
-			this.iCurTime = this.iWaitForUpdate;
-			this.strCurTime = this.convertNumSecToString(this.iWaitForUpdate);
-			this.draw(this.iWaitForUpdate * this.fSecToDist );
-			this.iWaitForUpdate = SCRUB_NORMAL;
-		}
-	},
-	
-	draw: function(iTime)
-	{
-		try
-		{
-	
-			var strFullTime = this.strCurTime + "|" + this.strEndTime;
-			
-			$("#" + 
-				this.strDivBlckScrub).get(0).setAttribute("style", 
-											this.strStyleString + 
-											"clip: rect(0px " + 
-											Number(iTime + 
-												this.iLeftCoord).toString() + 
-											"px 480px 0px)");
-
-			var fRotAmt = 22 * this.fInvEnd * this.iCurTime;
-											
-			$('#btnarm').attr("style", "-webkit-transform: rotate(" + fRotAmt + "deg)");
-			
-			document.getElementById(this.strDivBlckScrub).innerHTML = 
-																strFullTime;
-			document.getElementById(this.strDivWhteScrub).innerHTML = 
-																strFullTime;
-		
-		} catch (e) { console.log(e); }
-	},
-	
-	init: function (iLeftCoord, iTopCoord, iWidth, fEMHeight, strDivParent) 
-	{
-		try
-		{	
-			this.strStyleString = "top:" + Number(iTopCoord).toString() + 
-								"px; left:" +
-								Number(iLeftCoord).toString() + "px; width:" +
-								Number(iWidth).toString() + "px; height:" +
-								Number(fEMHeight).toString() + "em;";
-
-			this.iLeftCoord = iLeftCoord;
-			
-			this.iWidth = iWidth;
-			
-			this.iInvWidth = 1/iWidth;
-
-			this.strDivParent = strDivParent;
-			var divParent = document.getElementById(strDivParent);
-			
-			var divWrapper = document.createElement("div");
-			divWrapper.className = "scrubwrap";
-			divWrapper.setAttribute("style",this.strStyleString);
-			divWrapper.id = this.strDivWrapperID;
-			
-			this.strStyleString = "top:" + Number(iTopCoord).toString() + 
-								"px; left:" +
-								Number(iLeftCoord).toString() + "px; width:" +
-								Number(iWidth-16).toString() + "px; height:" +
-								Number(fEMHeight).toString() + "em;";
-
-			var divDisplay = document.createElement("div");
-			divDisplay.className = "scruber";
-			divDisplay.id = this.strDivWhteScrub;
-			divDisplay.setAttribute("style",this.strStyleString);
-			divWrapper.appendChild(divDisplay); 
-			
-			
-			divDisplay = document.createElement("div");
-			divDisplay.className = "scruberop";
-			divDisplay.setAttribute("style",
-									this.strStyleString + 
-										" clip:rect(0px 0px 480px 0px);");
-			divDisplay.id = this.strDivBlckScrub;
-			divWrapper.appendChild(divDisplay); 
-			
-			divWrapper.addEventListener(START_EV, this, false);
-			divParent.appendChild(divWrapper);
-			
-			this.divNewPop = $("<div></div>",
-						{
-							"id": "divNewPop",
-							"class": "scrubpopup"
-						});
-			
-			this.divNewPop.hide();
-			
-			this.divNewPop.appendTo($('#'+this.strDivParent));
-			
-			this.iPopUpVisible = false;
-			
-			this.draw(0);
-		}
-		catch(e)
-		{
-			console.log(e);
-		}
-	},
-	
-	uninit: function()
-	{
-		$('#' + this.strDivParent).empty();
-		
-		this.strDivWrapperID = null;
-		this.strDivBlckScrub = null;
-		this.strDivWhteScrub = null;
-		this.strEndTime = null;
-		this.strCurTime = null;
-		this.funcCallback = null;
-		this.strDivParent = null;
-		this.strStyleString = null;
-	},
-	
-	clearPopup: function()
-	{
-		clearTimeout(this.timeoutHideNum);
-		this.divNewPop.text("Wait...");
-		this.divNewPop.show();
-	
-		this.iCurTime = this.iLastGoodTouchPoint * this.fDistToSec;
-
-		this.iWaitForUpdate = SCRUB_WAIT_FOR_PLUG;
-		
-		objwAMP.Seek(Math.floor(this.iCurTime), function(iCurTime)
-		{
-			objScrub.iWaitForUpdate = iCurTime;
-		});
-		
-		this.timeoutHideNum = setTimeout(function() 
-								{
-									$('#divNewPop').hide();
-								}, 500);
-	},
-	
-	pickStart: function(e) 
-	{
-		clearTimeout(this.timeoutHideNum);
-		var me = this;
-		var point = hasTouch ? e.changedTouches[0] : e;
-		
-		this.iWaitForUpdate = SCRUB_IN_PROCSS;
-	
-		var domTarget = point.target;
-		
-		if (!domTarget)
-			return;
-		
-		if (domTarget.nodeName.toLowerCase() == "#text")
-			domTarget = $(domTarget).parent().get(0);
-	
-		if((domTarget.id != this.strDivBlckScrub ) &&
-		   (domTarget.id != this.strDivWhteScrub ))
-		{
-			return;
-		}
-	
-		var iDivTouchPoint = point.pageX - this.iLeftCoord;
-
-		this.iLastGoodTouchPoint = iDivTouchPoint;
-		
-		this.iCurTime = iDivTouchPoint * this.fDistToSec;
-		
-		this.draw(iDivTouchPoint);
-	
-		this.divNewPop.text(this.convertNumSecToString(this.iCurTime));
-		this.divNewPop.show();	
-		this.timeoutHideNum = setTimeout(function() {me.clearPopup();}, 2000);
-			
-		var divWrapper = document.getElementById(this.strDivWrapperID);
-		
-		divWrapper.addEventListener(MOVE_EV, this, false);
-		divWrapper.addEventListener(END_EV, this, false);
-	
-	},
-
-	pickMove: function(e) 
-	{	
-	
-		var point = hasTouch ? e.changedTouches[0] : e;
-	
-		var domTarget = point.target;
-		
-		if (!domTarget)
-			return;
-		
-		if (domTarget.nodeName.toLowerCase() == "#text")
-			domTarget = $(domTarget).parent().get(0);
-	
-		if((domTarget.id != this.strDivBlckScrub ) &&
-		   (domTarget.id != this.strDivWhteScrub ))
-		{
-			return;
-		}
-	
-		var me = this;
-	
-		clearTimeout(this.timeoutHideNum);
-	
-		var iDivTouchPoint = point.pageX - this.iLeftCoord;
-	
-		this.iLastGoodTouchPoint = iDivTouchPoint;
-		
-		this.iCurTime = iDivTouchPoint * this.fDistToSec;
-		
-		this.draw(iDivTouchPoint);
-		
-		this.divNewPop.text(this.convertNumSecToString(this.iCurTime));
-		this.divNewPop.show();
-		this.timeoutHideNum = setTimeout(function() {me.clearPopup();}, 2000);
-		
-	},
-	
-	pickStop: function(e) 
-	{
-		clearTimeout(this.timeoutHideNum);
-
-		var point = hasTouch ? e.changedTouches[0] : e;
-	
-		var divWrapper = document.getElementById(this.strDivWrapperID);
-		divWrapper.removeEventListener(MOVE_EV, this, false);
-		divWrapper.removeEventListener(END_EV, this, false);
-		
-		var domTarget = point.target;
-				
-		if (domTarget && domTarget.nodeName.toLowerCase() == "#text")
-			domTarget = $(domTarget).parent().get(0);
-	
-		if(domTarget && 
-		   (domTarget.id != this.strDivBlckScrub ) &&
-		   (domTarget.id != this.strDivWhteScrub ))
-		{
-			this.iLastGoodTouchPoint = point.pageX - this.iLeftCoord;
-		}
-		
-		this.draw(this.iLastGoodTouchPoint);
-		
-		this.clearPopup();
-		
-	},
-
-	
-	convertNumSecToString: function(iNumSec)
-	{
-		var ProgressString;
-	
-		iNumSec = Math.floor(iNumSec)
-	
-		if (iNumSec <= 0)
-		{
-			ProgressString = "0:00";
-		}
-		else if (iNumSec < 10)
-		{
-			ProgressString = "0:0"+Number(iNumSec).toString();
-		}
-		else if (iNumSec < 60)
-		{
-			ProgressString = "0:"+Number(iNumSec).toString();
-		}
-		else
-		{
-			// first get the minutes part of the number without division
-			GetMin = iNumSec * .01667;
-			ProgressString = Number(Math.floor(GetMin)).toString();
-			
-			// Now subtract out the number of minute to get seconds
-			GetMin = Math.floor(GetMin) * 60;
-			GetMin = iNumSec - GetMin;
-			
-			// now finish the string
-			if (GetMin == 60)
-			{
-				ProgressString = ProgressString + ":00";
-			}
-			else if (GetMin < 10)
-			{
-				ProgressString = ProgressString + ':0' + Number(GetMin).toString();
-			}
-			else
-			{
-				ProgressString = ProgressString + ':' + Number(GetMin).toString();
-			}
-		}
-		
-		return ProgressString;
-	}
-	
-};
-
-
-function VertAdjust()
-{
-	this.controller = null;
-	
-	// Create a name for the div.  To make it transparent
-	//	to the user in case we want to create multiples,
-	//	we add a random number to the div so we don't
-	//	have two with the same name.
-	this.strDivWrapperID = "divVolControl" + Number(Math.floor(Math.random() * 10000)).toString();
-	this.strDivKnob = "divVolKnob" + Number(Math.floor(Math.random() * 10000)).toString();
-
-	this.funcCallback = null;
-	this.strDivParent = null;
-	this.strStyleString = null;
-	
-	// we need this in case the DOM loses focus without throwing a mouseup event
-	this.bDirty = false;
-	
-	this.handleEvent = function (e) 
-	{ 
-		if (e.type == 'mousedown') 
-		{
-			this.volSelStart(e);
-		} 
-		else if (e.type == 'mousemove') 
-		{
-			this.volSelMove(e);
-		} 
-		else if (e.type == 'mouseup')
-		{
-			this.volSelStop(e);
-		}
-		
-	};
-
-	
-	this.draw = function(iYCoordFromTop)
-	{
-				
-		iCalcTop = 350 - iYCoordFromTop;
-	
-		if (iCalcTop > 243)
-			iCalcTop = 243;
-		else if (iCalcTop < 23)
-			iCalcTop = 23;
-	
-		document.getElementById(this.strDivKnob).setAttribute("style", "top:" +
-														Number(250 - iCalcTop).toString() +
-														"px; " + this.strStyleString);
-							
-	};
-	
-	this.init = function (strDivParent, funcCallBack) 
-	{
-		try
-		{	
-
-			this.funcCallBack = funcCallBack;
-		
-			this.strDivParent = strDivParent;
-			var divParent = document.getElementById(strDivParent);
-			
-			var divWrapper = document.createElement("div");
-			divWrapper.className = "vertselectboxwrapper";
-			divWrapper.id = this.strDivWrapperID;
-
-			
-			var divBack = document.createElement("div");
-			divBack.className = "vertselectbox";
-			divBack.setAttribute("style", 
-								 "background-image: url(" + 
-								 	objSkin.theme[objSkin.skinNum].player.volsliderback + 
-								 	");");
-			divWrapper.appendChild(divBack); 
-			
-			this.strStyleString = "background-image: url(" + 
-								  objSkin.theme[objSkin.skinNum].player.volsliderknob + 
-								  ");";
-			var divDisplay = document.createElement("div");
-			divDisplay.className = "vertselectknob";
-			divDisplay.id = this.strDivKnob;
-			divBack.appendChild(divDisplay); 
-			
-			divWrapper.addEventListener('mousedown', this, false);
-			divParent.appendChild(divWrapper);
-			
-			this.draw(225);
-		}
-		catch(e)
-		{
-			console.log(e);
-		}
-	};
-	
-	this.uninit = function()
-	{
-		var divKnob = document.getElementById(this.strDivWrapperID);
-		divKnob.removeEventListener('mousedown', this, false);
-		
-		this.strDivWrapperID = null;
-		this.strDivKnob = null;
-		this.funcCallback = null;
-		this.strDivParent = null;
-		this.strStyleString = null;
-	};
-	
-	this.setVisibility = function(bVisSet)
-	{
-		document.getElementById(this.strDivWrapperID).style.visibility = 
-												((bVisSet)?"visible":"hidden");
-	}
-	
-	this.volSelStart = function(e)
-	{
-		this.bDirty = true;
-	
-		var divWrapper = document.getElementById(this.strDivWrapperID);
-	
-		divWrapper.addEventListener('mousemove', this, false);
-		divWrapper.addEventListener('mouseup', this, false);
-	
-		this.draw(e.pageY);
-		this.retVol(e.pageY);
-	};
-	
-	// This is to avoid repeated divisions
-	this.fScale125 = 1/125;
-	
-	this.retVol = function(iVal)
-	{
-	
-		iCalcTop = 350 - iVal;
-	
-		if (iCalcTop > 243)
-			iCalcTop = 243;
-		else if (iCalcTop < 23)
-			iCalcTop = 0;
-		
-		console.log(iCalcTop * this.fScale125);
-		
-		this.funcCallBack(iCalcTop * this.fScale125);
-	
-	};
-	
-	this.volSelMove = function(e)
-	{
-		this.draw(e.pageY);
-		this.retVol(e.pageY);
-	};
-	
-	this.cleanUp = function()
-	{
-		if (this.bDirty)
-		{
-			var divWrapper = document.getElementById(this.strDivWrapperID);
-		
-			this.bDirty = false;
-		
-			divWrapper.removeEventListener('mousemove', this, false);
-			divWrapper.removeEventListener('mouseup', this, false);
-		}
-	};
-	
-	this.volSelStop = function(e)
-	{
-		var divWrapper = document.getElementById(this.strDivWrapperID);
-	
-		this.bDirty = false;
-	
-		divWrapper.removeEventListener('mousemove', this, false);
-		divWrapper.removeEventListener('mouseup', this, false);
-		
-		this.draw(e.pageY);
-		this.retVol(e.pageY);
-	};
-
-};
-
 var INV_PI = 1/3.14159265;
 
 function PalmKnobControl(fStart)
 {
-	this.controller = null;
 	this.angle = 0;
 	this.startAngle = 0;
 	this.slices = Math.PI/6;	// 12 slices
@@ -2144,27 +1363,19 @@ function PalmKnobControl(fStart)
 			this.rotateStop(e);
 		}
 	};
-
-	this.setVisible = function(bVisible)
-	{
-
-		if (this.bVis)
-			$("#"+this.strDivWrapperID).hide();
-		else
-			$("#"+this.strDivWrapperID).show();
-		
-		this.bVis = !this.bVis;
-		
-	};
 	
-	this.init = function(iLeftCoord, iTopCoord, iSize, strDivParent, funcCallBack, strLabelText) 
+	this.init = function(iLeftCoord, 
+						 iTopCoord, 
+						 iSize, 
+						 strDivParent, 
+						 funcCallBack, 
+						 strLabelText,
+						 strLeftColor,
+						 strRightClor)
 	{
 
 		this.funcCallBack = funcCallBack;
-	
-		this.originX = iSize/2 + iLeftCoord;
-		this.originY = iSize/2 + iTopCoord;
-	
+		
 		this.strDivParent = strDivParent;
 		var divParent = document.getElementById(strDivParent);
 		
@@ -2210,7 +1421,7 @@ function PalmKnobControl(fStart)
 								'-webkit-border-radius': Number(iSize/40).toString() + 'px',
 								'left': Number(iSize/2 - iSize/40).toString() + 'px',
 								'top': Number(iSize/4 + iSize/20).toString() + 'px',
-								'background-color': objSkin.theme[objSkin.skinNum].filter.leftcolor
+								'background-color': "#FFF"
 							}});
 		divDot.appendTo($(divDisplay));
 		divWrapper.appendChild(divDisplay);						
@@ -2229,8 +1440,7 @@ function PalmKnobControl(fStart)
 							Number(iSize/4).toString() + "px; -webkit-border-top-right-radius: " + 
 							Number(iSize/4).toString() + "px; -webkit-transform-origin: 0px " + 
 							Number(iSize/4).toString() + "px; " +
-							"background: " +
-									objSkin.theme[objSkin.skinNum].filter.rightcolor + ';';
+							'background: #FFF;';
 		
 		this.strStyleStringW = "top:" + Number(iSize/4).toString() + 
 							"px; left:" +
@@ -2244,8 +1454,7 @@ function PalmKnobControl(fStart)
 							"-webkit-transform-origin: " +
 								Number(iSize/4).toString() + "px " + 
 								Number(iSize/4).toString() + "px; " +
-							"background: " +
-									objSkin.theme[objSkin.skinNum].filter.leftcolor + ';';
+							"background: #000;";
 							
 		var divDisplay = document.createElement("div");
 		divDisplay.className = "rotateablebackcircb";
@@ -2270,8 +1479,6 @@ function PalmKnobControl(fStart)
 		divWrapper.appendChild(divDisplay); 
 		
 		divWrapper.addEventListener('mousedown', this, false);
-		
-		$(divWrapper).hide();
 		
 		divParent.appendChild(divWrapper);
 		
@@ -2299,6 +1506,12 @@ function PalmKnobControl(fStart)
 	
 	this.rotateStart = function(e) 
 	{
+	
+		var pos = $('#' + this.strDivWrapperID).offset();
+		var iSize = $('#' + this.strDivWrapperID).width();
+	
+		this.originX = iSize/2 + pos.left;
+		this.originY = iSize/2 + pos.top;
 	
 		if (this.active)
 			this.rotateStop();
@@ -2481,7 +1694,7 @@ function PalmKnobControl(fStart)
 	this.RestoreVal = function(fVal)
 	{
 		this.iRotateDeg = fVal;
-		this.convertAndDraw(fVal);
+		this.angle = this.convertAndDraw(fVal);
 	}
 	
 	this.convertAndDraw = function(fVal)
@@ -2501,616 +1714,3 @@ function PalmKnobControl(fStart)
 	
 };
 
-/*************************
- * Status Pill
- *
- * A bar that shows progress, and displays the string sent to it
- *************************/
-var StatusPill =
-{
-
-	divPill: 0,
-	iTime: -91,
-	
-	Animate: function(strDisplay)
-	{
-		this.divPill.css(
-		{
-			"clip": "rect(0px " + 
-							Number(this.iTime + 100).toString() + 
-						  "px 480px " + 
-							Number(this.iTime).toString() + 
-						  "px)"
-		});
-		
-		
-		if (this.iTime++ == 310)
-			this.iTime = -91;
-
-		this.divPill.text(strDisplay);
-	},
-	
-	Init: function(iTop)
-	{
-		this.divPill = $('<div></div>',
-						{
-							"id": "idSpashBackBox",
-							css: 
-							{
-								"position":"absolute",
-								"font-family":"cour",
-								"left":"20px",
-								"right":"20px",
-								"padding-left":"5px",
-								"top": Number(iTop).toString() + "px", 
-								"z-index":"2",
-								"height":"25px",
-								"-webkit-border-radius": "15px",
-								"color": objSkin.theme[objSkin.skinNum].splash.updatetxt,
-								"background-color": objSkin.theme[objSkin.skinNum].splash.updatebg
-							},
-							text: "Loading...."
-						}).appendTo($('#idSplashAddToDiv'));
-		this.Animate("Loading....");
-	}
-	
-}
-
-/**
- * Original license below (this code is licensed at per the rest of the code
- *	which is allowed under the MIT license so long as the below is present)
- * ------------------------ 
-  * 
- * Find more about the Spinning Wheel function at
- * http://cubiq.org/spinning-wheel-on-webkit-for-iphone-ipod-touch/11
- *
- * Copyright (c) 2009 Matteo Spinelli, http://cubiq.org/
- * Released under MIT license
- * http://cubiq.org/dropbox/mit-license.txt
- * 
- * Version 1.4 - Last updated: 2009.07.09
- * 
- */
-
-var SpinningWheel = {
-	cellHeight: 44,
-	friction: 0.003,
-	slotData: new Array(),
-	bRunOnce: 1,
-
-	/**
-	 *
-	 * Event handler
-	 *
-	 */
-
-	handleEvent: function (e) 
-	{
-		if (e.type == 'mousedown') {
-			this.lockScreen(e);
-			if (e.currentTarget.id == 'sw-cancel' || e.currentTarget.id == 'sw-done') {
-				this.tapDown(e);
-			} else if (e.currentTarget.id == 'sw-frame') {
-				this.scrollStart(e);
-			}
-		} else if (e.type == 'mousemove') {
-			this.lockScreen(e);
-			
-			if (e.currentTarget.id == 'sw-cancel' || e.currentTarget.id == 'sw-done') {
-				this.tapCancel(e);
-			} else if (e.currentTarget.id == 'sw-frame') {
-				this.scrollMove(e);
-			}
-		} 
-		else if ((e.type == 'mouseup') || (e.type == 'mouseout'))
-		{
-			if (e.currentTarget.id == 'sw-cancel' || e.currentTarget.id == 'sw-done') {
-				this.tapUp(e);
-			} else if (e.currentTarget.id == 'sw-frame') {
-				this.scrollEnd(e);
-			}
-		} else if (e.type == 'orientationchange') {
-			this.onOrientationChange(e);
-		} else if (e.type == 'scroll') {
-			this.onScroll(e);
-		}
-	},
-
-
-	/**
-	 *
-	 * Global events
-	 *
-	 */
-
-	onOrientationChange: function (e) 
-	{
-		window.scrollTo(0, 0);
-		this.swWrapper.style.top = window.innerHeight + window.pageYOffset + 'px';
-		this.calculateSlotsWidth();
-	},
-	
-	onScroll: function (e) 
-	{
-		this.swWrapper.style.top = window.innerHeight + window.pageYOffset + 'px';
-	},
-
-	lockScreen: function (e) 
-	{
-		e.preventDefault();
-		e.stopPropagation();
-	},
-
-
-	/**
-	 *
-	 * Initialization
-	 *
-	 */
-
-	reset: function () 
-	{
-		this.slotEl = [];
-
-		this.activeSlot = null;
-		
-		this.swWrapper = undefined;
-		this.swSlotWrapper = undefined;
-		this.swSlots = undefined;
-		this.swFrame = undefined;
-	},
-
-	calculateSlotsWidth: function () 
-	{
-		var div = this.swSlots.getElementsByTagName('div');
-		for (var i = 0; i < div.length; i += 1) {
-			this.slotEl[i].slotWidth = div[i].offsetWidth;
-		}
-	},
-
-	create: function () 
-	{
-		var i, l, out, ul, div;
-
-		this.bRunOnce = 0;
-		
-		this.reset();	// Initialize object variables
-
-		// Create the Spinning Wheel main wrapper
-		div = document.createElement('div');
-		div.id = 'sw-wrapper';
-		// Place the SW down the actual viewing screen
-		div.style.top = window.innerHeight + window.pageYOffset + 'px';
-		div.style.webkitTransitionProperty = '-webkit-transform';
-		div.innerHTML = '<div id="sw-header"><div id="sw-cancel">Cancel</' + 
-						'div><div id="sw-done">Apply</' + 
-						'div></' + 
-						'div><div id="sw-slots-wrapper"><div id="sw-slots"></' 
-						+ 'div></' + 'div><div id="sw-frame"></' + 'div>';
-						
-		document.body.appendChild(div);
-
-		this.swWrapper = div;													// The SW wrapper
-		this.swSlotWrapper = document.getElementById('sw-slots-wrapper');		// Slots visible area
-		this.swSlots = document.getElementById('sw-slots');						// Pseudo table element (inner wrapper)
-		this.swFrame = document.getElementById('sw-frame');						// The scrolling controller
-
-		// Create HTML slot elements
-		for (l = 0; l < this.slotData.length; l += 1) {
-			// Create the slot
-			ul = document.createElement('ul');
-			out = '';
-			for (i in this.slotData[l].values) {
-				out += '<li>' + this.slotData[l].values[i] + '<' + '/li>';
-			}
-			ul.innerHTML = out;
-
-			div = document.createElement('div');		// Create slot container
-			div.className = this.slotData[l].style;		// Add styles to the container
-			div.appendChild(ul);
-	
-			// Append the slot to the wrapper
-			this.swSlots.appendChild(div);
-			
-			ul.slotPosition = l;			// Save the slot position inside the wrapper
-			ul.slotYPosition = 0;
-			ul.slotWidth = 0;
-			ul.slotMaxScroll = this.swSlotWrapper.clientHeight - ul.clientHeight;
-			
-			// Add default transition
-			ul.style.webkitTransitionTimingFunction = 'cubic-bezier(0, 0, 0.2, 1)';
-			
-			this.slotEl.push(ul);			// Save the slot for later use
-			
-			// Place the slot to its default position (if other than 0)
-			if (this.slotData[l].defaultValue) {
-				this.scrollToValue(l, this.slotData[l].defaultValue);	
-			}
-		}
-		
-		this.calculateSlotsWidth();
-		
-		// Global events
-		document.addEventListener('mousedown', this, false);			// Prevent page scrolling
-		document.addEventListener('mousemove', this, false);			// Prevent page scrolling
-		// Optimize SW on orientation change
-		window.addEventListener('orientationchange', this, true);		
-		window.addEventListener('scroll', this, true);				// Reposition SW on page scroll
-
-		// Cancel/Done buttons events
-		document.getElementById('sw-cancel').addEventListener('mousedown', this, false);
-		document.getElementById('sw-done').addEventListener('mousedown', this, false);
-
-		// Add scrolling to the slots
-		this.swFrame.addEventListener('mousedown', this, false);
-	},
-
-	open: function () 
-	{
-		if (this.bRunOnce)
-			this.create();
-		else
-			$('#sw-wrapper').show();
-			
-		this.swWrapper.style.webkitTransitionTimingFunction = 'ease-out';
-		this.swWrapper.style.webkitTransitionDuration = '400ms';
-		this.swWrapper.style.webkitTransform = 'translate3d(0, -300px, 0)';
-	},
-	
-	
-	/**
-	 *
-	 * Unload
-	 *
-	 */
-
-	unload: function () 
-	{
-		clearTimeout(this.timeoutCheck);
-
-		this.swFrame.removeEventListener('mousedown', this, false);
-
-		document.getElementById('sw-cancel').removeEventListener('mousedown', this, false);
-		document.getElementById('sw-done').removeEventListener('mousedown', this, false);
-
-		document.removeEventListener('mousedown', this, false);
-		document.removeEventListener('mousemove', this, false);
-		window.removeEventListener('orientationchange', this, true);
-		window.removeEventListener('scroll', this, true);
-		
-		this.slotData = [];
-		this.cancelAction = function () {
-			return false;
-		};
-		
-		this.cancelDone = function () {
-			return true;
-		};
-		
-		this.reset();
-		
-		document.body.removeChild(document.getElementById('sw-wrapper'));
-	},
-	
-	close: function () 
-	{
-		this.swWrapper.style.webkitTransitionTimingFunction = 'ease-in';
-		this.swWrapper.style.webkitTransitionDuration = '400ms';
-		this.swWrapper.style.webkitTransform = 'translate3d(0, 0, 0)';
-		
-		$('#sw-wrapper').hide();
-		this.timeoutCheck = setTimeout(function() {SpinningWheel.backWithinBoundaries();}, 200);
-	},
-
-
-	/**
-	 *
-	 * Generic methods
-	 *
-	 */
-
-	addSlot: function (values, style, defaultValue) 
-	{
-		if (!style) {
-			style = '';
-		}
-		
-		style = style.split(' ');
-
-		for (var i = 0; i < style.length; i += 1) {
-			style[i] = 'sw-' + style[i];
-		}
-		
-		style = style.join(' ');
-
-		var obj = { 'values': values, 'style': style, 'defaultValue': defaultValue };
-		this.slotData.push(obj);
-	},
-
-	getSelectedValues: function () 
-	{
-		var index, count,
-		    i, l,
-			keys = [], values = [];
-
-		for (i in this.slotEl) {
-			// Remove any residual animation
-			clearTimeout(this.timeoutCheck);
-			//this.slotEl[i].style.webkitTransitionDuration = '0';
-
-			if (this.slotEl[i].slotYPosition > 0) {
-				this.setPosition(i, 0);
-			} else if (this.slotEl[i].slotYPosition < this.slotEl[i].slotMaxScroll) {
-				this.setPosition(i, this.slotEl[i].slotMaxScroll);
-			}
-
-			index = -Math.round(this.slotEl[i].slotYPosition / this.cellHeight);
-
-			count = 0;
-			for (l in this.slotData[i].values) {
-				if (count == index) {
-					keys.push(l);
-					values.push(this.slotData[i].values[l]);
-					break;
-				}
-				
-				count += 1;
-			}
-		}
-
-		return { 'keys': keys, 'values': values };
-	},
-
-
-	/**
-	 *
-	 * Rolling slots
-	 *
-	 */
-
-	setPosition: function (slot, pos) 
-	{
-		this.slotEl[slot].slotYPosition = pos;
-		this.slotEl[slot].style.webkitTransform = 'translate3d(0, ' + pos + 'px, 0)';
-	},
-	
-	scrollStart: function (e) 
-	{
-		// Find the clicked slot
-		var xPos = e.clientX - this.swSlots.offsetLeft;
-		// Clicked position minus left offset (should be 11px)
-
-		// Find tapped slot
-		var slot = 0;
-		for (var i = 0; i < this.slotEl.length; i += 1) {
-			slot += this.slotEl[i].slotWidth;
-			
-			if (xPos < slot) {
-				this.activeSlot = i;
-				break;
-			}
-		}
-
-		// If slot is readonly do nothing
-		if (this.slotData[this.activeSlot].style.match('readonly')) {
-			this.swFrame.removeEventListener('mousemove', this, false);
-			this.swFrame.removeEventListener('mouseup', this, false);
-			return false;
-		}
-
-		clearTimeout(this.timeoutCheck);	// Remove transition event (if any)
-		// Remove any residual transition
-		this.slotEl[this.activeSlot].style.webkitTransitionDuration = '0';		
-		
-		// Stop and hold slot position
-		var theTransform = window.getComputedStyle(this.slotEl[this.activeSlot]).webkitTransform;
-		theTransform = new WebKitCSSMatrix(theTransform).m42;
-		if (theTransform != this.slotEl[this.activeSlot].slotYPosition) {
-			this.setPosition(this.activeSlot, theTransform);
-		}
-		
-		this.startY = e.clientY;
-		this.scrollStartY = this.slotEl[this.activeSlot].slotYPosition;
-		this.scrollStartTime = e.timeStamp;
-
-		this.swFrame.addEventListener('mousemove', this, false);
-		this.swFrame.addEventListener('mouseup', this, false);
-		this.swFrame.addEventListener('mouseout', this, false);
-		
-		return true;
-	},
-
-	scrollMove: function (e) 
-	{
-		var topDelta = e.clientY - this.startY;
-
-		if (this.slotEl[this.activeSlot].slotYPosition > 0 || 
-					this.slotEl[this.activeSlot].slotYPosition < 
-					this.slotEl[this.activeSlot].slotMaxScroll) 
-		{
-			topDelta /= 2;
-		}
-		
-		this.setPosition(this.activeSlot, this.slotEl[this.activeSlot].slotYPosition + topDelta);
-		this.startY = e.clientY;
-
-		// Prevent slingshot effect
-		if (e.timeStamp - this.scrollStartTime > 80) {
-			this.scrollStartY = this.slotEl[this.activeSlot].slotYPosition;
-			this.scrollStartTime = e.timeStamp;
-		}
-	},
-	
-	scrollEnd: function (e) 
-	{
-		this.swFrame.removeEventListener('mousemove', this, false);
-		this.swFrame.removeEventListener('mouseup', this, false);
-
-		// If we are outside of the boundaries, let's go back to the sheepfold
-		if (this.slotEl[this.activeSlot].slotYPosition > 0 || 
-					this.slotEl[this.activeSlot].slotYPosition < 
-					this.slotEl[this.activeSlot].slotMaxScroll) 
-		{
-			this.scrollTo(this.activeSlot, 
-						  (this.slotEl[this.activeSlot].slotYPosition > 0) ? 
-								0 : 
-								this.slotEl[this.activeSlot].slotMaxScroll);
-			return false;
-		}
-
-		// Lame formula to calculate a fake deceleration
-		var scrollDistance = this.slotEl[this.activeSlot].slotYPosition - this.scrollStartY;
-
-		// The drag session was too short
-		if (scrollDistance < this.cellHeight / 1.5 && scrollDistance > -this.cellHeight / 1.5) {
-			if (this.slotEl[this.activeSlot].slotYPosition % this.cellHeight) {
-				this.scrollTo(this.activeSlot, Math.round(this.slotEl[this.activeSlot].slotYPosition / this.cellHeight) * this.cellHeight, '100ms');
-			}
-
-			return false;
-		}
-
-		var scrollDuration = e.timeStamp - this.scrollStartTime;
-
-		var newDuration = (2 * scrollDistance / scrollDuration) / this.friction;
-		var newScrollDistance = (this.friction / 2) * (newDuration * newDuration);
-		
-		if (newDuration < 0) {
-			newDuration = -newDuration;
-			newScrollDistance = -newScrollDistance;
-		}
-
-		var newPosition = this.slotEl[this.activeSlot].slotYPosition + newScrollDistance;
-
-		if (newPosition > 0) {
-			// Prevent the slot to be dragged outside the visible area (top margin)
-			newPosition /= 2;
-			newDuration /= 3;
-
-			if (newPosition > this.swSlotWrapper.clientHeight / 4) {
-				newPosition = this.swSlotWrapper.clientHeight / 4;
-			}
-		} else if (newPosition < this.slotEl[this.activeSlot].slotMaxScroll) {
-			// Prevent the slot to be dragged outside the visible area (bottom margin)
-			newPosition = (newPosition - this.slotEl[this.activeSlot].slotMaxScroll) / 2 + this.slotEl[this.activeSlot].slotMaxScroll;
-			newDuration /= 3;
-			
-			if (newPosition < this.slotEl[this.activeSlot].slotMaxScroll - this.swSlotWrapper.clientHeight / 4) {
-				newPosition = this.slotEl[this.activeSlot].slotMaxScroll - this.swSlotWrapper.clientHeight / 4;
-			}
-		} else {
-			newPosition = Math.round(newPosition / this.cellHeight) * this.cellHeight;
-		}
-
-		this.scrollTo(this.activeSlot, Math.round(newPosition), Math.round(newDuration) + 'ms');
- 
-		return true;
-	},
-
-	scrollTo: function (slotNum, dest, runtime) 
-	{
-		this.slotEl[slotNum].style.webkitTransitionDuration = runtime ? runtime : '100ms';
-		this.setPosition(slotNum, dest ? dest : 0);
-
-		// If we are outside of the boundaries go back to the sheepfold
-		if (this.slotEl[slotNum].slotYPosition > 0 || 
-					this.slotEl[slotNum].slotYPosition < 
-					this.slotEl[slotNum].slotMaxScroll) 
-		{
-			this.timeoutCheck = setTimeout(function() {SpinningWheel.backWithinBoundaries();}, 200);
-		}
-		
-		//this.scrollEndAction();
-	},
-	
-	scrollToValue: function (slot, value) 
-	{
-		var yPos, count, i;
-
-		setTimeout(this.timeoutCheck);
-		this.slotEl[slot].style.webkitTransitionDuration = '0';
-		
-		count = 0;
-		for (i in this.slotData[slot].values) {
-			if (i == value) {
-				yPos = count * this.cellHeight;
-				this.setPosition(slot, yPos);
-				break;
-			}
-			
-			count -= 1;
-		}
-	},
-	
-	backWithinBoundaries: function () 
-	{
-		clearTimeout(this.timeoutCheck);
-
-		for (var i=0; i<this.slotEl.length; i++)
-		{
-			this.scrollTo(i, this.slotEl[i].slotYPosition > 0 ? 
-										0 : 
-										this.slotEl[i].slotMaxScroll, '150ms');
-		}
-		return false;
-	},
-
-
-	/**
-	 *
-	 * Buttons
-	 *
-	 */
-
-	tapDown: function (e) 
-	{
-		e.currentTarget.addEventListener('mousemove', this, false);
-		e.currentTarget.addEventListener('mouseup', this, false);
-		e.currentTarget.className = 'sw-pressed';
-	},
-
-	tapCancel: function (e) 
-	{
-		e.currentTarget.removeEventListener('mousemove', this, false);
-		e.currentTarget.removeEventListener('mouseup', this, false);
-		e.currentTarget.className = '';
-	},
-	
-	tapUp: function (e) 
-	{
-		this.tapCancel(e);
-
-		if (e.currentTarget.id == 'sw-cancel') {
-			this.cancelAction();
-		} else {
-			this.doneAction();
-		}
-		
-		this.close();
-	},
-
-	setCancelAction: function (action) 
-	{
-		this.cancelAction = action;
-	},
-
-	setDoneAction: function (action) 
-	{
-		this.doneAction = action;
-	},
-	
-	setScrollEndAction: function (action)
-	{
-		this.scrollEndAction = action;
-	},
-	
-	cancelAction: function () 
-	{
-		return false;
-	},
-
-	cancelDone: function () 
-	{
-		return true;
-	}
-};

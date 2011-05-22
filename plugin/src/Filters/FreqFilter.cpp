@@ -20,6 +20,7 @@ http://www.smartelectronix.com/musicdsp/text/filters005.txt
 
 
 #include "EQFilter.h"
+#include "GraphEQ.h"
 #include <stdint.h>
 #include <limits.h>
 #include <stdio.h>
@@ -33,7 +34,10 @@ http://www.smartelectronix.com/musicdsp/text/filters005.txt
 #define BIQUAD_SFACTOR_SHIFT	11*/
 
 
+#ifndef MAX
 #define MAX(a,b) ((a)<(b)?(b):(a))
+#endif
+
 #define ABS(a)	 ((a)<0 ?(-(a)):(a))
 
 using namespace std;
@@ -68,9 +72,19 @@ char* BassTrebleFilter::GetMid()
 void BassTrebleFilter::SetVol(float fBass)
 {
 	//ReportError1("Bass Set=%f", fBass);
-	m_sVol = ((1<<10)*0.85) * fBass;
+	m_sVol = VOL_NORM_LEVEL * fBass;
 	//ReportError1("Bass Set(fixed)=%i", m_sBassGain);
 };
+// Set volume using Q10 number;
+void BassTrebleFilter::SetVolFix(int16_t iVol)
+{
+	m_sVol = iVol;
+}
+int16_t BassTrebleFilter::GetVolFix()
+{
+	return m_sVol;
+}
+
 char* BassTrebleFilter::GetVol()
 {
 	char *str = (char *) malloc(10);
@@ -222,6 +236,14 @@ void BassTrebleFilter::ProcessSampleIIR(int16_t *insample, int16_t *outsample,
 		iResult *= m_sVol;
 		iResult >>= 10;
 
+		if (iResult > SHRT_MAX)
+		{
+			iResult = SHRT_MAX;
+		}
+		else if (iResult < SHRT_MIN)
+		{
+			iResult = SHRT_MIN;
+		}
 
 		*outpos = (int16_t) iResult;
 		outpos++;
@@ -630,3 +652,62 @@ inline int16_t BiQuadFilter::process(int16_t inSamp)
     return y0;
 }
 
+void GraphEQ::ProcessSampleIIR(int16_t *insample, int16_t *outsample,
+										size_t Requested, int16_t iChan)
+{
+	int16_t *outpos = outsample;
+	int16_t sample;
+	int32_t iResult;
+	int32_t iTemp;
+
+
+	while (outpos < (outsample + Requested))
+	{
+		sample = *insample++;
+
+		iTemp = m_bqfIIRBassFilter[iChan].process(sample) * m_sBassGain;
+		iResult = iTemp >> FILTER_GAIN_SCALE;
+
+
+		iTemp = m_bqfIIRTrebleFilter[iChan].process(sample) * m_sTrebleGain;
+		iResult += iTemp >> FILTER_GAIN_SCALE;
+
+
+		for (int i=0; i<NUM_MID_EQ_FILT; i++)
+		{
+			iTemp = m_bqfIIRMidFilter[iChan][i].process(sample) * m_sMidRangeGain[i];
+			iResult += iTemp >> FILTER_GAIN_SCALE;
+		}
+
+		iResult *= m_sVol;
+		iResult >>= 10;
+
+		if (iResult > SHRT_MAX)
+		{
+			iResult = SHRT_MAX;
+		}
+		else if (iResult < SHRT_MIN)
+		{
+			iResult = SHRT_MIN;
+		}
+
+		*outpos = (int16_t) iResult;
+		outpos++;
+	}
+}
+
+void GraphEQ::SetIIRFilterCoef( )
+{
+	for (int i=0;i<NUM_CHANNELS;i++)
+	{
+		// First set the low pass filter
+		m_bqfIIRBassFilter[i].setLowPass(20, DEST_FREQ, 0, L_H_PASS_Q_FACTOR);
+		// Next set the high pass filter
+		m_bqfIIRTrebleFilter[i].setHighPass(10240, DEST_FREQ, 0, L_H_PASS_Q_FACTOR);
+		// Finally set set the bandpass
+		m_bqfIIRMidFilter[i][0].setBandPass(40, 80, DEST_FREQ);
+		m_bqfIIRMidFilter[i][1].setBandPass(160, 320, DEST_FREQ);
+		m_bqfIIRMidFilter[i][2].setBandPass(640, 1280, DEST_FREQ);
+		m_bqfIIRMidFilter[i][3].setBandPass(2560, 5120, DEST_FREQ);
+	}
+}

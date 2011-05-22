@@ -12,6 +12,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <syslog.h>
 #include <stdlib.h>
 #include "WormDebug.h"
 
@@ -75,10 +76,27 @@ inline void operator--(eEnumType& eVal, int)  \
 
 // Memory Macros
 #define MEM_ALIGN_AMT 32
+#ifdef DEBUG
+inline void *WormMalloc(char *filename, int line, size_t size)
+#else
 inline void *WormMalloc(size_t size)
+#endif
 {
 	void *temp;
+
+#ifdef DEBUG
+	int32_t iErr = posix_memalign(&temp, MEM_ALIGN_AMT, size);
+
+	if (iErr != 0)
+	{
+		syslog(LOG_WARNING, "[MemEvent]: ***PROBLEM with memalign", iErr);
+		assert(0);
+	}
+	syslog(LOG_WARNING, "[MemEvent]: Reading Mem %s (%i) at mem: %i\n", filename, line, temp);
+	fprintf(stderr, "[MemEvent]: Reading Mem %s (%i) at mem: %i\n", filename, line, temp);
+#else
 	posix_memalign(&temp, MEM_ALIGN_AMT, size);
+#endif
 	return temp;
 }
 
@@ -97,8 +115,13 @@ inline void *WormMalloc(size_t size)
 // This is a function to copy a string and make sure any " are
 //	marked with an escape character
 extern char *SafeStringCopy(const char *cstr);
+extern char *ReallocSafeStringCopy(char *existingDest,
+								   int32_t *curAllocSize,
+								   const char *cstr);
 
 extern int32_t SafeStringLen(char *);
+
+extern char *ReallocStringCopy(char *dest, int32_t *size, const char *cstr);
 
 extern int QuickExtCheck(const char *filename);
 

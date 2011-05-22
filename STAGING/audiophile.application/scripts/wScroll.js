@@ -23,10 +23,10 @@ var WSCROLL_FLICK_RIGHT = 1;
 
 var SCROLL_DRAW_SIMP = -1;
 
-function ScrollBox()
+function wScroll()
 {
 
-	this.iFlickThresh = 15;
+	this.iFlickThresh = 25;
 
 	this.fVal = 1.0;
 
@@ -43,22 +43,27 @@ function ScrollBox()
 	this.bFixPalmFDown = false;
 	this.bFixPalmFUp = false;
 	
+	this.funcFlickEvent = 0;
 	this.funcCallBack = 0;
+	this.ulParent = 0;
+	
+	this.ScrollbarWrapper = 0;
+	this.ScrollbarIndicator = 0;
 	
 	this.handleEvent = function (e) 
 	{ 
-	
+
 		if (e.type == START_EV)
 		{
-			this.scrollBoxMD(e);
+			this.wScrollMD(e);
 		} 
 		else if (e.type == MOVE_EV)
 		{
-			this.scrollBoxMM(e);
+			this.wScrollMM(e);
 		} 
 		else if (e.type == END_EV)
 		{
-			this.scrollBoxMU(e);
+			this.wScrollMU(e);
 		}
 		else if (e.type == 'mouseover')
 		{
@@ -83,12 +88,12 @@ function ScrollBox()
 		
 	};
 	
-	ScrollBox.prototype.ensureScroll = function()
+	wScroll.prototype.ensureScroll = function()
 	{
 		this._indicatorPos(1);
 	}
 	
-	ScrollBox.prototype.pickItem = function(e)
+	wScroll.prototype.pickItem = function(e)
 	{
 		e.stopPropagation();
 		
@@ -105,28 +110,15 @@ function ScrollBox()
 		if (domTarget.nodeName.toLowerCase() == "#text")
 			domTarget = $(domTarget).parent().get(0);
 
-	
-		if (this.iMode == LIST_TYPE_INDEX)
+		if((domTarget.nodeName == "LI") && 
+			(domTarget.className != "noshrink")) 
 		{
-	
-			if((domTarget.nodeName == "LI") && 
-				(domTarget.className != "noshrink")) 
-			{
-				sceneList.IndexClick(domTarget.id);
-			}
-		}
-		else if (this.iMode == LIST_TYPE_FF)
-		{
-			if((domTarget.nodeName == "LI") && 
-				(domTarget.className != "noshrink")) 
-			{
-				sceneList.FFClick(domTarget.id);
-			}
+			this.funcCallBack(e, domTarget);
 		}
 
 	}
 	
-	ScrollBox.prototype.mouseOutFix = function (e)
+	wScroll.prototype.mouseOutFix = function (e)
 	{
 		if((e.pageY < 475) && (e.pageY > 61)) 		
 			return;
@@ -145,7 +137,6 @@ function ScrollBox()
 		var duration = event.timeStamp - that.startTime;
 		var newPosY = that.y;
 		
-
 		
 		if (!that.moved) 
 		{
@@ -185,99 +176,42 @@ function ScrollBox()
 		that._resetPos(200);
 	}
 	
-	ScrollBox.prototype._bind = function (type, el) 
+	wScroll.prototype._bind = function (type, el) 
 	{
 		if (!(el))
 			el = this.divWrapper;
 		el.addEventListener(type, this, false);
 	}
 
-	ScrollBox.prototype._unbind = function (type, el) 
+	wScroll.prototype._unbind = function (type, el) 
 	{
 		if (!(el))
 			el = this.divWrapper;
 		el.removeEventListener(type, this, false);
 	}
 	
-	ScrollBox.prototype.pinchStart = function(e)
+	wScroll.prototype.pinchStart = function(e)
 	{
 		e.stopPropagation();
 		this.bIgnoreOutEvents = true;
 		
 		this.noScroll = true;
 		
-		var ulParent = document.getElementById(this.strParent);
-		//var divWrapper = ulParent.parentElement;
-		
-		/*ulParent.addEventListener('gesturechange', this, false);
-		ulParent.addEventListener('gestureend', this, false);*/
-	
-		
-		this.iFontSaved = this.iCurFontSize;
-		
-		this.iFontLast = this.iCurFontSize;
-		
-		var touchCenterY = e.centerY;
-	
-		var matrix = new WebKitCSSMatrix(
-								window.getComputedStyle(ulParent, 
-														null).webkitTransform
-							);
-							
-		var iStablePoint = touchCenterY - this.divWrapper.offsetTop;
-	
-		iStablePoint -= matrix.m42;
-		
-		if (this.iCurFontSize < 12)
-			this.iRefSize = this.iZeroValSize;
-		else if (this.iCurFontSize > 30)
-			this.iRefSize = this.iFullFontSize;
-		else
-			this.iRefSize = this.iCharSizeFunc(this.iCurFontSize);
-		
-		this.iSepCount = 0;
-		var iNumChildren = this.arraySepChildren[this.iSepCount++];
-		this.iLiCount = 0;
-		var iTempHeight = iNumChildren * this.iRefSize + this.iSepSize;
-		var iFigureHeight = 0;
-			
-		while ((iFigureHeight + iTempHeight) < iStablePoint)
-		{
-			iFigureHeight += iTempHeight;
-			this.iLiCount += iNumChildren;
-			iNumChildren = this.arraySepChildren[this.iSepCount++];
-			iTempHeight = iNumChildren * this.iRefSize + this.iSepSize;
-		}
-	
-		iTempHeight = iStablePoint - (iFigureHeight + this.iSepSize);
 
-		
-		if (iTempHeight > 0)
-			this.iLiCount += Math.floor(iTempHeight/this.iRefSize);
-		
-		if (this.iLiCount > this.iTotalLiCount)
-			this.iLiCount = this.iTotalLiCount;
 	}
 	
-	ScrollBox.prototype.pinchEnd = function(e)
+	wScroll.prototype.pinchEnd = function(e)
 	{
 		e.stopPropagation();
 	
 		this.bIgnoreOutEvents = false;
 	
 		this.noScroll = false;
-	
-		/*var ulParent = document.getElementById(this.strParent);
-		var divWrapper = ulParent.parentElement;
-		
-		ulParent.removeEventListener('gesturechange', this, false);
-		ulParent.removeEventListener('gestureend', this, false);*/
-		
-		this.iCurFontSize = this.iNewFontSize;
+
 	}
 	
 	
-	ScrollBox.prototype._timedScroll = function (destY, runtime) 
+	wScroll.prototype._timedScroll = function (destY, runtime) 
 	{
 		var that = this;
 		var startY = that.y;
@@ -310,7 +244,7 @@ function ScrollBox()
 		}, 20);
 	};
 	
-	ScrollBox.prototype._transitionEnd = function (e) 
+	wScroll.prototype._transitionEnd = function (e) 
 	{		
 		var that = this;
 	
@@ -320,7 +254,7 @@ function ScrollBox()
 		that._indicatorPos(0);
 	};
 
-	ScrollBox.prototype._momentum = function (dist, time, maxDistUpper, maxDistLower, size) 
+	wScroll.prototype._momentum = function (dist, time, maxDistUpper, maxDistLower, size) 
 	{
 		var that = this;
 		var deceleration = 0.0006;
@@ -350,7 +284,7 @@ function ScrollBox()
 		return { dist: newDist, time: Math.round(newTime) };
 	};
 			
-	ScrollBox.prototype.scrollBoxMD = function(event)
+	wScroll.prototype.wScrollMD = function(event)
 	{
 		var that = this;
 		var point = hasTouch ? event.changedTouches[0] : event;
@@ -398,7 +332,7 @@ function ScrollBox()
 		that._indicatorPos(1);
 	};
 	
-	ScrollBox.prototype.scrollBoxMU = function(event)
+	wScroll.prototype.wScrollMU = function(event)
 	{
 		
 		var that = this;
@@ -460,7 +394,7 @@ function ScrollBox()
 		that._resetPos(200);
 	};
 
-	ScrollBox.prototype._resetPos = function (time) 
+	wScroll.prototype._resetPos = function (time) 
 	{
 		var that = this;
 		var resetY = that.y;
@@ -487,7 +421,7 @@ function ScrollBox()
 		that.scrollTo(resetY, time);
 	};
 
-	ScrollBox.prototype.scrollTo = function (y, time, relative) 
+	wScroll.prototype.scrollTo = function (y, time, relative) 
 	{
 		var that = this;
 
@@ -500,7 +434,6 @@ function ScrollBox()
 		that.moved = true;
 		this.bAllowClick = false;
 		
-		var ulParent = document.getElementById(this.strParent);
 		if (time)
 		{
 			that.transitionEnd = setTimeout(function () {that._transitionEnd();}, time+2);
@@ -508,7 +441,7 @@ function ScrollBox()
 		that._timedScroll(y, time);
 	};
 	
-	ScrollBox.prototype._transitionTime = function (time) 
+	wScroll.prototype._transitionTime = function (time) 
 	{
 		/*var that = this;
 		
@@ -517,7 +450,7 @@ function ScrollBox()
 		ulParent.style.webkitTransitionDuration = time;*/
 	};
 	
-	ScrollBox.prototype.scrollBoxMM = function(event)
+	wScroll.prototype.wScrollMM = function(event)
 	{
 		var that = this;
 		var point = hasTouch ? event.changedTouches[0] : event;
@@ -545,11 +478,13 @@ function ScrollBox()
 			
                 if (that.pointX > that.startX)
                 {
-                    that.funcFlickEvent(event, WSCROLL_FLICK_RIGHT);
+					if (that.funcFlickEvent)
+						that.funcFlickEvent(event, WSCROLL_FLICK_RIGHT);
                 }
                 else
                 {
-                    that.funcFlickEvent(event, WSCROLL_FLICK_LEFT);
+					if (that.funcFlickEvent)
+						that.funcFlickEvent(event, WSCROLL_FLICK_LEFT);
                 }
         }
 		
@@ -588,7 +523,7 @@ function ScrollBox()
 		}
 	};
 	
-	ScrollBox.prototype._pos = function (y) 
+	wScroll.prototype._pos = function (y) 
 	{
 		clearTimeout(this.setInterval);
 		
@@ -601,31 +536,13 @@ function ScrollBox()
 		else if (that.y < ((-1 * this.scrollerH) + this.wrapperH/4))
 			that.y = ((-1 * this.scrollerH) + this.wrapperH/4);
 		
-		var ulParent = document.getElementById(this.strParent);
-		ulParent.style.webkitTransform = 'translate3d( 0px,' + that.y + 'px, 0)';
+		this.ulParent.style.webkitTransform = 'translate3d( 0px,' + that.y + 'px, 0)';
 
 		that._indicatorPos(1);
 	};
 	
-	ScrollBox.prototype.printHeight = function()
-	{
-		try
-		{
-			var that = this;
-
-			this.divWrapper.setAttribute("style", "font-size: " + this.findHeight + "px;");
-			
-			var iNewLiSize = document.getElementById("0").clientHeight;
-			
-			
-			if (this.findHeight < 0)
-				clearInterval(this.getValInterval);
-
-		} catch(e) {console.log ("WTF: " + e) }
-		
-	}
 	
-	ScrollBox.prototype.ListDestroy = function()
+	wScroll.prototype.ListDestroy = function()
 	{
 		this._unbind(START_EV);
 		this._unbind("gesturestart", this.touchPad);
@@ -645,37 +562,35 @@ function ScrollBox()
 		
 		this._unbindScrollbar();
 		
-		var ulParent = document.getElementById(this.strParent);
-		$('#idUlList').empty();
 		
 		document.removeEventListener("mouseout", this, false);
 		
 	}
 	
 	
-	ScrollBox.prototype._unbindScrollbar = function ()
+	wScroll.prototype._unbindScrollbar = function ()
 	{
 		var that = this;
 		var doc = document;
 		var dir = 'v';
 	
-		if (that[dir + 'ScrollbarWrapper']) 
+		if (that.ScrollbarWrapper) 
 		{
-			that[dir + 'ScrollbarIndicator'].style.webkitTransform = '';	// Should free some mem
-			that[dir + 'ScrollbarWrapper'].parentNode.removeChild(that[dir + 'ScrollbarWrapper']);
-			that[dir + 'ScrollbarWrapper'] = null;
-			that[dir + 'ScrollbarIndicator'] = null;
+			that.ScrollbarWrapper.style.webkitTransform = '';	// Should free some mem
+			that.ScrollbarWrapper.parentNode.removeChild(that.ScrollbarWrapper);
+			that.ScrollbarWrapper = null;
+			that.ScrollbarIndicator = null;
 		}
 	}
 	
 	
-	ScrollBox.prototype._scrollbar = function () 
+	wScroll.prototype._scrollbar = function () 
 	{
 		var that = this;
 		var doc = document;
 		var dir = 'v';
 
-		if (!that[dir + 'ScrollbarWrapper']) 
+		if (!that.ScrollbarWrapper) 
 		{
 			// Create the scrollbar wrapper
 			bar = doc.createElement('div');
@@ -690,7 +605,7 @@ function ScrollBox()
 			bar.style.cssText += 'pointer-events:none; overflow:hidden; opacity: 1.0px;';
 
 			that.divWrapper.appendChild(bar);
-			that[dir + 'ScrollbarWrapper'] = bar;
+			that.ScrollbarWrapper = bar;
 
 			// Create the scrollbar indicator
 			bar = doc.createElement('div');
@@ -708,8 +623,8 @@ function ScrollBox()
 								 '-webkit-transition-duration:0;' + 
 								 '-webkit-transform:translate3d(0,0,0)';
 
-			that[dir + 'ScrollbarWrapper'].appendChild(bar);
-			that[dir + 'ScrollbarIndicator'] = bar;
+			that.ScrollbarWrapper.appendChild(bar);
+			that.ScrollbarIndicator = bar;
 		}
 
 
@@ -719,7 +634,7 @@ function ScrollBox()
 													that.vScrollbarSize / 
 													that.scrollerH), 
 								8);
-		that.vScrollbarIndicator.style.height = that.vScrollbarIndicatorSize + 'px';
+		that.ScrollbarIndicator.style.height = that.vScrollbarIndicatorSize + 'px';
 		that.vScrollbarMaxScroll = that.vScrollbarSize - that.vScrollbarIndicatorSize;
 		that.vScrollbarProp = that.vScrollbarMaxScroll / that.maxScrollY;
 
@@ -729,7 +644,7 @@ function ScrollBox()
 	}
 	
 	
-	ScrollBox.prototype._indicatorPos = function (hidden) 
+	wScroll.prototype._indicatorPos = function (hidden) 
 	{
 		var that = this;
 		var dir = 'v';
@@ -742,34 +657,31 @@ function ScrollBox()
 		if (pos < 0) 
 		{
 			pos = pos + pos*3;
-			if (that[dir + 'ScrollbarIndicatorSize'] + pos < 9) 
-				pos = -that[dir + 'ScrollbarIndicatorSize'] + 8;
+			if (that.vScrollbarIndicatorSize + pos < 9) 
+				pos = -that.vScrollbarIndicatorSize + 8;
 		}
-		else if (pos > that[dir + 'ScrollbarMaxScroll']) 
+		else if (pos > that.vScrollbarMaxScroll) 
 		{
-			pos = pos + (pos - that[dir + 'ScrollbarMaxScroll'])*3;
-			if (that[dir + 'ScrollbarIndicatorSize'] + 
-							that[dir + 'ScrollbarMaxScroll'] - pos < 9)
+			pos = pos + (pos - that.vScrollbarMaxScroll)*3;
+			if (that.vScrollbarIndicatorSize + 
+							that.vScrollbarMaxScroll - pos < 9)
 			{
-				pos = that[dir + 'ScrollbarIndicatorSize'] + 
-					  that[dir + 'ScrollbarMaxScroll'] - 
+				pos = that.vScrollbarIndicatorSize + 
+					  that.vScrollbarMaxScroll - 
 					  8;
 			}
 		}
 		
-		that[dir + 
-			 'ScrollbarWrapper'].style.webkitTransitionDelay = '0';
-		that[dir + 
-			 'ScrollbarWrapper'].style.opacity = hidden;
-		that[dir + 
-			 'ScrollbarIndicator'].style.webkitTransform = 
+		that.ScrollbarWrapper.style.webkitTransitionDelay = '0';
+		that.ScrollbarWrapper.style.opacity = hidden;
+		that.ScrollbarIndicator.style.webkitTransform = 
 									'translate3d(0,' + pos + 'px, 0)';
 	}
 
-	ScrollBox.prototype.filterList = function(strVal)
+	wScroll.prototype.filterList = function(strVal)
 	{
 	
-		var arrayListItems = $('#idUlList').children();
+		var arrayListItems = $(this.ulParent).children('ul').children();
 
 		if (this.iMode == LIST_TYPE_FF)
 		{
@@ -873,7 +785,7 @@ function ScrollBox()
 		}
 	}
 
-	ScrollBox.prototype.covertSpecChar = function(charIn)
+	wScroll.prototype.covertSpecChar = function(charIn)
 	{
 		var iChars = '!@#$%^&*()+=-[]\\\';,./{}|\":<>?"';
 
@@ -884,14 +796,12 @@ function ScrollBox()
 			return "s" + Number(i).toString();
 	} 
 	
-	ScrollBox.prototype.RecalcBottom = function()
+	wScroll.prototype.RecalcBottom = function()
 	{
 		
-		var ulParent = document.getElementById(this.strParent);
-	
-		this.wrapperH = $(ulParent).parent().height();
+		this.wrapperH = $(this.ulParent).parent().height();
 		
-		this.scrollerH = $(ulParent).height();
+		this.scrollerH = $(this.ulParent).height();
 		
 		
 		this.maxScrollY = (-1 * this.scrollerH) + this.wrapperH/2;
@@ -899,19 +809,17 @@ function ScrollBox()
 		this._scrollbar();
 	}
 	
-	ScrollBox.prototype.SimpleDraw = function(strParent, 
+	wScroll.prototype.SimpleDraw = function(ulParent, 
 											  funcCallBack, 
 											  funcFlickEvent)
 	{
 		this.iMode = SCROLL_DRAW_SIMP;
 		
 		this.funcFlickEvent = funcFlickEvent;
-		
 		this.funcCallBack = funcCallBack;
-		this.strParent = strParent;
+		this.ulParent = ulParent;
 		this.y = 0;
 		
-		var ulParent = document.getElementById(strParent);
 		ulParent.style.webkitTransform = 'translate3d( 0px, 0px, 0px)';
 		this.divWrapper = ulParent.parentElement;
 		
@@ -924,18 +832,21 @@ function ScrollBox()
 		this.RecalcBottom();
 	}
 	
-	ScrollBox.prototype.FileDraw = function(objFile, strParent)
+	wScroll.prototype.FileDraw = function(objFile, 
+										  ulParent,
+										  funcCallBack, 
+										  funcFlickEvent)
 	{
 	
 		this.iMode = LIST_TYPE_FF;
-	
-		this.strParent = strParent;
-	
-		this.iTotalLiCount = 0;
 		
 		var that = this;
-		var ul = $('#idUlList');
-		var ulParent = document.getElementById(strParent);
+
+		this.funcFlickEvent = funcFlickEvent;
+		this.funcCallBack = funcCallBack;
+		this.ulParent = ulParent;
+		var ul = $(this.ulParent).children('ul');
+		
 		ulParent.style.webkitTransform = 'translate3d( 0px, 0px, 0px)';
 		this.divWrapper = ulParent.parentElement;
 		this.divWrapper.setAttribute("style", "font-size: " + this.iCurFontSize + "px;");
@@ -969,8 +880,7 @@ function ScrollBox()
 		
 			li.innerHTML = "<BR>" + objFile.Dir[i].name; //arrayItems[i].name;
 			li.id = "dir_" + Number(i).toString();
-			this.iTotalLiCount++;
-		
+
 			ul.append(li);
 		}
 
@@ -986,9 +896,8 @@ function ScrollBox()
 				"id": "sel_all",
 				"class": "selallclass",
 				text: "Add All To Playlist"
-			}).appendTo($('#idUlList'));
+			}).appendTo(ul);
 			
-			this.scrollerH += this.iSelAllSize;
 		}
 		
 		for (var i = 0; i < objFile.Playable.length; i++)
@@ -997,8 +906,7 @@ function ScrollBox()
 		
 			li.innerHTML = "<BR>" + objFile.Playable[i].name; //arrayItems[i].name;
 			li.id = "pla_" + Number(i).toString();
-			this.iTotalLiCount++;
-		
+
 			ul.append(li);
 		}
 
@@ -1017,39 +925,32 @@ function ScrollBox()
 		
 			li.innerHTML = "<BR>" + objFile.Unknown[i].name;
 			li.id = "unk_" + Number(i).toString();
-			this.iTotalLiCount++;
 		
 			ul.append(li);
 		}
-	
-	
-		ul.appendTo($('#' + strParent));
-	
-	
+		
+		this.RecalcBottom();
 	}
 	
-	ScrollBox.prototype.IndexDraw = function(arrayItems, strParent)
+	wScroll.prototype.IndexDraw = function(arrayItems, 
+										   ulParent,
+										   funcCallBack, 
+										   funcFlickEvent)
 	{
 		this.iMode = LIST_TYPE_INDEX;
-	
-		/*Li Size = font-size * 2 + 6*/
-	
-		this.arraySepChildren = new Array();
-	
-		this.strParent = strParent;
-	
+		
+		this.ulParent = ulParent;
+		this.funcFlickEvent = funcFlickEvent;
+		this.funcCallBack = funcCallBack;
+		
 		this.iTotalLiCount = 0;
 		this.iTotalSepCount  = 0;
 		
 		var that = this;
-		var ul = $('#idUlList');
-		var ulParent = document.getElementById(strParent);
+		var ul = $(this.ulParent).children('ul');
+
 		ulParent.style.webkitTransform = 'translate3d( 0px, 0px, 0px)';
 		this.divWrapper = ulParent.parentElement;
-		this.divWrapper.setAttribute("style", 
-									 "font-size: " + 
-									 	this.iCurFontSize + 
-									 	"px;");
 
 		this.dirY = 0;
 		
@@ -1068,25 +969,18 @@ function ScrollBox()
 		this.y = 0;
 		var idTracker = 1;
 		
-		this.arraySepChildren.push(0);
-		
-		
 		$('<li></li>', {
 			"id": "sel_all",
 			"class": "selallclass",
 			text: "Add All To Playlist"
-		}).appendTo($('#idUlList'));
-		
+		}).appendTo(ul);
 		
 		var li = document.createElement("li");
 		var charSep = arrayItems[0].DisplayText.getFirstLetter();
 		li.className = "noshrink";
 		li.innerHTML = charSep;
 		li.id = this.covertSpecChar(charSep);
-		this.iTotalSepCount++;
 		ul.append(li);
-		
-		var iCurSepChildren = 0;
 		
 		for (var i = 0; i < arrayItems.length; i++)
 		{	
@@ -1101,9 +995,7 @@ function ScrollBox()
 				li.className = "noshrink";
 				li.innerHTML = charFirstLetter;
 				li.id = this.covertSpecChar(charFirstLetter);
-				this.iTotalSepCount++;
-				this.arraySepChildren.push(iCurSepChildren);
-				iCurSepChildren = 0;
+
 				ul.append(li);
 				li = document.createElement("li");
 				charSep = charFirstLetter;
@@ -1111,14 +1003,10 @@ function ScrollBox()
 			
 			li.innerHTML = "<BR>" + arrayItems[i].DisplayText;
 			li.id = arrayItems[i].IdHash;
-			iCurSepChildren++;
-			this.iTotalLiCount++;
-			
 			ul.append(li);
 		}
 	
-	
-		ul.appendTo($('#' + strParent));
+		this.RecalcBottom();
 	
 	};
 

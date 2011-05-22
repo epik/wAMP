@@ -35,6 +35,13 @@ private:
 	int32_t			m_iSkipNextFrame;
 	int64_t			m_iSongLength;
 	
+	char			*m_cstrMetaString;
+	int32_t			m_iMetaAllocAmt;
+	
+	char			*m_cstrTemp1;
+	char			*m_cstrTemp2;
+	int32_t			m_iTempAlloc;
+	
     MusMessage FindDecoder(const char *cstrFileName);
 
 public:
@@ -50,7 +57,7 @@ public:
 	
 	int16_t PrepareMetadata(const char *cstrFileName);
 	const char *GetValue(const char *Name);
-	char *GetMetadata();
+	const char *GetMetadata();
 	
 	int32_t GetSampleRate() {return m_lRate;};
 	int64_t GetDuration() {return m_iSongLength;};

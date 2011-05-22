@@ -36,35 +36,49 @@
 
 #define SONG_END_UNKNOWN	-1
 
-#define SUFFICIENT_BUFFER_SIZE	(DEST_FREQ / LOW_SPEED_RATIO_LIM)
+#define SUFFICIENT_BUFFER_SIZE	DEST_FREQ
 #define CBUF_PCKT_SIZE_NEED (MAX_PACKET_SIZE/4 + \
 							 RESAMPLE_PADDING)
+
+#define BUFFER_UNDERFLOW	-2
+#define BUFFER_SONG_END		-1
 
 struct SoundPacket
 {
 public:
 
-	int16_t 	NumChan;
-	int16_t		Decoded;
+#ifdef DEBUG
+	int32_t		_FIRST;
+	int32_t		AllocPos;
+#else
+	int64_t		FFmpeg_DTS;
+	int64_t		ConverganceDur;
+#endif
+
+	int32_t 	NumChan;
 	int64_t		TimeStamp;
 	int64_t 	FFmpeg_PTS;
-	int64_t		FFmpeg_DTSt;
 	size_t		Size;
 	size_t		DataStartPoint;
 	int64_t		Position;
-	int64_t		ConverganceDur;
 	size_t		Duration;
-	SoundPacket	*Next;
 	void		*_Helper;
+#ifdef DEBUG
+	SoundPacket	*Next;
+	int32_t		_LAST;
+#endif
 	
 	void CopyPacket(AVPacket *avpkt, AVStream *avstrm)
 	{
 		FFmpeg_PTS 		= avpkt->pts;
-		FFmpeg_DTSt 	= avpkt->dts;
 		Position		= avpkt->pos;
-		ConverganceDur	= avpkt->convergence_duration;
 		Duration		= avpkt->duration;
 		Size			= 0;
+
+#ifndef DEBUG
+		FFmpeg_DTS 		= avpkt->dts;
+		ConverganceDur 	= avpkt->convergence_duration;
+#endif
 		
 		if (FFmpeg_PTS != (int64_t) AV_NOPTS_VALUE)
 			TimeStamp =  av_q2d(avstrm->time_base) * FFmpeg_PTS;
@@ -72,39 +86,119 @@ public:
 			TimeStamp = -1;
 	}
 	
-	static SoundPacket *StereoPacket(void *pHelper)
+};
+
+class SoundPacketAllocator
+{
+private:
+
+	SoundPacket* 	m_pspPacketArray;
+	size_t		 	m_uiNumAllocated;
+	size_t			m_uiEnd;
+	size_t			m_uiStart;
+	size_t			m_uiNumUsed;
+	int32_t			m_iFresh;
+
+public:
+
+	void Init()
 	{
-		SoundPacket *pspRetVal = (SoundPacket *) MALLOC (sizeof(SoundPacket));
+		m_uiNumAllocated = 512;
+		ReportError1("Size of SoundPacket=%i", sizeof(SoundPacket));
+		assert(sizeof(SoundPacket) % 32 == 0);
+		m_pspPacketArray = (SoundPacket *) MALLOC(sizeof(SoundPacket) * (m_uiNumAllocated + 2));
 
-		pspRetVal->NumChan = 2;
-		pspRetVal->_Helper = pHelper;
-
-		return pspRetVal;
+		m_uiEnd 	= 0;
+		m_uiStart 	= 0;
+		m_uiNumUsed = 0;
+#ifdef DEBUG
+		for (uint32_t i=0; i<m_uiNumAllocated; i++)
+		{
+			m_pspPacketArray[i].AllocPos = i;
+			m_pspPacketArray[i]._FIRST = 0xBAADC0DE;
+			m_pspPacketArray[i]._LAST = 0xBAADC0DE;
+		}
+#endif
 	}
 
-	static void FreePacket(SoundPacket *pspPacket)
+	void Flush()
 	{
-		FREE(pspPacket);
+		m_uiEnd 	= 0;
+		m_uiStart 	= 0;
+		m_uiNumUsed = 0;
 	}
 
+	SoundPacket *StereoPacket(void *pHelper);
+
+	int32_t	FinishPckt()
+	{
+		SoundPacket *pspPacket = &m_pspPacketArray[m_uiStart];
+
+#ifdef DEBUG
+
+		/*ReportError3("Freeing: %i with memaddress %i | m_uiStart: %i",
+					 pspPacket->AllocPos,
+					 pspPacket,
+					 m_uiStart);*/
+
+		if (pspPacket->_FIRST != 0xBAADC0DE)
+		{
+			ReportError3("Expected Memory Overwrite Problem at mem: %i | AllocPos: %i | Val: %X",
+						 pspPacket,
+						 pspPacket->AllocPos,
+						 pspPacket->_FIRST);
+
+			assert(0);
+		}
+
+		if (pspPacket->_LAST != 0xBAADC0DE)
+		{
+			ReportError("Strange Memory Write Problem");
+			assert(0);
+		}
+#endif
+
+		m_uiStart++;
+		m_uiStart &= (m_uiNumAllocated - 1);
+
+		m_uiNumUsed--;
+		
+		//ReportError1("CurrentHelperVal=%X", pspPacket->_Helper);
+
+		if (m_uiNumUsed == 0)
+		{
+			if (pspPacket->_Helper == NULL)
+				return BUFFER_UNDERFLOW;
+			else
+				return BUFFER_SONG_END;
+		}
+
+		return m_uiStart;
+
+		//ReportError("Done Free Packet");
+	}
+
+	SoundPacket *GetCurPacket()
+	{
+		return &m_pspPacketArray[m_uiStart];
+	}
+	
 };
 
 class CircularBuffer
 {
 private:
 
+	SoundPacketAllocator	m_spaAllocator;
+
 	size_t			m_uiBufferSize;
 	uint32_t		**m_puiBuffer;
 	uint32_t		**m_puiActualBuffer;
 
 	int32_t			m_iNumChan;
-	
-	SoundPacket		*m_pspCurPacket;
 
 	size_t			m_puiDataCur;
 	size_t			m_puiDataEnd;
-	
-	size_t			m_puiEndWriteMark;
 	
 	uint32_t		m_uiSampleRate;
 	float			m_fDivSampleRate;
@@ -133,50 +227,57 @@ public:
 		m_fDivSampleRate = 2/m_uiSampleRate;
 	}
 	
+	SoundPacket *GetPacket()
+	{
+		return m_spaAllocator.StereoPacket(this);
+	}
+
 	void Flush()
 	{
-		SoundPacket *pspTemp = m_pspCurPacket;
-		//ReportError("In");
-		while (pspTemp != NULL)
-		{
-			m_pspCurPacket = m_pspCurPacket->Next;
-			FREE(pspTemp);
-			pspTemp = m_pspCurPacket;
-		}
-		
-		m_pspCurPacket = NULL;
+		//ReportError("Flushing");
+		m_spaAllocator.Flush();
+
 		m_llClock = 0;
 		m_puiDataEnd = 0;
-		m_puiEndWriteMark = 0;
+		m_puiDataCur = 0;
 		
 		for(int i=0; i<m_iNumChan; i++)
 		{
-			memset(m_puiActualBuffer[i],
-				   0,
-				   sizeof(uint32_t) * 
-					  (m_uiBufferSize +
-					   2 * (MEM_ALIGN_AMT/sizeof(uint32_t)) + 
-					   MUS_BUFFER_SIZE));
+			int32_t len = m_uiBufferSize + MUS_BUFFER_SIZE;
+			uint32_t *iter = m_puiActualBuffer[i];
+		
+			while(len--)
+			{
+				*(iter++) = 0;
+			}
 		}
+
+		m_spaAllocator.Flush();
 	}
 	
 	int64_t GetBufferClock() {return m_llClock * m_fDivSampleRate;};
 	
-	int64_t GetPcktStrtClock() {return m_pspCurPacket->TimeStamp;};
+	int64_t GetPcktStrtClock() 
+	{
+		SoundPacket *pspTemp = m_spaAllocator.GetCurPacket();
+		return pspTemp->TimeStamp;
+	};
 	
 	int64_t	GetCurClock() 
 	{
-		int64_t llRetVal = m_pspCurPacket->TimeStamp;
+		SoundPacket *pspTemp = m_spaAllocator.GetCurPacket();
+	
+		int64_t llRetVal = pspTemp->TimeStamp;
 
 		if (llRetVal == -1)
 			return GetBufferClock();
 		else
 		{
-			if (m_pspCurPacket->DataStartPoint > m_puiDataCur)
+			if (pspTemp->DataStartPoint > m_puiDataCur)
 				m_puiDataCur += m_uiBufferSize;
 		
 			int32_t iInPcktClock = m_puiDataCur - 
-											m_pspCurPacket->DataStartPoint;
+											pspTemp->DataStartPoint;
 			
 			if (iInPcktClock > (int32_t) m_uiSampleRate/2)
 			{
@@ -194,7 +295,7 @@ public:
 		/*ReportError3("m_uiBufferSize = %u; m_puiDataEnd = %u; m_puiDataStart = %u",
 							 m_uiBufferSize,
 							 m_puiDataEnd,
-							 m_puiDataStart);*/
+							 m_puiDataCur);*/
 
 		int32_t uiTemp = m_puiDataEnd - m_puiDataCur;
 		if (uiTemp >= 0)
@@ -208,19 +309,21 @@ public:
 	//	current position past the current packet boundary
 	size_t CheckIfOverCurPckt(size_t uiDist)
 	{
+		SoundPacket *pspTemp = m_spaAllocator.GetCurPacket();
+	
 		/*ReportError4("uiDist=%i, uiNewCurPnt=%i, DataStartPoint=%i, Size=%i",
 					uiDist,
 					m_puiDataCur,
-					m_pspCurPacket->DataStartPoint,
-					m_pspCurPacket->Size/8);*/
-
+					pspTemp->DataStartPoint,
+					pspTemp->Size/8);*/
+					
 		size_t uiNewCurPnt = m_puiDataCur;
 		
-		if (m_puiDataCur < m_pspCurPacket->DataStartPoint)
+		if (m_puiDataCur < pspTemp->DataStartPoint)
 			uiNewCurPnt += m_uiBufferSize;
 		
-		size_t puiPacketEnd = m_pspCurPacket->DataStartPoint + 
-												m_pspCurPacket->Size/8;
+		size_t puiPacketEnd = pspTemp->DataStartPoint + 
+												pspTemp->Size/8;
 
 		if ((uiNewCurPnt + uiDist) <= puiPacketEnd)
 		{
@@ -281,20 +384,20 @@ private:
 	static const int32_t m_EXACT_END 	= -3;
 
 	int32_t				m_iNumChan;
-	int32_t				m_iUsePrefetching;
 	
 	MUS_MESSAGE			m_msgPipeInStatus;
 	MUS_MESSAGE			m_msgPipeOutStatus;
 	
-	
 	char				*m_cstrCurSongPath;
+	int32_t				m_iCurSongAlloc;
+	
 	char 				*m_cstrMetaJSON;
 	float				m_fSampleRate;
 	double				m_dResampConvFactor;
 
 	size_t				m_lSongEndInSec;
 
-	BassTrebleFilter	*m_btfSongLvlEQ;
+	BassTrebleFilter	m_btfSongLvlEQ[2];
 	ResampleFilter  	m_rfResample;
 
 	FFmpegWrapper		m_FFmpegDecoder;
@@ -302,8 +405,6 @@ private:
 	CircularBuffer		m_cbBuf;
 	
 	uint32_t			*m_puiWorkingBuf;
-
-	size_t				m_uiPreFetchEndPos;
 	
 	int32_t				m_iFadeHelper;
 	
@@ -313,9 +414,7 @@ public:
 	SoundPipe	*Next;
 
 	MUS_MESSAGE Init(int32_t iNumChan,
-			  size_t uiBufferSize,
-			  float fCurSpeed,
-			  int32_t iPrefetch = 0);
+			  size_t uiBufferSize);
 
 	void Uninit()
 	{
@@ -407,16 +506,10 @@ public:
 	
 	void SetFilterRate(float f) 
 	{
+		ReportError1("SetFilterRate=%f", f);
 		m_rfResample.SetFilterRate(f * m_dResampConvFactor);
-	
-		// the rate changed, so update the prefetch
-		//	if needed
-		if (m_iUsePrefetching)
-			PrefetchOut();
 	}
 
-	MUS_MESSAGE PrefetchOut();
-	
 	MUS_MESSAGE DecodeAndBuffer();
 	
 	MUS_MESSAGE PipeOut(uint32_t **puiBuffToFill,
@@ -430,7 +523,6 @@ public:
 
 	char *GetMeta() 
 	{
-		assert(m_cstrMetaJSON != NULL);
 		char *cstrRetVal = m_cstrMetaJSON;
 		m_cstrMetaJSON = NULL;
 		return cstrRetVal;
@@ -438,7 +530,6 @@ public:
 
 };
 
-const char ErrorString[50] = "{\"error\":1}";
 
 class AudioPipeline
 {
@@ -456,18 +547,22 @@ private:
 	
 	uint32_t		**m_puiMixBuf;
 	
+	char			m_cstrState[128];
+	
 	MsgHandler 		*m_pMsgHandler;
 
 	int32_t _GetInactivePipe() {return ((m_iActivePipe) ? 0 : 1);};
 	
-	void _PassSongTransMsgGood(const char *Meta)
+	void _PassSongTransMsgGood(char *Meta)
 	{
 		m_pMsgHandler->PassMessage(MUS_MESSAGE_PASS_SONG_INFO, Meta);
 	}
 
 	void _PassSongTransMsgBad()
 	{
-		m_pMsgHandler->PassMessage(MUS_MESSAGE_PASS_SONG_INFO, ErrorString);
+		char *msg = (char *)MALLOC(50);
+		strcpy(msg, "{\"error\":1}");
+		m_pMsgHandler->PassMessage(MUS_MESSAGE_PASS_SONG_INFO, msg);
 	}
 
 public:
@@ -479,8 +574,8 @@ public:
 
 		m_iNumChan = NUM_CHANNELS;
 	
-		m_spPipe[0].Init(m_iNumChan, BUFFER_SIZE_MEDIUM, m_fRate);
-		m_spPipe[1].Init(m_iNumChan, BUFFER_SIZE_MEDIUM, m_fRate);
+		m_spPipe[0].Init(m_iNumChan, BUFFER_SIZE_MEDIUM);
+		m_spPipe[1].Init(m_iNumChan, BUFFER_SIZE_MEDIUM);
 		m_iActivePipe = 0;
 		
 		m_puiMixBuf = (uint32_t **)MALLOC(NUM_CHANNELS * sizeof(uint32_t *));
@@ -528,12 +623,14 @@ public:
 	{
 		m_spPipe[0].SetFilterRate(f);
 		m_spPipe[1].SetFilterRate(f);
+		m_fRate = f;
 	}
 	
 	int16_t Open(const char *cstrFileName)
 	{
 		SDL_LockAudio();
 		m_spPipe[_GetInactivePipe()].Flush();
+		m_spPipe[_GetInactivePipe()].SetFilterRate(m_fRate);
 		MUS_MESSAGE msg = m_spPipe[_GetInactivePipe()].Open(cstrFileName);
 		if (msg == MUS_STATUS_INITIAL_BUFFERING)
 		{
@@ -560,52 +657,7 @@ public:
 		return llRet;
 	}
 
-	int16_t SetNext(const char *cstrFileName, float fTransition)
-	{
-		if (m_spPipe[m_iActivePipe].GetInStatus() ==
-									MUS_STATUS_WAITING_FOR_SONG)
-		{
-			return Open(cstrFileName);
-		}
-
-		if ((fTransition > 0.5) || (fTransition < -0.5))
-		{
-			if (fTransition < 0)
-			{
-				fTransition *= -1;
-				m_iEndType = END_TYPE_CROSSFADE;
-
-			}
-			else
-			{
-				m_iEndType = END_TYPE_GAP;
-			}
-
-			m_iCurScale = END_MAX_GAP;
-			m_iEndLength = (fTransition * DEST_FREQ);
-			if (m_iEndLength > END_MAX_GAP)
-			{
-				m_iEndType |= 1;
-				m_iEndLength = END_MAX_GAP;
-
-			}
-			else
-			{
-				int32_t iTemp = END_MAX_GAP/(fTransition*DEST_FREQ);
-				m_iEndType |= iTemp;
-			}
-		}
-		else
-		{
-			m_iEndType = 0;
-		}
-		SDL_LockAudio();
-		m_spPipe[_GetInactivePipe()].Flush();
-		MUS_MESSAGE Msg = m_spPipe[_GetInactivePipe()].Open(cstrFileName);
-		SDL_UnlockAudio();
-		return Msg;
-
-	}
+	int16_t SetNext(const char *cstrFileName, float fTransition);
 	
 	void SetFilterRate(double f)
 	{
@@ -613,54 +665,30 @@ public:
 		m_spPipe[1].SetFilterRate(f);
 	}
 	
-	char *GetSongState()
+	const char *GetSongState()
 	{
-		char *cstrRet;
-
 		if (m_spPipe[m_iActivePipe].GetInStatus() ==
 												MUS_STATUS_WAITING_FOR_SONG)
 		{
-			cstrRet = (char *) MALLOC(512);
-
-			sprintf(cstrRet,
+			sprintf(m_cstrState,
 					"{\"CurPos\":0, \"EndAmt\":0, \"InState\":103, "
-					"\"InState\":103, \"CurrentSongPath\":\"\"}");
+					"\"InState\":103}");
 		}
 		else
 		{
-			const char *cstrCurrentSong =
-										m_spPipe[m_iActivePipe].GetSongPath();
-
-			cstrRet = (char *) MALLOC(512 + strlen(cstrCurrentSong));
-
-			sprintf(cstrRet,
+			sprintf(m_cstrState,
 					"{\"CurPos\":%i, \"EndAmt\":%i, \"InState\":%i, "
-					"\"InState\":%i, \"CurrentSongPath\":\"%s\"}",
+					"\"InState\":%i}",
 					m_spPipe[m_iActivePipe].GetCurTime(),
 					m_spPipe[m_iActivePipe].GetEndTime(),
 					m_spPipe[m_iActivePipe].GetInStatus(),
-					m_spPipe[m_iActivePipe].GetOutStatus(),
-					cstrCurrentSong);
+					m_spPipe[m_iActivePipe].GetOutStatus());
 		}
 
-		return cstrRet;
+		return m_cstrState;
 	}
 
-	void RunDecodeStage()
-	{
-		//ReportError("In RunDecodeState");
-
-		MUS_MESSAGE msg = m_spPipe[m_iActivePipe].PipeIn();
-
-		if ((msg != MUS_PIPEINMES_PACKET_ADDED) || 
-			(m_spPipe[m_iActivePipe].IsEnoughBuffer()))
-		{
-			//ReportError("Inactive Work Performed");
-			m_spPipe[_GetInactivePipe()].PipeIn();	
-		}
-
-		//ReportError("Finished RunDecodeStage");
-	}
+	void RunDecodeStage();
 
 	void RunProcessStage(uint32_t **puiBuffToFill, int lRequested);
 };

@@ -378,7 +378,7 @@ public:
 
 	char *GetDirFileList(const char *cstrDirName);
 
-	char *GetMetadata(const char *cstrPath);
+	const char *GetMetadata(const char *cstrPath);
 
 	void SetCallback(void (*funcCallBack)(const char *))
 	{

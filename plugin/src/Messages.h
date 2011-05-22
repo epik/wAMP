@@ -114,7 +114,7 @@ class MsgHandler
 {
 public:
 
-	virtual char*	PassMessage(MUS_MESSAGE cmMsg,...) = 0;
+	virtual const char*	PassMessage(MUS_MESSAGE cmMsg,...) = 0;
 
 };
 

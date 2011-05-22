@@ -62,14 +62,26 @@ void MusController::Mixer(uint8_t *destStream, int lRequested)
 	int16_t *psChan1 = (int16_t *) m_puiBuffToFill[1];
 
 	int16_t	*psTravStream = (int16_t *) destStream;
-	uint8_t *psTravEnd = destStream + lRequested;
 		
-	while (psTravStream < (int16_t *) psTravEnd)
+	for(int i=0; i<lRequested/4; i++)
 	{
 		*(psTravStream++) = *(psChan0++);
 		*(psTravStream++) = *(psChan1++);
 	}
 
+#ifdef DEBUG
+	int32_t test = ((MUS_BUFFER_SIZE/
+			LOW_SPEED_RATIO_LIM) +
+			20);
+
+	if ((m_puiBuffToFill[0][test] != 0xBAADC0DE) ||
+		(m_puiBuffToFill[1][test] != 0xBAADC0DE))
+	{
+		ReportError("Bad Memory");
+		assert(0);
+	}
+#endif
+	
 	//ReportError("Mixer Out");
 #else
 
@@ -140,16 +152,35 @@ int16_t MusController::Init(void (*funcCallBack)(const char *),
 		return 1;
 	}
 
-	m_puiBuffToFill = (uint32_t **)MALLOC(NUM_CHANNELS * sizeof(uint32_t *));
+	m_puiBuffToFill = (uint32_t **)MALLOC((1 + NUM_CHANNELS) * sizeof(uint32_t *));
+
+#ifdef DEBUG
+	*(m_puiBuffToFill+NUM_CHANNELS) = (uint32_t *) 0xBAADC0DE;
+#endif
 
 	for(int i=0; i<NUM_CHANNELS; i++)
 	{
-		*(m_puiBuffToFill+i) = (uint32_t *) MALLOC(sizeof(uint32_t) *
-												  (MUS_BUFFER_SIZE/
-														LOW_SPEED_RATIO_LIM +
+		m_puiBuffToFill[i] = (uint32_t *) MALLOC(sizeof(uint32_t) *
+												  ((MUS_BUFFER_SIZE/
+														LOW_SPEED_RATIO_LIM) +
 												   40));
+#ifdef DEBUG
+		int32_t test = ((MUS_BUFFER_SIZE/
+				LOW_SPEED_RATIO_LIM) +
+				20);
+
+		m_puiBuffToFill[i][test] = 0xBAADC0DE;
+#endif
 	}
 
+#ifdef DEBUG
+	if (*(m_puiBuffToFill+NUM_CHANNELS) != (uint32_t *) 0xBAADC0DE)
+	{
+		ReportError("Mem Problem");
+		assert(0);
+	}
+#endif
+	
 	// Load the fir values for the resample filter
 	//	which is a static variable shared across each
 	//	instances of the filter.
@@ -402,9 +433,9 @@ int16_t MusController::Uninit()
 };
 
 
-char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
+const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 {
-	char *cstrRet = NULL;
+	const char *cstrRet = NULL;
 	LockMusMsgQueue();
 	va_list Args;
 	va_start(Args, cmMsg);

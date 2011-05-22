@@ -119,6 +119,8 @@ extern int16_t SafeStrcpy(char *cstrDest, const char *cstrSrc, int x);
 #define ReportError14(s, a, b, c, d, e, f, g, h, i, j, k, l, m, n)
 #define ReportError15(s, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)
 
+#define Worm_OpenLog(a,b,c)
+
 #ifndef NDEBUG
 #define NDEBUG
 #endif

@@ -8,6 +8,7 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
+
 // Read little Endian
 #define READ_LITTLE_ENDIAN
 
@@ -21,7 +22,11 @@
 // Define this to turn on the WormDebug options.
 // More granular options should be tweeked from WormDebug.h
 #ifdef DEBUG_CODE
-#define DEBUG 1
+//#define DEBUG 1
+#endif
+
+#ifndef DEBUG
+#define NDEBUG
 #endif
 
 #define MUS_BUFFER_SIZE 4096

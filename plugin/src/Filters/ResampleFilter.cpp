@@ -917,7 +917,7 @@ FiltMessage ResampleFilter::Init()
 	if (m_psImp == NULL)
 	{
 
-		m_psImp = (int32_t *) malloc(ResampleFilter::c_PackNWing*sizeof(int32_t));
+		m_psImp = (int32_t *) MALLOC(ResampleFilter::c_PackNWing*sizeof(int32_t));
 
 		//ReportError1("About to read filter table, %s", RESAMPLE_RES_PATH);
 		ResampleFilter::TableRead(RESAMPLE_RES_PATH);
@@ -1042,7 +1042,7 @@ void ResampleFilter::TableRead(const char *FileName)
 
 FiltMessage ResampleFilter::Uninit()
 {
-	free(m_psImp);
+	FREE(m_psImp);
 
 	return FILT_Success;
 };

@@ -765,9 +765,9 @@ void *WormIndexer::StartIndexThread(void *pvObject)
 }
 
 
-char *WormIndexer::GetMetadata(const char *cstrPath)
+const char *WormIndexer::GetMetadata(const char *cstrPath)
 {
-	char *cstrRet = NULL;
+	const char *cstrRet = NULL;
 	
 	if(m_ffmpegObject.PrepareMetadata(cstrPath))
 	{

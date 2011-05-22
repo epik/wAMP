@@ -1,9 +1,211 @@
+body
+{
+	background-image: none;
+	background: #444;
+}
+
+/***************
+ * Bookkeeping classes
+ ***************/
+.classPage
+{
+	display: none;
+	height: 480px;
+	width: 320px;
+}
+
+div.classShowPage
+{
+	display: block;
+	position: relative;
+	top: -8px;
+	left: -8px;
+}
+
+
+/***************
+ * Skins
+ ***************/
+body.skinBrown div.classPage
+{
+	background-image: url(../res/themes/brown/background.png);
+}
+
+body.skinDefault div.classPage
+{
+	background-image: url(../res/themes/default/background.png);
+}
+
+body.skinBlue div.classPage
+{
+	background-image: url(../res/themes/blue/background.png);
+}
+
+body.skinGreen div.classPage
+{
+	background-image: url(../res/themes/green/background.png);
+}
+
+body.skinPink div.classPage
+{
+	background-image: url(../res/themes/pink/background.png);
+}
+
+body.skinPurple div.classPage
+{
+	background-image: url(../res/themes/purple/background.png);
+}
+
+body.skinRed div.classPage
+{
+	background-image: url(../res/themes/red/background.png);
+}
+
+body.skinBrown #idPlaylist
+{
+	background-image: url(../res/themes/brown/indexbg.png);
+}
+
+body.skinDefault #idPlaylist
+{
+	background-image: url(../res/themes/default/indexbg.png);
+}
+
+body.skinBlue #idPlaylist
+{
+	background-image: url(../res/themes/blue/indexbg.png);
+}
+
+body.skinGreen #idPlaylist
+{
+	background-image: url(../res/themes/green/indexbg.png);
+}
+
+body.skinPink #idPlaylist
+{
+	background-image: url(../res/themes/pink/indexbg.png);
+}
+
+body.skinPurple #idPlaylist
+{
+	background-image: url(../res/themes/purple/indexbg.png);
+}
+
+body.skinRed #idPlaylist
+{
+	background-image: url(../res/themes/red/indexbg.png);
+}
+
+body.skinBrown #idModelBack
+{
+	background: #7A5229;
+}
+
+body.skinDefault #idModelBack
+{
+	background: #2D2D2D;
+}
+
+body.skinBlue #idModelBack
+{
+	background: blue;
+}
+
+body.skinGreen #idModelBack
+{
+	background: green;
+}
+
+body.skinPink #idModelBack
+{
+	background: pink;
+}
+
+body.skinPurple #idModelBack
+{
+	background: purple;
+}
+
+body.skinRed #idModelBack
+{
+	background: red;
+}
+
+/***************
+ * Splash Page
+ ***************/
+#idSplash
+{
+	background-image: url(../res/themes/default/splash.png);
+}
+
+#idSplashPill
+{
+	position:absolute;
+	font-family:arial;
+	left:10px;
+	width: 290px;
+	padding-left:15px;
+	z-index:2;
+	height:25px;
+	background: #FFF;
+	color: #000;
+	-webkit-border-radius: 15px;
+	top:300px;
+}
+
 /*----------------
   This is for the play control buttons
-  ----------------*/
+  ----------------*/  
+
+/*****************
+ * Vol Control
+ *****************/
+#idVolVertAdj
+{
+	position: absolute;
+	top:420px;
+	left:258px;
+	width: 46px;
+	height: 250px;
+	z-index:9;
+	background-image: url(../res/volselect/volselectbacksm.png);
+}
+
+#idVolVerAdjTarg
+{
+	position: absolute;
+	left: 10px;
+	right: 10px;
+	top:10px;
+	bottom: 10px;
+	z-index:10;
+}
+
+#idVolVerAdjTarg div
+{
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background: #FFF;
+}
+
+#idVolVertAdj div.classVertAdjKnob
+{
+	position: relative;
+	left:5px;
+	width: 35px;
+	height: 35px;
+	z-index:11;
+	background-image: url(../res/volselect/slidersm.png);
+}
+  
+/*****************
+ * Play Control Buttons
+ *****************/ 
 #btnarm
 {
-	position:fixed;
+	position:absolute;
 	width:70px;
 	height:126px;
 	z-index:9900;
@@ -17,124 +219,169 @@
   
 #btnplylst
 {
-	position:fixed;
+	position:absolute;
 	width:44px;
 	height:44px;
 	top:154px;
 	z-index:7;
 	left:33px;
+	background-image: url(../res/musplicon.png);
 }
   
   
 #btneq
 {
-	position:fixed;
+	position:absolute;
 	width:44px;
 	height:44px;
 	top:85px;
 	z-index:7;
 	left:60px;
+	background-image: url(../res/eqsm.png);
 }
   
 #btnplay
 {
-	position:fixed;
+	position:absolute;
 	width:60px;
 	height:55px;
 	top:352px;
 	z-index:0;
 	left:130px;
+	background-image: url(../res/themes/default/playcont/playsm.png);
 }
 
 #btnpause
 {
 
-	position:fixed;
+	position:absolute;
 	width:60px;
 	height:55px;
 	top:352px;
 	z-index:1;
 	left:130px;
+	background-image: url(../res/themes/default/playcont/pausesm.png);
 }
 
 #btnprev
 {
-	position:fixed;
+	position:absolute;
 	width:59px;
 	height:42px;
 	top:358px;
 	z-index:0;
 	left:67px;
+	background-image: url(../res/themes/default/playcont/prevsongsm.png);
 }
 
 #btnnext
 {
-	position:fixed;
+	position:absolute;
 	width:59px;
 	height:42px;
 	top:358px;
 	z-index:0;
 	left:194px;
+	background-image: url(../res/themes/default/playcont/nextsongsm.png);
 }
 
-#btnvol
+#btnsound25
 {
-	position:fixed;
+	position:absolute;
 	width:46px;
 	height:42px;
 	top:358px;
 	z-index:0;
 	left:258px;
+	background-image: url(../res/themes/default/playcont/sound25sm.png);
+}
+
+#btnsound50
+{
+	position:absolute;
+	width:46px;
+	height:42px;
+	top:358px;
+	z-index:0;
+	left:258px;
+	background-image: url(../res/themes/default/playcont/sound50sm.png);
+}
+
+#btnsound75
+{
+	position:absolute;
+	width:46px;
+	height:42px;
+	top:358px;
+	z-index:0;
+	left:258px;
+	background-image: url(../res/themes/default/playcont/sound75sm.png);
+}
+
+#btnsound100
+{
+	position:absolute;
+	width:46px;
+	height:42px;
+	top:358px;
+	z-index:0;
+	left:258px;
+	background-image: url(../res/themes/default/playcont/sound100sm.png);
 }
 
 #btnmute
 {
-	position:fixed;
+	position:absolute;
 	width:46px;
 	height:42px;
 	top:358px;
 	z-index:1;
 	left:258px;
+	background-image: url(../res/themes/default/playcont/mutesm.png);
 }
 
 #btnshuf
 {
-	position:fixed;
+	position:absolute;
 	width:46px;
 	height:42px;
 	top:358px;
 	z-index:0;
 	left:16px;
+	background-image: url(../res/themes/default/playcont/shufflesm.png);
 }
 
 #btnnormal
 {
-	position:fixed;
+	position:absolute;
 	width:46px;
 	height:42px;
 	top:358px;
 	z-index:0;
 	left:16px;
+	background-image: url(../res/themes/default/playcont/normalsm.png);
 }
 
 #btnrep
 {
-	position:fixed;
+	position:absolute;
 	width:46px;
 	height:42px;
 	top:358px;
 	z-index:0;
 	left:16px;
+	background-image: url(../res/themes/default/playcont/repeatsm.png);
 }
 
 #btndir
 {
-	position:fixed;
+	position:absolute;
 	width:40px;
 	height:40px;
 	top:19px;
 	z-index:7;
 	left:20px;
+	background-image: url(../res/themes/default/playcont/playlistsm.png);
 }
 
 /*----------------
@@ -186,96 +433,141 @@
   
 #btnheader
 {
-	position:fixed; 
+	position:absolute; 
 	height: 50px;
 	width: 287px;
 	top:14px; 
 	left:14px;
- background:url(../res/themes/default/plistheaderimg.png);	
+	background-image:url(../res/themes/default/plistheaderimg.png);	
 }
 	
-#idPlayAllIndex
+#idFirstIndex
 {
-	position:fixed; 
+	position:absolute; 
 	height: 50px;
 	width: 287px;
-	top:90px; 
+	top:85px; 
 	left:18px;
 }
 
-#idAlbumIndex
+.classPlayAllIndex
 {
-	position:fixed;
-	height: 50px;
-	width: 287px;	
-	top:140px; 
-	left:18px; 
+	background-image:url(../res/themes/default/playallimg.png);
 }
 
-#idArtistIndex
+#idSecondIndex
 {
-	position:fixed; 
-	height: 50px;
-	width: 287px;
-	top:190px; 
-	left:18px; 
-}
-
-#idGenreIndex
-{
-	position:fixed;
+	position:absolute;
 	height: 50px;
 	width: 287px;	
-	top:240px; 
-	left:18px; 
-}
-
-#idTitleIndex
-{
-	position:fixed;
-	height: 50px;
-	width: 287px;	
-	top:290px; 
-	left:18px; 
-}
-
-#idFolderIndex
-{
-	position:fixed;
-	height: 50px;
-	width: 287px;	
-	top:340px; 
+	top:135px; 
 	left:18px;
 }
 
-#idOptionIndex
+.classAlbumIndex
 {
-	position:fixed;
+	background-image:url(../res/themes/default/albumimg.png);
+}
+
+#idThirdIndex
+{
+	position:absolute; 
+	height: 50px;
+	width: 287px;
+	top:185px; 
+	left:18px;
+}
+
+.classArtistIndex
+{
+	background-image:url(../res/themes/default/artistimg.png);
+}
+
+#idFourthIndex
+{
+	position:absolute;
+	height: 50px;
+	width: 287px;	
+	top:235px; 
+	left:18px;	
+}
+
+.classGenreIndex
+{
+	background-image:url(../res/themes/default/genreimg.png);
+}
+
+#idFifthIndex
+{
+	position:absolute;
+	height: 50px;
+	width: 287px;	
+	top:285px; 
+	left:18px;	
+}
+
+.classTitleIndex
+{
+	background-image:url(../res/themes/default/titleimg.png);
+}
+
+#idSixthIndex
+{
+	position:absolute;
+	height: 50px;
+	width: 287px;	
+	top:335px; 
+	left:18px;
+}
+
+.classFolderIndex
+{
+	background-image:url(../res/themes/default/fileimg.png);
+}
+
+#idSeventhIndex
+{
+	position:absolute;
 	height: 50px;
 	width: 287px; 
-	top:390px; 
+	top:385px; 
 	left:18px;
-	background-image: url(../res/themes/default/optionsimg.png);
+}
+
+.classOptionIndex
+{
+	background-image:url(../res/themes/default/optionsimg.png);
 }
 
 /*----------------
   This is for the scruber
   ----------------*/
-
 .scrubwrap
 {
-	position:fixed;
+	position:absolute;
+	top: 300px;
+	margin: 5px 20px;
+	height: 22px;
+	width: 270px;
+	border: 2px solid #B9BCC0;
 	z-index:510;
+	font-size: 12px;
+	font-family:arial;
+	-webkit-border-radius: 4px;
 }
-
-.scruber
+  
+ .classScrub
  {
-	position:fixed; 
-	padding-left:15px; 
-	padding-top:3px; 
-	border:1px solid #000; 
-	z-index:-10;
+	position:absolute;
+	left: 3px;
+	top: 3px;
+	right: 3px;
+	height:15px;
+	padding-left:14px; 
+	padding-top:1px;
+	z-index:-9;
 	color:#000;
+	text-shadow: 0 1px 0 #FFF;
 	background-color:#FFF;
 	-webkit-user-select: none;
 	-khtml-user-select: none;
@@ -284,16 +576,20 @@
 	user-select: none;
 }
 
-.scruberop 
+.classScrubOp 
 {
-	position:fixed; 
-	z-index:-9;
-	padding-left:15px; 
-	padding-top:3px; 
-	border:1px solid #000; 
-	height:1.5em;
-	color:#FFF;
-	background-color:#000;
+	position:absolute;
+	left: 3px;
+	top: 3px;
+	height:15px;
+	right: 3px;
+	opacity: .7;
+	z-index:-10;
+	padding-left:14px; 
+	padding-top:1px; 
+	color:#DDD;
+	text-shadow: 0 1px 0 #333;
+	background-color:#333;
 	-webkit-user-select: none;
 	-khtml-user-select: none;
 	-moz-user-select: none;
@@ -301,13 +597,13 @@
 	user-select: none;
 }
 
-.scrubpopup
+#idScrubPop
 {
 	white-space:nowrap;
 	font-size:4em;
 	text-align:center;
 	vertical-align:middle;
-	position:fixed;
+	position:absolute;
 	z-index:5000;
 	top:25%;
 	left:12.5%;
@@ -319,6 +615,79 @@
 	color:#FFF;
 	height:25%;
 	border:1px solid #000; 
+}
+
+
+/*********************************
+ * Filter Pane
+ *********************************/
+#idFiltHere
+{
+	position: absolute;
+	height: 280px;
+	width: 300px;
+	left: 10px;
+	top: 480px;
+	z-index: 9995;
+	-webkit-border-radius: 20px;
+	border: 2px solid #B9BCC0;
+	-webkit-transition: -webkit-transform .2s ease-in-out;
+}
+
+#idFiltBack
+{
+	position: absolute;
+	left: 5px;
+	top: 5px;
+	right: 5px;
+	bottom: 5px;
+	-webkit-border-radius: 20px;
+	opacity: .7;
+	background-color:#333;
+}
+
+#idBtnApply
+{
+	position: absolute;
+	left: 15px;
+	top: 15px;
+	background:             #ddd;
+    color:       			#000;
+	text-shadow: 0 1px 0 #FFF;
+}
+
+#idBtnCancel
+{
+	position: absolute;
+	right: 15px;
+	top: 15px;
+	background:             #222;
+    color:       			#fff;
+	text-shadow: 0 1px 0 #000;
+}
+
+.classFilterBtn
+{
+	position: absolute;
+	display: inline;
+	height: 24px;
+	width: 90px;
+	text-align: center;
+	cursor: pointer;
+	padding: 0;
+	padding-top: 3px;
+	-webkit-background-clip: padding-box;
+	-webkit-border-radius: 1em;
+    background-image: -webkit-gradient(linear,left top,left bottom,
+        color-stop(0,       #fdfdfd),
+		color-stop(1,       #e22));
+	border: 1px solid       #000;
+    font-weight: normal;
+}
+
+.classAnimateFilterUp
+{
+	-webkit-transform: translate3d(0px, -380px, 0px);
 }
 
 /*----------------
@@ -360,8 +729,9 @@
 	width: 100%;
 	font-weight: bold;
 	font-size: 14px;
-	color: #000;
+	color: #FFF;
 	text-align: center;
+	text-shadow: 0 1px 0 #000;
 }
 
 .rotateablebackcircb
@@ -547,13 +917,23 @@ position: absolute;
 /****************************
  * iScroll css
  ****************************/
-#idWrapper {
-	position:fixed; 
-	top: 65px;
-	left: 0px;
+#idListHeader
+{
+	position: relative;
+	top: 5px;
+	width: 320px;
+	height: 70px;
+	background-repeat:no-repeat;
+	background-position:center; 
+}
+ 
+ #idWrapper {
+	position: relative;
+	left: 15px;
+	top: 10px;
+	width: 290px;
 	-webkit-transition-duration: 0ms;
 	height: 320px;
-	width: 320px;
 	z-index: 2;
 	background:#FFF;
 	overflow: hidden;
@@ -583,7 +963,7 @@ position: absolute;
 
 #idScroller ul li {
 	padding:0px;
-	width: 320px;
+	width: 290px;
 	-webkit-transition-duration: 0ms;
 	border-bottom:1px solid #555;
 	margin: 0px 10px;
@@ -619,25 +999,38 @@ position: absolute;
 
 #idListFooter
 {
-	position: fixed;
-	top: 380px;
-	width: 320px;
-	height: 46px;
+	position: relative;
+	top: 15px;
+	left: 20px;
+	width: 280px;
+	height: 35px;
 	z-index: 9000;
-	background-color: #FFF;
-	background-image: none;
 }
 
-#idListFooter form
+div.classPage div.classSearchBar form
 {
-	margin-top: 5px;
-	margin-left: 5px;
-	width: 249px;
+	width: 210px;
 }
 
-#idListFooter form div
+div.classPage div.classSearchBar form input
 {
-	width: 189px;
+	border: 0;
+	background: transparent none;
+	-webkit-appearance: none;
+	outline: 0;
+	width: 98%;
+	font-size: 12px;
+}
+
+div.classPage div.classSearchBar
+{
+	background: #FFF;
+	background-position: 8px 50%;
+	background-repeat: no-repeat;
+	background-image: url(../res/icon-search-black.png);
+	width:210px;
+	padding-left: 30px;
+	-webkit-border-radius: 20px;
 }
 
 /***********************
@@ -647,22 +1040,26 @@ position: absolute;
 #idOptionButtonList
 {
 	position: relative;
-	left: 254px;
-	top: -41px;
+	left: 230px;
+	top: -33px;
 	width: 46px;
 	height: 46px;
 	z-index: 200;
 	padding: 0px 10px;
+	background-image: url(../res/options.png);
+	background-position: center;
+	background-repeat:no-repeat;
 }
 
 #idOptionButtonPlayer
 {
-	position: fixed;
+	position: absolute;
 	left: 62px;
 	top: 230px;
 	width: 44px;
 	height: 44px;
 	z-index: 7;
+	background-image: url(../res/themebt.png);
 }
 
 /***********************
@@ -670,16 +1067,44 @@ position: absolute;
  ***********************/
 #idDialog
 {
-	width: 320px;
-	height: 480px;
-	background: none;
-	max-height: 480px;
-	min-height: 480px;
+	background-image: none;
 }
  
-#idDialog a
+.classDiaHeader
 {
-	visibility:hidden;
+	-webkit-border-top-left-radius: 20px;
+	-webkit-border-top-right-radius: 20px;
+	height: 45px;
+	background:             #666;
+	text-align: center;
+	color: #FFF;
+	text-shadow: 0 1px 0px #000;
+}
+ 
+.classMiddle
+{
+	position: relative;
+	top: -10px;
+	height: 250px;
+	text-align: center;
+    background:             #CCC;
+	color: #000;
+	font-size: 12px;
+	-webkit-border-bottom-left-radius: 20px;
+	-webkit-border-bottom-right-radius: 20px;
+}
+
+#idMainBack
+{
+	left:10%;
+	bottom:10%;
+	right:10%;
+	z-index:9999;
+	background-image:none;
+	position:absolute;
+	top:10%;
+	background: #FFF;
+	color: #000;
 }
 
 .wampButtonClose
@@ -693,7 +1118,7 @@ position: absolute;
 	-webkit-background-clip: padding-box;
 	-webkit-border-radius: 1em;
     background-image: -webkit-gradient(linear,left top,left bottom,
-        color-stop(0,       #fadb4e),
+        color-stop(0,       #22db4e),
         color-stop(1,       #fceda7));
     border: 1px solid       #F7C942;
     background:             #fceda7;
@@ -731,14 +1156,14 @@ position: absolute;
 	padding: 0;
 	-webkit-background-clip: padding-box;
 	-webkit-border-radius: 1em;
+    background:             #666;
     background-image: -webkit-gradient(linear,left top,left bottom,
-        color-stop(0,       #fdfdfd),
-		color-stop(1,       #eeeeee));
-	border: 1px solid       #ccc;
-    background:             #eee;
+        color-stop(0,       #2222fd),
+		color-stop(1,       #222266));
+	border: 1px solid       #000;
     font-weight: bold;
-    color:       			#444;
-    text-shadow: 0 1px 1px  #f6f6f6;
+    color:       			#FFF;
+    text-shadow: 0 1px 0px  #000;
 }
 
 .wampButton span
@@ -763,13 +1188,18 @@ position: absolute;
 /*************************
  * Playlist CSS
  *************************/
+ 
 #idPlaylistWrapper
 {
-padding-left:10px;
-margin-top: 80px;
+	position: absolute;
+	left: 20px;
+	top: 85px;
+	height:350px; 
+	position:relative; 
+	overflow:hidden;
 } 
  
-#idPlaylistPicture 
+#idPlaylist
 {
 	border: none;
 	width:320px;
@@ -777,17 +1207,22 @@ margin-top: 80px;
 	z-index:0;
 }
 
+#idPlaylist ul
+{
+	padding: 0px;
+	margin: 0px;
+}
+
 #idPlaylist li
 {
-	width: 206px;
 	position:relative;
 	margin: 0;
+	width: 280px;
 	overflow: hidden;
 	text-align: left;
 	list-style: none;
-	padding: .2em 75px .2em 15px;
+	padding: .2em 0px;
 	border-bottom: 1px  solid #CCC;	
-	border-top: 1px  solid #CCC;
 	color: #fff;
 	text-decoration: none;
 	opacity:.75;
@@ -797,10 +1232,8 @@ margin-top: 80px;
 {
 	margin: 0;
 	overflow: hidden;
-	width: 206px;
 	text-align: left;
 	list-style: none;
-	padding: .2em 75px .2em 15px;
 	border: 1px solid #444;
 	background: #FFF;
 	color: #000;
@@ -821,7 +1254,7 @@ margin-top: 80px;
 	background-position:center;
 	background-repeat:no-repeat;
 	margin: auto 0px;
-	left:250px;
+	left:235px;
 	top:-0px;
 	background-image:url('../res/dragbtn.png');
 	width:50px;
@@ -834,21 +1267,21 @@ margin-top: 80px;
 	background-color: #BEE;
 	border-color: #8BB;
 	color: #114;
-	position:fixed;
+	position:absolute;
 }
 
 #idPlaylist li div
 {
 	position: absolute;
 	display: inline;
-	left: 200px;
-	top: 8px;
-	height: 20px;
+	left: 180px;
+	top: 9px;
+	height: 24px;
 	width: 90px;
 	text-align: center;
 	cursor: pointer;
 	padding: 0;
-	padding-top: 2px;
+	padding-top: 3px;
 	-webkit-background-clip: padding-box;
 	-webkit-border-radius: 1em;
     background-image: -webkit-gradient(linear,left top,left bottom,
@@ -858,7 +1291,7 @@ margin-top: 80px;
     background:             #e22;
     color:       			#fff;
     font-weight: normal;
-    text-shadow: 0 1px 1px  #f6f6f6;
+    text-shadow: 0 1px 0 #000;
     clip: rect(0px, 0px, 50px, 0px);
 }
 
@@ -870,3 +1303,46 @@ margin-top: 80px;
 	height:480px;
 	
  }
+ 
+/*********************
+ * Volume Adjuster
+ *********************/
+#idVolVertAdj
+{
+	/*display: none;*/
+	position: absolute;
+	top:100px;
+	left:264px;
+	width: 28px;
+	height: 250px;
+	z-index:9901;
+	background-image: url(../res/volselect/volselectbacksm.png);
+}
+
+#idVolVerAdjTarg
+{
+	position: absolute;
+	left: 10px;
+	right: 10px;
+	top:10px;
+	bottom: 10px;
+	z-index:10;
+}
+
+#idVolVerAdjTarg div
+{
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background: #FFF;
+}
+
+#idVolVertAdj div.classVertAdjKnob
+{
+	position: relative;
+	left:0px;
+	width: 27px;
+	height: 17px;
+	z-index:11;
+	background-image: url(../res/volselect/slidersm.png);
+}

@@ -19,7 +19,19 @@ MusMessage FFmpegWrapper::Init()
 
     m_psTmpBufferBase = (uint16_t *) av_malloc(AVCODEC_MAX_AUDIO_FRAME_SIZE +
     									   	   FF_INPUT_BUFFER_PADDING_SIZE + 
-											   40);
+											   64);
+	
+	m_cstrMetaString = (char *) MALLOC(8192);
+	m_iMetaAllocAmt = 8192;
+
+	m_cstrTemp1 = (char *) MALLOC(2048);
+	m_cstrTemp2 = (char *) MALLOC(2048);
+	m_iTempAlloc = 2048;
+	
+#ifdef DEBUG
+	m_psTmpBufferBase[((AVCODEC_MAX_AUDIO_FRAME_SIZE +
+    						FF_INPUT_BUFFER_PADDING_SIZE)/2)+2] = 0xBAAD;
+#endif
     return MUS_MOD_Success;
 }
 
@@ -297,7 +309,13 @@ MusMessage FFmpegWrapper::GetNextPacket(void *pvPacket)
 												   (int16_t *) m_psTmpBufferBase,
 												   &iSize,
 												   &m_avPacket);
-
+#ifdef DEBUG
+				assert(m_psTmpBufferBase[((AVCODEC_MAX_AUDIO_FRAME_SIZE +
+										FF_INPUT_BUFFER_PADDING_SIZE)/2)+2] == 0xBAAD);
+#endif
+												   
+												   
+												   
 				ReportError3("Finished packet Decode, with an iSize of %i,"
 						     "packet size %i, and tmpErr of %i",
 						     iSize,
@@ -363,6 +381,13 @@ MusMessage FFmpegWrapper::GetNextPacket(void *pvPacket)
 
 			MUS_ERROR(MUS_ERROR_LOAD_PROBLEM, cstrErrBuf);
 
+			CircularBuffer *pcbBuf =
+						(CircularBuffer *) pspPacket->_Helper;
+
+			pcbBuf->AddStereoPacket(pspPacket,
+								(uint16_t *) m_psTmpBufferBase,
+								iSize);
+			
 			return MUS_MOD_Success;
 		}
 
@@ -396,29 +421,22 @@ MusMessage FFmpegWrapper::GetNextPacket(void *pvPacket)
  *	JSON formatted string (its a javascript thing for those C people)
  *		You will need to delete this using free() rather than delete[].
  ********************************************/
-char *FFmpegWrapper::GetMetadata()
+const char *FFmpegWrapper::GetMetadata()
 {
 	if (!m_pFormatCtx)
 	{
 		return NULL;
 	}
-
-	// For now allocate 2056 characters for the json.  
-	//	If we need more, we will realloc
-	char *cstrRet = (char *) malloc(2056);
 	
 	// keep track of how many characters we have in the string
 	//	in case we need to realloc
 	size_t	CurSize = 2;
-	size_t	SizeLim = 2056;
 	
 	// variable to pass the metadata pairs to
 	AVMetadataTag *tag=NULL;
 
 	// add the starting bracket to the json
-	sprintf(cstrRet,"{");
-
-	char *cstrTmp;
+	sprintf(m_cstrMetaString,"{");
 
 	// iterate through the metadata
 	while((tag=av_metadata_get(m_pFormatCtx->metadata, "", tag, AV_METADATA_IGNORE_SUFFIX)))
@@ -430,34 +448,33 @@ char *FFmpegWrapper::GetMetadata()
 		
 		// Make sure we have enough room in our main JSON string
 		CurSize += tmpSize;
-		while (CurSize > SizeLim)
+		if (CurSize >= m_iMetaAllocAmt)
 		{
-			tmpSize = MAX(tmpSize+512, 1028);
-			// for ease of use, increment in intervals of 1028
-			SizeLim += tmpSize;
-			cstrRet = (char *) realloc(cstrRet, SizeLim);
+			m_iMetaAllocAmt = CurSize + 1024;
+			m_cstrMetaString = (char *) REALLOC(m_cstrMetaString, m_iMetaAllocAmt);
 		}
 		
-		// allocate a new temp string to place the metadata pair into
-		cstrTmp = (char *) malloc(tmpSize+20);
-		char *tmpString = (char *) malloc(tmpSize+20);
+		
+		m_cstrTemp2 = ReallocSafeStringCopy(m_cstrTemp2, &m_iTempAlloc, tag->value);
 
-		tmpString = SafeStringCopy(tag->value);
+		if (tmpSize + 20 > m_iTempAlloc)
+		{
+			m_iTempAlloc = tmpSize + 1024;
+			m_cstrTemp1 = (char *) REALLOC(m_cstrTemp1, m_iTempAlloc);
+			m_cstrTemp2 = (char *) REALLOC(m_cstrTemp2, m_iTempAlloc);
+		}
+		
 
-		//strcpy(tmpString, tag->value);
-
-		sprintf(cstrTmp, " \"%s\":\"%s\",", tag->key, tmpString);
-		strcat(cstrRet, cstrTmp);
-		free(cstrTmp);
-		free(tmpString);
+		sprintf(m_cstrTemp1, " \"%s\":\"%s\",", tag->key, m_cstrTemp2);
+		strcat(m_cstrMetaString, m_cstrTemp1);
 	}
 	
-	cstrTmp = cstrRet;
+	char *cstrTmp = m_cstrMetaString;
 
 	while((*cstrTmp) != '\0') cstrTmp++;
 	cstrTmp--;
 	*cstrTmp = '}';
-	return cstrRet;
+	return m_cstrMetaString;
 }
 
 
