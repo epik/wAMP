@@ -1,1 +1,1 @@
-palm-install com.epikmayo.audiophile_0.1.0_all.ipk
+palm-install com.epikmayo.audiophile_0.1.6_all.ipk

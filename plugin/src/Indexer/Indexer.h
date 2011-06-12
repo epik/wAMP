@@ -80,7 +80,7 @@ struct FileEntry
 		Title = SafeStringCopy(cstr);
 		if (Title == NULL)
 		{
-			Title = (char *) malloc(2);
+			Title = (char *) MALLOC(2);
 			*Title = '\0';
 		}
 	}
@@ -90,7 +90,7 @@ struct FileEntry
 		Artist = SafeStringCopy(cstr);
 		if (Artist == NULL)
 		{
-			Artist = (char *) malloc(2);
+			Artist = (char *) MALLOC(2);
 			*Artist = '\0';
 		}
 	}
@@ -100,7 +100,7 @@ struct FileEntry
 		Album = SafeStringCopy(cstr);
 		if (Album == NULL)
 		{
-			Album = (char *) malloc(2);
+			Album = (char *) MALLOC(2);
 			*Album = '\0';
 		}
 	}
@@ -110,7 +110,7 @@ struct FileEntry
 		Genre = SafeStringCopy(cstr);
 		if (Genre == NULL)
 		{
-			Genre = (char *) malloc(2);
+			Genre = (char *) MALLOC(2);
 			*Genre = '\0';
 		}
 	}
@@ -119,12 +119,12 @@ struct FileEntry
 
 	void Uninit()
 	{
-		free(Path);
-		free(Name);
-		free(Artist);
-		free(Genre);
-		free(Album);
-		free(Title);
+		FREE(Path);
+		FREE(Name);
+		FREE(Artist);
+		FREE(Genre);
+		FREE(Album);
+		FREE(Title);
 	}
 
 	void Harvest(FileEntry *pNode)
@@ -170,45 +170,6 @@ struct FileEntry
 		return 0;
 	}
 
-	void WriteEntry(FILE *pFile)
-	{
-		fprintf(pFile, "%lu %u %s\n", LastMod, Hash, Path);
-		fprintf(pFile, "%s\n", Name);
-		fprintf(pFile, "%s\n", Album);
-		fprintf(pFile, "%s\n", Artist);
-		fprintf(pFile, "%s\n", Genre);
-		fprintf(pFile, "%s\n", Title);
-	}
-
-	static FileEntry *ScanEntry(FILE *pFile)
-	{
-
-		uint32_t uiLastMod;
-		uint32_t uiHash;
-
-		FileEntry *pEntry = (FileEntry *) malloc(sizeof(FileEntry));
-
-		fscanf(pFile, "%u %u", &uiLastMod, &uiHash);
-
-		if (feof(pFile))
-			return NULL;
-
-		fgetc(pFile);
-
-		pEntry->LastMod = uiLastMod;
-		pEntry->Hash = uiHash;
-
-		pEntry->Path = SafeStringIn(pFile);
-		pEntry->Name = SafeStringIn(pFile);
-		pEntry->Album = SafeStringIn(pFile);
-		pEntry->Artist = SafeStringIn(pFile);
-		pEntry->Genre = SafeStringIn(pFile);
-		pEntry->Title = SafeStringIn(pFile);
-
-		pEntry->Next = NULL;
-
-		return pEntry;
-	}
 
 	char *ToStringMeta();
 	char *ToStringSimple();
@@ -221,7 +182,6 @@ private:
 
 	int32_t		m_iTempSize;
 	FileEntry 	*m_pRoot;
-	FileEntry	*m_pPrevRoot;
 	char		*m_cstrCurSearchDir;
 
 public:
@@ -231,15 +191,9 @@ public:
 		Init();
 	};
 
-	void Init(FILE *pFile)
-	{
-		ReadFile(pFile);
-	}
-
 	void Init()
 	{
 		m_pRoot = NULL;
-		m_pPrevRoot = NULL;
 		// rather than worry about reallocing this, just make it big
 		m_cstrCurSearchDir = (char *) malloc(8192);
 		m_cstrCurSearchDir[0] = '\0';
@@ -247,14 +201,14 @@ public:
 
 	void Uninit()
 	{
-		free(m_cstrCurSearchDir);
+		FREE(m_cstrCurSearchDir);
 		FileEntry *pIter = m_pRoot;
 
 		while (pIter != NULL)
 		{
 			FileEntry *Temp = pIter->Next;
 			pIter->Uninit();
-			free(pIter);
+			FREE(pIter);
 			pIter = Temp;
 		}
 	}
@@ -263,11 +217,6 @@ public:
 	{
 		Uninit();
 	}
-
-	// pFile must be open, no error checking for that
-	int16_t ReadFile(FILE *pFile);
-
-	void Finalize(const char *cstrFileName);
 
 	void AddNode(FileEntry *pNode)
 	{
@@ -285,17 +234,11 @@ public:
 
 	void AddNodeLite(FileEntry *pNode, uint32_t uiHash);
 
+	char *ConvertToPathString();
+	
 	char *ConvertToJSON(int16_t sForce = 0);
 
 	char *ConvertToJSONLite();
-
-	void AddLastRunNode(FileEntry *pNode, uint32_t uiHash);
-
-	void FindDifferences(FFmpegWrapper *FFmpeg);
-
-	// creates a temp file that will eventually be merged
-	//	into the main Index file
-	int32_t WriteToTempFile(const char *cstrFileName);
 };
 
 
@@ -347,12 +290,11 @@ private:
 
 	char 			*m_cstrIndexJSON;
 	char 			*m_cstrHomeDir;
-	char 			*m_cstrCurrentIndexDir;
 	FileList 		m_flIndex;
 	FFmpegWrapper 	m_ffmpegObject;
 	int16_t			m_sUseCallback;
 
-	void 			(*m_funcCallBack)(const char *);
+	void 			(*m_funcIndexCB)(const char *);
 
 public:
 
@@ -362,11 +304,9 @@ public:
 	{
 		m_ffmpegObject.Init();
 		m_sUseCallback = 0;
-		m_cstrHomeDir = (char *) malloc(strlen(HOME_DIR) + 1);
+		m_cstrHomeDir = (char *) MALLOC(strlen(HOME_DIR) + 1);
 		strcpy(m_cstrHomeDir, HOME_DIR);
 	};
-
-	void SetHomeDir(char *cstrDir) {strcpy(m_cstrHomeDir, cstrDir);};
 
 	void BuildIndex(int16_t sUseIndex = 0);
 	
@@ -380,9 +320,9 @@ public:
 
 	const char *GetMetadata(const char *cstrPath);
 
-	void SetCallback(void (*funcCallBack)(const char *))
+	void SetCallback( void (*funcStart)(const char *))
 	{
-		m_funcCallBack = funcCallBack;
+		m_funcIndexCB = funcStart;
 	}
 };
 

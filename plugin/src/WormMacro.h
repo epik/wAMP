@@ -46,6 +46,8 @@
 
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+
 // A macro to generate the standard enum functions
 #define DefineEnumIteratorsMacro(eEnumType) \
 inline void operator++(eEnumType& eVal) \
@@ -86,14 +88,14 @@ inline void *WormMalloc(size_t size)
 
 #ifdef DEBUG
 	int32_t iErr = posix_memalign(&temp, MEM_ALIGN_AMT, size);
-
+/*
 	if (iErr != 0)
 	{
 		syslog(LOG_WARNING, "[MemEvent]: ***PROBLEM with memalign", iErr);
 		assert(0);
 	}
 	syslog(LOG_WARNING, "[MemEvent]: Reading Mem %s (%i) at mem: %i\n", filename, line, temp);
-	fprintf(stderr, "[MemEvent]: Reading Mem %s (%i) at mem: %i\n", filename, line, temp);
+	fprintf(stderr, "[MemEvent]: Reading Mem %s (%i) at mem: %i\n", filename, line, temp);*/
 #else
 	posix_memalign(&temp, MEM_ALIGN_AMT, size);
 #endif

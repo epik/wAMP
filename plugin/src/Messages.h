@@ -40,10 +40,11 @@
 //**Messages that will be passed by js to MusManager
 #define MUS_MESSAGE_ATTRIB_SET				(1<<21)
 #define MUS_MESSAGE_ATTRIB_GET				(1<<22)
-#define MUS_MESSAGE_GET_SONG_STATE			1
+#define MUS_MESSAGE_GET_SONG_CUR			1
 #define MUS_MESSAGE_GET_CURSONG_PATH		2
 #define MUS_MESSAGE_SEEK					3
 #define MUS_MESSAGE_GET_META				4
+#define MUS_MESSAGE_GET_SONG_END			5
 // Here we define the different ways to open the next music file
 #define MUS_MESSAGE_OPEN_SONG				11
 #define MUS_MESSAGE_SET_NEXT				12
@@ -62,6 +63,7 @@
 #define MUS_STATUS_ERROR					102
 #define MUS_STATUS_WAITING_FOR_SONG			103
 #define MUS_STATUS_LOADING					105
+#define MUS_STATUS_UNDER_FLOW				112
 #define MUS_STATUS_SOURCE_EOF				110
 #define MUS_STATUS_PLAYING					111
 

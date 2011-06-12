@@ -66,7 +66,7 @@
 
 #define CALLOC(num, sz)		calloc(num, sz)
 #define REALLOC(ptr, sz)	realloc(ptr, sz)
-#define FREE(sz)			ReportError1("Free Addy=%i ***********", sz); free(sz)
+#define FREE(sz)			/*ReportError1("Free Addy=%i ***********", sz);*/ free(sz)
 
 #define INIT_LOG(s, f, l)
 

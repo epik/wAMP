@@ -4,8 +4,8 @@
 	<meta charset="utf-8"> 
 	<meta name="viewport" content="width=device-width, minimum-scale=1, maximum-scale=1"> 
 	<title>Audiophile</title> 
-	<link rel="stylesheet" href="jquery/mobile/jquery.mobile-1.0a4.css" />
 	<link rel="stylesheet" href="wamp/audiophile.css" />
+	<link rel="stylesheet" href="wamp/audiophileveer.css" />
 	<script type="text/javascript" src="jquery/jquery-1.6.js"></script>
 	<script type="text/javascript" src="jquery/jquery.event.drag.js"></script>
 	<script type="text/javascript" src="jquery/jquery.event.drop.js"></script>
@@ -14,12 +14,18 @@
 	<script type="text/javascript" src="scripts/lastfm.api.md5.js"></script>
 	<script type="text/javascript">
 var arraySkins = ["skinDefault", 
+			  "skinGray",
 			  "skinBrown", 
-			  "skinBlue", 
-			  "skinGreen", 
+			  "skinBlue",
+			  "skinTeal",
+			  "skinLightBlue",
+			  "skinGreen",
+			  "skinSlate",
 			  "skinPink", 
 			  "skinPurple", 
-			  "skinRed"];
+			  "skinRed",
+			  "skinDarkRed",
+			  "skinMorph"];
 	</script>
 	<script language="javascript" type="text/javascript" src="wamp/wAMP.js"></script>
 	<script type="text/javascript" src="scripts/widgets.js"></script>
@@ -29,15 +35,21 @@ var arraySkins = ["skinDefault",
 	<script language="javascript" type="text/javascript">
 		$('document').ready(function() 
 		{
-		
+			
 			objwAMP.CreatePluginHook();
 			objwAMP.setCurrentPath("/media/internal");
 		
 			if (window.PalmSystem) 
 			{
 			   window.PalmSystem.stageReady();
+			   
+			   objSongIndex.CheckPermission();
 			}
-						
+			
+			console.log("App Version: " + navigator.appVersion);
+			
+			objOptions.GetDeviceInfo();
+			
 			$('body').get(0).addEventListener("keyup", 
 									function(e){backManager.handleBackGesture(e)}, false);
 		
@@ -56,7 +68,7 @@ var arraySkins = ["skinDefault",
 				}
 			});
 			
-			objwAMP.checkOS();
+			objwAMP.CheckOS();
 			
 			$('#idPlayer').bind('pageshow',function(event, ui)
 			{  
@@ -122,6 +134,29 @@ var arraySkins = ["skinDefault",
 			
 			sceneSplash.LoadSplash();
 			
+			sceneSplash.timeoutCheckPlug = setTimeout(function()
+			{
+				if (sceneSplash.iDoubleCheck == 0)
+				{
+					objwAMP.bFolderOnly = true; 
+					$('#idTellUser').text("The plugin failed to load for some reason. " + 
+										  "This program requires at least WebOS 2.1, and " +
+										  "will not run on a Pixi.  If your phone meets " +
+										  " these specs, and you see this message more than " +
+										  "once, you should try reinstalling the program. " +
+										  "If that doesn't work, please post to PreCentral's " +
+										  "WebOS Development Forum or log an issue here: " +
+										  "https://github.com/epik/wAMP.");
+										  
+					$('#idButtonGoesHere').removeClass();
+					$('#idButtonGoesHere').addClass('wampButton');
+				
+					$('#idButtonGoesHere span').text("Please Restart");
+										  
+					ChangePage($('#idDialog'));
+				}
+			
+			}, 10000);
 		});
 		
     </script>
@@ -133,20 +168,28 @@ var arraySkins = ["skinDefault",
 		</div>
 	</div><!-- /page -->
 	
-	<div data-role="page" id="idPlayer" class="classPage">
+	<div id="idShowImgBG" class="classPage"></div>
+	
+	<div id="idPlayer" class="classPage">
 
 			<div id="divNone" style="position:absolute; top:0; 
 							left:0px; height:64px; width:320px;">
 				<div id="nameGoesHere" style="position:relative; 
-							font-size:20px; color:#FFF; padding-left:64px; padding-top:16px; 
+							font-size:18px; color:#FFF; padding-left:28px; padding-top:7px; 
 							white-space:nowrap; font-family:font-family:helvetica, sans-serif;">
 							</div>
 				<div id="artistGoesHere" style="position:relative; 
-							font-size:18px; color:#FFF; padding-left:64px; 
+							font-size:16px; color:#FFF; padding-left:28px; 
 							white-space:nowrap; font-family:font-family:helvetica, sans-serif;">
 							</div>
 			</div>
-			<div id="idRecord"></div>
+			<div id="idRecPane" class="classRecordPane">
+				<div class="classRecord">
+				</div>
+				<div class="classRecTarget"></div>
+				<div class="classSpinner">
+				</div>
+			</div>
 			<div id="idScrubOne" class="scrubwrap">
 				<div class="classScrub">
 				</div>
@@ -164,6 +207,40 @@ var arraySkins = ["skinDefault",
 			</div>
 			<div id="idFiltHere">
 				<div id="idFiltBack">
+				</div>
+				<div id="idFiltTop">
+				</div>
+				<div id="idSpeedFiltDiv">
+					<div id="idSpeedLabel">Speed Control</div>
+					<div id="idSpeedLegend">
+						<span class="left">Slow (x0.25)</span>
+						<span class="classSpeedMid">Normal</span>
+						<span class="right">Fast(x2)</span>
+					</div>
+					<div id="idSpeedCtl">
+						<div id="idSpeedHorAdjTarg" class="classTargetArea">
+							<div id="idHorDisplayBarL"></div>
+							<div id="idHorDisplayBarR"></div>
+						</div>
+						<div id="idSpeedKnob" class="classHorzAdjKnob">
+						</div>
+					</div>
+				</div>
+				<div id="idTransitionDiv">
+					<div id="idTransitionLabel">Song Transition (Save to set)</div>
+					<div id="idTransitionLegend">
+						<span class="left">Crossfade</span>
+						<span class="classTranMid">Gapless</span>
+						<span class="right">Gap</span>
+					</div>
+					<div id="idTransitionCtl">
+						<div id="idTransitionAdjTarg" class="classTargetArea">
+							<div id="idTHorDisplayBarL"></div>
+							<div id="idTHorDisplayBarR"></div>
+						</div>
+						<div id="idTransitionKnob" class="classHorzAdjKnob">
+						</div>
+					</div>
 				</div>
 				<div id="idBtnCancel" class="classFilterBtn">Reset</div>
 				<div id="idBtnApply" class="classFilterBtn">Save</div>

@@ -22,8 +22,10 @@
 // Define this to turn on the WormDebug options.
 // More granular options should be tweeked from WormDebug.h
 #ifdef DEBUG_CODE
-//#define DEBUG 1
+#define DEBUG 1
 #endif
+
+//#define PROFILE
 
 #ifndef DEBUG
 #define NDEBUG

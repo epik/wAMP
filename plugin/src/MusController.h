@@ -56,6 +56,10 @@ private:
 	uint32_t		**m_puiBuffToFill;
 	
 	AudioPipeline 	m_apPipeline[NUM_SIM_TRACKS];
+	
+	char			m_pcstrSeekCallback[64];
+	char			m_pcstrCurTimeCallback[64];
+	char			m_pcstrEndTimeCallback[64];
 
 public:
 

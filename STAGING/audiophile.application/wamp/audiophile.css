@@ -1,134 +1,148 @@
 body
 {
-	background-image: none;
-	background: #444;
+ background-image: none;
+ background-color: transparent;
 }
-
+ 
 /***************
  * Bookkeeping classes
  ***************/
-.classPage
+.classPage 
 {
-	display: none;
-	height: 480px;
-	width: 320px;
+ display: none;
+ height: 480px;
+ width: 320px;
 }
-
+ 
 div.classShowPage
 {
-	display: block;
-	position: relative;
-	top: -8px;
-	left: -8px;
+ display: block;
+ position: relative;
+ top: -8px;
+ left: -8px;
 }
+ 
 
-
+body.skinBG #idShowImgBG
+{
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	z-index: -10;
+	display: block;
+}
+ 
 /***************
- * Skins
+ * Player background color
  ***************/
+body.skinBG div.classPage
+{
+ background-image: url(../res/default/background.png);
+ background-color: transparent;
+}
+ 
 body.skinBrown div.classPage
 {
-	background-image: url(../res/themes/brown/background.png);
+ background-image: url(../res/default/background.png);
+ background-color: #31251A;
 }
-
+ 
 body.skinDefault div.classPage
 {
-	background-image: url(../res/themes/default/background.png);
+ background-image: url(../res/default/background.png);
+ background-color: #171717;
 }
 
+body.skinGray div.classPage
+{
+ background-image: url(../res/default/background.png);
+ background-color: #666666;
+}
+ 
 body.skinBlue div.classPage
 {
-	background-image: url(../res/themes/blue/background.png);
+ background-image: url(../res/default/background.png);
+ background-color: #00008E;
+}
+
+body.skinLightBlue div.classPage
+{
+ background-image: url(../res/default/background.png);
+ background-color: #3399FF;
 }
 
 body.skinGreen div.classPage
 {
-	background-image: url(../res/themes/green/background.png);
+ background-image: url(../res/default/background.png);
+ background-color: #005800;
 }
 
+body.skinSlate div.classPage
+{
+ background-image: url(../res/default/background.png);
+ background-color: #3D3D29;
+}
+ 
 body.skinPink div.classPage
 {
-	background-image: url(../res/themes/pink/background.png);
+ background-image: url(../res/default/background.png);
+ background-color: #991F5C;
 }
-
+ 
 body.skinPurple div.classPage
 {
-	background-image: url(../res/themes/purple/background.png);
+ background-image: url(../res/default/background.png);
+ background-color: #400040;
 }
-
+ 
 body.skinRed div.classPage
 {
-	background-image: url(../res/themes/red/background.png);
+ background-image: url(../res/default/background.png);
+ background-color: #FF3300;
 }
 
-body.skinBrown #idPlaylist
+body.skinDarkRed div.classPage
 {
-	background-image: url(../res/themes/brown/indexbg.png);
+ background-image: url(../res/default/background.png);
+ background-color: #520000;
+}
+ 
+body.skinTeal div.classPage
+{
+ background-image: url(../res/default/background.png);
+ background-color: #002E2E;
 }
 
-body.skinDefault #idPlaylist
+@-webkit-keyframes pulse {
+ 0% {
+   background-color: #FF0000;
+ }
+ 25% {
+  background-color: #0066FF;
+  }
+ 50% {
+   background-color: #00CC00;
+ }
+ 75% {
+  background-color: #0066FF;
+  }
+ 100% {
+  background-color: #FF0000;
+  }
+}
+body.skinMorph div.classPage
 {
-	background-image: url(../res/themes/default/indexbg.png);
+ background-image: url(../res/default/background.png);
+  -webkit-animation-name: pulse;
+  -webkit-animation-duration: 60s;
+  -webkit-animation-direction: ease-in-out;
+  -webkit-animation-iteration-count: infinite;
+  -webkit-animation-timing-function: linear;
 }
 
-body.skinBlue #idPlaylist
+#idModelBack
 {
-	background-image: url(../res/themes/blue/indexbg.png);
-}
-
-body.skinGreen #idPlaylist
-{
-	background-image: url(../res/themes/green/indexbg.png);
-}
-
-body.skinPink #idPlaylist
-{
-	background-image: url(../res/themes/pink/indexbg.png);
-}
-
-body.skinPurple #idPlaylist
-{
-	background-image: url(../res/themes/purple/indexbg.png);
-}
-
-body.skinRed #idPlaylist
-{
-	background-image: url(../res/themes/red/indexbg.png);
-}
-
-body.skinBrown #idModelBack
-{
-	background: #7A5229;
-}
-
-body.skinDefault #idModelBack
-{
-	background: #2D2D2D;
-}
-
-body.skinBlue #idModelBack
-{
-	background: blue;
-}
-
-body.skinGreen #idModelBack
-{
-	background: green;
-}
-
-body.skinPink #idModelBack
-{
-	background: pink;
-}
-
-body.skinPurple #idModelBack
-{
-	background: purple;
-}
-
-body.skinRed #idModelBack
-{
-	background: red;
+	background: black;
 }
 
 /***************
@@ -136,7 +150,7 @@ body.skinRed #idModelBack
  ***************/
 #idSplash
 {
-	background-image: url(../res/themes/default/splash.png);
+	background-image: url(../res/default/splash.png);
 }
 
 #idSplashPill
@@ -157,48 +171,6 @@ body.skinRed #idModelBack
 /*----------------
   This is for the play control buttons
   ----------------*/  
-
-/*****************
- * Vol Control
- *****************/
-#idVolVertAdj
-{
-	position: absolute;
-	top:420px;
-	left:258px;
-	width: 46px;
-	height: 250px;
-	z-index:9;
-	background-image: url(../res/volselect/volselectbacksm.png);
-}
-
-#idVolVerAdjTarg
-{
-	position: absolute;
-	left: 10px;
-	right: 10px;
-	top:10px;
-	bottom: 10px;
-	z-index:10;
-}
-
-#idVolVerAdjTarg div
-{
-	position: absolute;
-	width: 100%;
-	height: 100%;
-	background: #FFF;
-}
-
-#idVolVertAdj div.classVertAdjKnob
-{
-	position: relative;
-	left:5px;
-	width: 35px;
-	height: 35px;
-	z-index:11;
-	background-image: url(../res/volselect/slidersm.png);
-}
   
 /*****************
  * Play Control Buttons
@@ -208,215 +180,179 @@ body.skinRed #idModelBack
 	position:absolute;
 	width:70px;
 	height:126px;
-	z-index:9900;
-	top:102px;
-	left:202px;
+	z-index:99;
+	top:145px;
+	left:199px;
 	background-image:url('../res/record/arm.png');
 	-webkit-transform-origin: 55px 27px;
-	-webkit-transition: -webkit-transform 1s;
+	-webkit-transition: -webkit-transform 0.3s;
 	/*-webkit-transform:rotate(22deg);*/
 }
   
 #btnplylst
 {
 	position:absolute;
-	width:44px;
-	height:44px;
-	top:154px;
+	width:57px;
+	height:58px;
+	top:61px;
 	z-index:7;
-	left:33px;
+	left:219px;
 	background-image: url(../res/musplicon.png);
-}
-  
+}  
   
 #btneq
 {
 	position:absolute;
 	width:44px;
 	height:44px;
-	top:85px;
+	top:61px;
 	z-index:7;
-	left:60px;
+	left:101px;
 	background-image: url(../res/eqsm.png);
 }
   
 #btnplay
 {
 	position:absolute;
-	width:60px;
-	height:55px;
-	top:352px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:0;
-	left:130px;
-	background-image: url(../res/themes/default/playcont/playsm.png);
+	left:133px;
+	background-image: url(../res/default/playcont/playsm.png);
 }
 
 #btnpause
 {
 
 	position:absolute;
-	width:60px;
-	height:55px;
-	top:352px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:1;
-	left:130px;
-	background-image: url(../res/themes/default/playcont/pausesm.png);
+	left:131px;
+	background-image: url(../res/default/playcont/pausesm.png);
 }
 
 #btnprev
 {
 	position:absolute;
-	width:59px;
-	height:42px;
-	top:358px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:0;
-	left:67px;
-	background-image: url(../res/themes/default/playcont/prevsongsm.png);
+	left:75px;
+	background-image: url(../res/default/playcont/prevsongsm.png);
 }
 
 #btnnext
 {
 	position:absolute;
-	width:59px;
-	height:42px;
-	top:358px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:0;
-	left:194px;
-	background-image: url(../res/themes/default/playcont/nextsongsm.png);
+	left:189px;
+	background-image: url(../res/default/playcont/nextsongsm.png);
 }
 
 #btnsound25
 {
 	position:absolute;
-	width:46px;
-	height:42px;
-	top:358px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:0;
-	left:258px;
-	background-image: url(../res/themes/default/playcont/sound25sm.png);
+	left:249px;
+	background-image: url(../res/default/playcont/sound25sm.png);
 }
 
 #btnsound50
 {
 	position:absolute;
-	width:46px;
-	height:42px;
-	top:358px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:0;
-	left:258px;
-	background-image: url(../res/themes/default/playcont/sound50sm.png);
+	left:249px;
+	background-image: url(../res/default/playcont/sound50sm.png);
 }
 
 #btnsound75
 {
 	position:absolute;
-	width:46px;
-	height:42px;
-	top:358px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:0;
-	left:258px;
-	background-image: url(../res/themes/default/playcont/sound75sm.png);
+	left:249px;
+	background-image: url(../res/default/playcont/sound75sm.png);
 }
 
 #btnsound100
 {
 	position:absolute;
-	width:46px;
-	height:42px;
-	top:358px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:0;
-	left:258px;
-	background-image: url(../res/themes/default/playcont/sound100sm.png);
+	left:249px;
+	background-image: url(../res/default/playcont/sound100sm.png);
 }
 
 #btnmute
 {
 	position:absolute;
-	width:46px;
-	height:42px;
-	top:358px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:1;
-	left:258px;
-	background-image: url(../res/themes/default/playcont/mutesm.png);
+	left:249px;
+	background-image: url(../res/default/playcont/mutesm.png);
 }
 
 #btnshuf
 {
 	position:absolute;
-	width:46px;
-	height:42px;
-	top:358px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:0;
 	left:16px;
-	background-image: url(../res/themes/default/playcont/shufflesm.png);
+	background-image: url(../res/default/playcont/shufflesm.png);
 }
 
 #btnnormal
 {
 	position:absolute;
-	width:46px;
-	height:42px;
-	top:358px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:0;
 	left:16px;
-	background-image: url(../res/themes/default/playcont/normalsm.png);
+	background-image: url(../res/default/playcont/normalsm.png);
 }
 
 #btnrep
 {
 	position:absolute;
-	width:46px;
-	height:42px;
-	top:358px;
+	width:57px;
+	height:58px;
+	top:366px;
 	z-index:0;
 	left:16px;
-	background-image: url(../res/themes/default/playcont/repeatsm.png);
+	background-image: url(../res/default/playcont/repeatsm.png);
 }
 
 #btndir
 {
 	position:absolute;
-	width:40px;
-	height:40px;
-	top:19px;
+	width:57px;
+	height:58px;
+	top:61px;
 	z-index:7;
-	left:20px;
-	background-image: url(../res/themes/default/playcont/playlistsm.png);
-}
-
-/*----------------
-  This is for vertical slider control
-  ----------------*/
-.vertselectboxwrapper
-{
-	visibility:hidden;
-	position:absolute;
-	height:250px;
-	width:156px;
-	left:166px;
-	top:88px;
-	z-index:899;
-}
-  
-  .vertselectbox
-{
-	/*visible:hidden;*/
-	position:relative;
-	height:250px;
-	width:28px;
-	left:101px;
-	top:17px;
-	border:0px solid #000;
-	z-index:-2;
-}
-
-.vertselectknob
-{
-	position:relative;
-	width:29px;
-	height:17px;
-	bottom:0px;
-	z-index:1;
+	left:160px;
+	background-image: url(../res/default/playcont/playlistsm.png);
 }
   
   
@@ -425,118 +361,118 @@ body.skinRed #idModelBack
   ----------------*/
 .classwAMPIndexBtn
 {
-	height:100%; 
-	width:100%;
+	height:45px; 
+	width:146px;
 	z-index:2;
-	background-image:url(../res/themes/default/slectedbg.png);
+	background-image:url(../res/default/slectedbg.png);
 }
   
 #btnheader
 {
 	position:absolute; 
-	height: 50px;
-	width: 287px;
-	top:14px; 
-	left:14px;
-	background-image:url(../res/themes/default/plistheaderimg.png);	
+	height: 480px;
+	width: 320px;
+	top:0px; 
+	left:0px;
+	background-image:url(../res/default/indexbg.png);	
 }
 	
 #idFirstIndex
 {
 	position:absolute; 
-	height: 50px;
-	width: 287px;
+	height: 46px;
+	width: 147px;
 	top:85px; 
-	left:18px;
+	left:12px;
 }
 
 .classPlayAllIndex
 {
-	background-image:url(../res/themes/default/playallimg.png);
+	background-image:url(../res/default/playallimg.png);
 }
 
 #idSecondIndex
 {
 	position:absolute;
-	height: 50px;
-	width: 287px;	
-	top:135px; 
-	left:18px;
+	height: 46px;
+	width: 147px;	
+	top:131px; 
+	left:12px;
 }
 
 .classAlbumIndex
 {
-	background-image:url(../res/themes/default/albumimg.png);
+	background-image:url(../res/default/albumimg.png);
 }
 
 #idThirdIndex
 {
 	position:absolute; 
-	height: 50px;
-	width: 287px;
-	top:185px; 
-	left:18px;
+	height: 46px;
+	width: 147px;
+	top:177px; 
+	left:12px;
 }
 
 .classArtistIndex
 {
-	background-image:url(../res/themes/default/artistimg.png);
+	background-image:url(../res/default/artistimg.png);
 }
 
 #idFourthIndex
 {
 	position:absolute;
-	height: 50px;
-	width: 287px;	
-	top:235px; 
-	left:18px;	
+	height: 46px;
+	width: 147px;	
+	top:223px; 
+	left:12px;	
 }
 
 .classGenreIndex
 {
-	background-image:url(../res/themes/default/genreimg.png);
+	background-image:url(../res/default/genreimg.png);
 }
 
 #idFifthIndex
 {
 	position:absolute;
-	height: 50px;
-	width: 287px;	
-	top:285px; 
-	left:18px;	
+	height: 47px;
+	width: 147px;	
+	top:269px; 
+	left:12px;	
 }
 
 .classTitleIndex
 {
-	background-image:url(../res/themes/default/titleimg.png);
+	background-image:url(../res/default/titleimg.png);
 }
 
 #idSixthIndex
 {
 	position:absolute;
-	height: 50px;
-	width: 287px;	
-	top:335px; 
-	left:18px;
+	height: 46px;
+	width: 147px;	
+	top:315px; 
+	left:12px;
 }
 
 .classFolderIndex
 {
-	background-image:url(../res/themes/default/fileimg.png);
+	background-image:url(../res/default/fileimg.png);
 }
 
 #idSeventhIndex
 {
 	position:absolute;
-	height: 50px;
-	width: 287px; 
-	top:385px; 
-	left:18px;
+	height: 46px;
+	width: 147px; 
+	top:361px; 
+	left:12px;
 }
 
 .classOptionIndex
 {
-	background-image:url(../res/themes/default/optionsimg.png);
+	background-image:url(../res/default/optionsimg.png);
 }
 
 /*----------------
@@ -545,34 +481,31 @@ body.skinRed #idModelBack
 .scrubwrap
 {
 	position:absolute;
-	top: 300px;
-	margin: 5px 20px;
-	height: 22px;
-	width: 270px;
-	border: 2px solid #B9BCC0;
+	top: 294px;
+	margin: 5px 10px;
+	height: 21px;
+	width: 300px;
 	z-index:510;
-	font-size: 12px;
+	font-size: 14px;
 	font-family:arial;
 	-webkit-border-radius: 4px;
 }
-  
+ 
  .classScrub
  {
 	position:absolute;
 	left: 3px;
-	top: 3px;
+	top: 32px;
 	right: 3px;
-	height:15px;
+	height:16px;
 	padding-left:14px; 
 	padding-top:1px;
 	z-index:-9;
 	color:#000;
+	background-image: url(../res/record/test.png);
 	text-shadow: 0 1px 0 #FFF;
-	background-color:#FFF;
+	-webkit-border-radius: 4px;
 	-webkit-user-select: none;
-	-khtml-user-select: none;
-	-moz-user-select: none;
-	-o-user-select: none;
 	user-select: none;
 }
 
@@ -580,16 +513,15 @@ body.skinRed #idModelBack
 {
 	position:absolute;
 	left: 3px;
-	top: 3px;
-	height:15px;
+	top: 32px;
+	height:16px;
 	right: 3px;
-	opacity: .7;
 	z-index:-10;
 	padding-left:14px; 
 	padding-top:1px; 
-	color:#DDD;
-	text-shadow: 0 1px 0 #333;
-	background-color:#333;
+	color:#FFF;
+	text-shadow: 0 1px 0 #000;
+	background-color: #000;
 	-webkit-user-select: none;
 	-khtml-user-select: none;
 	-moz-user-select: none;
@@ -625,45 +557,59 @@ body.skinRed #idModelBack
 {
 	position: absolute;
 	height: 280px;
-	width: 300px;
+	width: 320px;
 	left: 10px;
 	top: 480px;
 	z-index: 9995;
-	-webkit-border-radius: 20px;
-	border: 2px solid #B9BCC0;
 	-webkit-transition: -webkit-transform .2s ease-in-out;
 }
 
 #idFiltBack
 {
 	position: absolute;
-	left: 5px;
-	top: 5px;
-	right: 5px;
+	width: 320px;
+	height: 350px;
+	left: -4px;
+	top: 42px;
 	bottom: 5px;
-	-webkit-border-radius: 20px;
-	opacity: .7;
-	background-color:#333;
+	background-image: url(../res/default/eqbg.png);
+	//z-index: -1;
+}
+
+#idFiltTop
+{	
+	position: absolute;
+	width: 305px;
+	height: 47px;
+	top: 4px;
+	left: -4px;
+	background-image: url(../res/default/eqtop.png);
+	z-index: -1;
+	border: 0px solid #888;
+	-webkit-border-top-left-radius: 10px;
+	-webkit-border-top-right-radius: 10px;
 }
 
 #idBtnApply
 {
 	position: absolute;
 	left: 15px;
-	top: 15px;
-	background:             #ddd;
-    color:       			#000;
-	text-shadow: 0 1px 0 #FFF;
+	top: 10px;
+    background-image: -webkit-gradient(linear,left top,left bottom,
+        color-stop(0,       #AAAAAA),
+		color-stop(1,       #888888));
+    color:       			#FFF;
 }
 
 #idBtnCancel
 {
 	position: absolute;
-	right: 15px;
-	top: 15px;
-	background:             #222;
+	right: 40px;
+	top: 10px;
+    background-image: -webkit-gradient(linear,left top,left bottom,
+        color-stop(0,       #888888),
+		color-stop(1,       #222222));
     color:       			#fff;
-	text-shadow: 0 1px 0 #000;
 }
 
 .classFilterBtn
@@ -678,16 +624,13 @@ body.skinRed #idModelBack
 	padding-top: 3px;
 	-webkit-background-clip: padding-box;
 	-webkit-border-radius: 1em;
-    background-image: -webkit-gradient(linear,left top,left bottom,
-        color-stop(0,       #fdfdfd),
-		color-stop(1,       #e22));
 	border: 1px solid       #000;
     font-weight: normal;
 }
 
 .classAnimateFilterUp
 {
-	-webkit-transform: translate3d(0px, -380px, 0px);
+	-webkit-transform: translate3d(0px, -420px, 0px);
 }
 
 /*----------------
@@ -731,7 +674,6 @@ body.skinRed #idModelBack
 	font-size: 14px;
 	color: #FFF;
 	text-align: center;
-	text-shadow: 0 1px 0 #000;
 }
 
 .rotateablebackcircb
@@ -758,152 +700,53 @@ body.skinRed #idModelBack
 	z-index: 26;
 }
 
-/*----------------
-  This is for the spinner
-  See wAMP.js for the required notice under the MIT license
-  ----------------*/
-
-#sw-wrapper {
-	position:absolute; z-index:1000;
-	left:0;
-	/*width:100%;*/
-	width: 320px;
-	font-family:helvetica, sans-serif;
-	background:rgba(0,0,0,0.7);
-	text-align:left;
-}
-
-#sw-header {
-	position:relative;
-	width:100%; height:43px;
-	border-top:1px solid #000; border-bottom:1px solid #000;
-	background:url(../res/spinner/sw-header.png) 0 0 repeat-x;
-	opacity: 0.9;
-}
-
-#sw-cancel, #sw-done {
-	position:absolute;
-	top:7px;
-	height:20px; line-height:20px;
-	padding:0 5px; margin:0;
-	border-width:5px;
-	font-size:12px; font-weight:bold;
-	text-shadow:rgba(0,0,0,0.8) 0 -1px 0;
-	color:#fff;
-}
-
-#sw-cancel {
-	left:7px;
-	float:left;
-	-webkit-border-image:url(../res/spinner/sw-button-cancel.png) 5;
-}
-
-#sw-done {
-	right:7px;
-	float:right;
-	-webkit-border-image:url(../res/spinner/sw-button-done.png) 5;
-}
-
-.sw-pressed { opacity:0.4; }
-
-#sw-slots-wrapper {
-	position:relative; z-index:999;
-	display:block;
-	height:127px;
-	padding:0 11px;
-	overflow:hidden;
-}
-
-#sw-slots {
-	display:table;
-	width:100%;
-	background:#fcfcfc;
-}
-
-#sw-slots div {
-	display:table-cell;
-	height:100%;
-	padding-top:42px;
-	border-left:2px solid #0d0e0f;
-	background-color:#fcfcfc;
-	background-image: url(../res/spinner/sw-slot-border.png);
-	background-position: 0 0, 100% 0;
-	background-repeat: repeat-y;
-}
-
-#sw-slots div:first-child { border:0; }
-
-#sw-slots ul {
-	padding:0 0 85px 0; margin:0;
-	list-style:none;
-}
-
-#sw-slots .sw-right { text-align:right; }
-#sw-slots .sw-shrink { width:1%; }
-#sw-slots .sw-readonly { background:#ddd; }
-
-#sw-slots li {
-	padding:0 8px;
-	height:44px;
-	overflow:hidden;
-	font:bold 24px/44px Helvetica,sans-serif;
-}
-
-#sw-frame {
-	position:absolute; z-index:1000;
-	left:0; right:0; top:43px;
-	height:225px;
-	border-width:16px;
-	-webkit-border-image:url(../res/spinner/sw-alpha.png) 16;
-}
-
 
 /*****************************
  * CSS routines for the Record spin
  *****************************/
-.recordwrapper
+#idRecPane
 {
-position: absolute;
-/*0000af*/
+    position: absolute;
+    z-index:0;
+    left: 75px;
+    top: 140px;
 }
 
-
-.recordparent
+div.classRecordPane .classRecord
 {
-	position: absolute;
-	background-image:url('../res/record/record.png');
-	z-index: 6;
-	top: 23px;
-	left:18px;
+    position: absolute;
+    background-image: url(../res/record/recordimg.png);
+    z-index:1;
 	height: 162px;
 	width: 200px;
 }
 
-/*.recordhole
+div.classRecordPane .classRecTarget
 {
-	position: absolute;
-	background-image:url('../res/record/secondcenter.png');
-	z-index: 1000;
-	height: 200px;
-	width: 200px;
-}
-*/
-.recordpic
-{
-	position: absolute;
-	background-image:url('../res/record/defaultcov.png');
-	z-index: 600;
-	height: 48px;
-	width: 48px;
+    position: absolute;
+	left: 10px;
+	top: 10px;
+	z-index: 25;
+	/*border: 1px solid #F0F;*/
+	width: 140px;
+	height: 140px;
 }
 
-.recordpicspin
+div.classRecordPane .classSpinner
 {
-	position: absolute;
-	background-image:url('../res/record/defaultcov.png');
-	z-index: 600;
-	height: 48px;
-	width: 48px;
+    position: absolute;
+    z-index:0;
+    left: 0px;
+    top: 0px;
+    height: 160px;
+    width: 160px;
+	background-position:center;
+	background-repeat:no-repeat;
+	background-image: url(../res/record/spinimg.png);	
+}
+
+.classRecordSpin
+{
   -webkit-animation-name: rotateThis;
   -webkit-animation-duration:2s;
   -webkit-animation-iteration-count:infinite;
@@ -917,25 +760,35 @@ position: absolute;
 /****************************
  * iScroll css
  ****************************/
+#idList
+{
+	position: fixed;
+	background-image:url(../res/default/listbg2.png);
+	top: 0px;
+	width: 320px;
+	height: 480px;
+} 
+ 
 #idListHeader
 {
 	position: relative;
-	top: 5px;
+	top: -7px;
 	width: 320px;
 	height: 70px;
 	background-repeat:no-repeat;
-	background-position:center; 
+	background-position:left; 
+	left: 25px;
 }
  
  #idWrapper {
 	position: relative;
 	left: 15px;
-	top: 10px;
+	top: -24px;
 	width: 290px;
 	-webkit-transition-duration: 0ms;
-	height: 320px;
+	height: 326px;
 	z-index: 2;
-	background:#FFF;
+	background:#transparent;
 	overflow: hidden;
 	font-family:verdana;
 }
@@ -947,7 +800,7 @@ position: absolute;
 	-webkit-transition-duration: 0ms;
 	width:100%;
 	z-index: 10;
-	background-color:#FFF;
+	background-color:#transparent;
 	padding: 0px;
 }
 
@@ -958,7 +811,7 @@ position: absolute;
 	margin:0;
 	width:100%;
 	text-align:left;
-	background-color:#FFF;
+	background:#transparent;
 }
 
 #idScroller ul li {
@@ -967,10 +820,11 @@ position: absolute;
 	-webkit-transition-duration: 0ms;
 	border-bottom:1px solid #555;
 	margin: 0px 10px;
-	background-color:#FFF;
+	background:#transparent;
 	white-space: nowrap;
+	color: #fff;
 	text-overflow: ellipsis;
-	background-image: none;
+	background-image: transparent;
 }
 
 #idScroller ul li.selallclass
@@ -978,8 +832,8 @@ position: absolute;
 	padding: 10px 5px;
 	-webkit-transition-duration: 0ms;
 	margin: 0px;
-	border-bottom:1px solid #000;
-	background-color:#000;
+	border-bottom:2px solid #gray;
+	background-color:#transparent;
 	color: #FFF;
 	white-space: nowrap;
 	font-size: 25px;
@@ -987,23 +841,24 @@ position: absolute;
 
 #idScroller ul li.noshrink
 {
-	padding: 0px;
+	padding: 4px;
 	padding-left: 3px;
 	-webkit-transition-duration: 0ms;
 	margin: 0px;
-	border-bottom:1px solid #000;
-	background-color:#AAA;
+	border-bottom:2px solid #white;
+	background-color:#gray;
 	white-space: nowrap;
 	font-size: 25px;
+	opacity:.65;
 }
 
 #idListFooter
 {
 	position: relative;
-	top: 15px;
+	top: -10px;
 	left: 20px;
 	width: 280px;
-	height: 35px;
+	height: 4px;
 	z-index: 9000;
 }
 
@@ -1015,7 +870,7 @@ div.classPage div.classSearchBar form
 div.classPage div.classSearchBar form input
 {
 	border: 0;
-	background: transparent none;
+	background:none;
 	-webkit-appearance: none;
 	outline: 0;
 	width: 98%;
@@ -1028,7 +883,7 @@ div.classPage div.classSearchBar
 	background-position: 8px 50%;
 	background-repeat: no-repeat;
 	background-image: url(../res/icon-search-black.png);
-	width:210px;
+	width:250px;
 	padding-left: 30px;
 	-webkit-border-radius: 20px;
 }
@@ -1037,27 +892,13 @@ div.classPage div.classSearchBar
  * option buttons
  ***********************/
 
-#idOptionButtonList
-{
-	position: relative;
-	left: 230px;
-	top: -33px;
-	width: 46px;
-	height: 46px;
-	z-index: 200;
-	padding: 0px 10px;
-	background-image: url(../res/options.png);
-	background-position: center;
-	background-repeat:no-repeat;
-}
-
 #idOptionButtonPlayer
 {
 	position: absolute;
-	left: 62px;
-	top: 230px;
-	width: 44px;
-	height: 44px;
+	left: 42px;
+	top: 61px;
+	width: 57px;
+	height: 58px;
 	z-index: 7;
 	background-image: url(../res/themebt.png);
 }
@@ -1102,8 +943,8 @@ div.classPage div.classSearchBar
 	z-index:9999;
 	background-image:none;
 	position:absolute;
-	top:10%;
-	background: #FFF;
+	top:5%;
+	background: #transparent;
 	color: #000;
 }
 
@@ -1193,18 +1034,21 @@ div.classPage div.classSearchBar
 {
 	position: absolute;
 	left: 20px;
-	top: 85px;
-	height:350px; 
+	top: 45px;
+	height:370px; 
 	position:relative; 
 	overflow:hidden;
 } 
  
 #idPlaylist
 {
+	position:relative;
+	background-image:url('../res/default/listbg.png');
 	border: none;
 	width:320px;
 	height:480px;
 	z-index:0;
+	color: transparent;
 }
 
 #idPlaylist ul
@@ -1224,6 +1068,7 @@ div.classPage div.classSearchBar
 	padding: .2em 0px;
 	border-bottom: 1px  solid #CCC;	
 	color: #fff;
+	font-weight: bold;
 	text-decoration: none;
 	opacity:.75;
 }
@@ -1298,12 +1143,13 @@ div.classPage div.classSearchBar
 #btnbackground
  {
  position:relative; z-index:0;
-    background-image:url(../res/themes/default/background.png);
+    background-image:url(../res/default/background.png);
  	width:320px;
 	height:480px;
 	
  }
  
+
 /*********************
  * Volume Adjuster
  *********************/
@@ -1311,38 +1157,252 @@ div.classPage div.classSearchBar
 {
 	/*display: none;*/
 	position: absolute;
-	top:100px;
-	left:264px;
-	width: 28px;
-	height: 250px;
+	top:66px;
+	left:198px;
+	width: 155px;
+	height: 340px;
 	z-index:9901;
 	background-image: url(../res/volselect/volselectbacksm.png);
+	background-repeat:no-repeat;
+	background-position:center; 
 }
 
 #idVolVerAdjTarg
 {
 	position: absolute;
-	left: 10px;
-	right: 10px;
-	top:10px;
-	bottom: 10px;
+	left: 65px;
+	right: 65px;
+	top:45px;
+	bottom: 46px;
 	z-index:10;
 }
 
 #idVolVerAdjTarg div
 {
 	position: absolute;
+	left: 0.5px;
 	width: 100%;
 	height: 100%;
-	background: #FFF;
+	background-color: #333;
 }
 
 #idVolVertAdj div.classVertAdjKnob
 {
 	position: relative;
-	left:0px;
-	width: 27px;
-	height: 17px;
+	left:60px;
+	width: 36px;
+	height: 35px;
 	z-index:11;
 	background-image: url(../res/volselect/slidersm.png);
+}
+
+
+/*****************
+ * Speed Control
+ *****************/
+#idSpeedLabel
+{
+	width: 100%;
+	text-align: center;
+	font-family:arial;
+	color: #FFF;
+	font-size: 12px;
+	font-weight: bold;
+}
+	
+ 
+#idSpeedFiltDiv
+{
+	position: absolute;
+	top: 50px;
+	width: 300px;
+}
+ 
+#idSpeedLegend
+{
+	position: absolute;
+	top: 18px;
+	left: 25px;
+	width: 250px;
+	font-family:arial;
+	color: #FFF;
+	font-size: 10px;
+	z-index: 11;
+}
+
+
+#idSpeedLegend span.left
+{
+
+}
+
+#idSpeedLegend span.classSpeedMid
+{
+	position: absolute;
+	top: 0px;
+	left: 135px;
+}
+
+#idSpeedLegend span.right
+{
+	position: absolute;
+	top: 0px;
+	right: 0px;
+}
+
+#idSpeedCtl
+{
+	position: absolute;
+	top:28px;
+	left:20px;
+	height: 46px;
+	width: 250px;
+	background-image: url(../res/volselect/hselectbacksm.png);
+	background-repeat:no-repeat;
+	background-position:center; 
+}
+
+#idSpeedHorAdjTarg
+{
+	position: absolute;
+	left: 0px;
+	right: 0px;
+	top:10px;
+	bottom: 10px;
+	z-index:10;
+}
+
+#idHorDisplayBarR
+{
+	position: absolute;
+	left: 152px;
+	right: 0px;
+	top: 5px;
+	bottom: 5px;
+	background: #0F0;
+}
+
+#idHorDisplayBarL
+{
+	position: absolute;
+	left: 0px;
+	width: 152px;
+	top: 5px;
+	bottom: 5px;
+	background: #FF0;
+}
+
+#idSpeedCtl div.classHorzAdjKnob
+{
+	position: relative;
+	width: 36px;
+	top: 5px;
+	height: 35px;
+	z-index:12;
+	background-image: url(../res/volselect/sliderspd.png);
+}
+
+/*****************
+ * Song Transition
+ *****************/
+#idTransitionLabel
+{
+	width: 100%;
+	text-align: center;
+	font-family:arial;
+	color: #FFF;
+	font-size: 12px;
+	font-weight: bold;
+}
+	
+ 
+#idTransitionDiv
+{
+	position: absolute;
+	top: 130px;
+	width: 300px;
+}
+ 
+#idTransitionLegend
+{
+	position: absolute;
+	top: 18px;
+	left: 25px;
+	width: 250px;
+	font-family:arial;
+	color: #FFF;
+	font-size: 10px;
+	z-index: 11;
+}
+
+
+#idTransitionLegend span.left
+{
+
+}
+
+#idTransitionLegend span.classTranMid
+{
+	position: absolute;
+	top: 0px;
+	left: 107px;
+}
+
+#idTransitionLegend span.right
+{
+	position: absolute;
+	top: 0px;
+	right: 0px;
+}
+
+#idTransitionCtl
+{
+	position: absolute;
+	top:28px;
+	left:20px;
+	height: 46px;
+	width: 250px;
+	background-image: url(../res/volselect/hselectbacksm.png);
+	background-repeat:no-repeat;
+	background-position:center; 
+}
+
+#idTransitionAdjTarg
+{
+	position: absolute;
+	left: 0px;
+	right: 0px;
+	top:10px;
+	bottom: 10px;
+	z-index:10;
+}
+
+#idTHorDisplayBarR
+{
+	position: absolute;
+	left: 130px;
+	right: 5px;
+	top: 5px;
+	bottom: 5px;
+	background: #0F0;
+}
+
+#idTHorDisplayBarL
+{
+	position: absolute;
+	left: 5px;
+	width: 130px;
+	top: 5px;
+	bottom: 5px;
+	background: #FF0;
+}
+
+#idTransitionCtl div.classHorzAdjKnob
+{
+	position: relative;
+	width: 36px;
+	top: 5px;
+	height: 35px;
+	z-index:12;
+	background-image: url(../res/volselect/slidersmgreen.png);
 }

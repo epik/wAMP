@@ -163,8 +163,7 @@ MusMessage FFmpegWrapper::Open(const char *cstrFileName)
 
     // Get song length
     m_iSongLength = m_pFormatCtx->duration / AV_TIME_BASE;
-    m_lRate = m_pCodecCtx->sample_rate;
-	if ((m_lRate == 0) || (m_iSongLength == 0))
+	if (m_iSongLength == 0)
 	{
 		err = av_read_frame(m_pFormatCtx, &m_avPacket);
 
@@ -184,16 +183,24 @@ MusMessage FFmpegWrapper::Open(const char *cstrFileName)
 			return MUS_MOD_Error;
 		}
 		
-		m_lRate = m_pCodecCtx->sample_rate;
-		if (m_lRate == 0)
-			m_lRate = 11250;
 		m_iSongLength = m_pFormatCtx->duration / AV_TIME_BASE;
-			
 	}
 	
     return MUS_MOD_Success;
 }
 
+int32_t FFmpegWrapper::GetSampleRate()
+{
+	if (m_pCodecCtx)
+	{
+		if (m_pCodecCtx->sample_rate)
+		{
+			return m_pCodecCtx->sample_rate;
+		}
+	}
+
+	return 0;
+};
 
 MusMessage FFmpegWrapper::Close()
 {
@@ -438,13 +445,17 @@ const char *FFmpegWrapper::GetMetadata()
 	// add the starting bracket to the json
 	sprintf(m_cstrMetaString,"{");
 
+	int iActualData = 0;
+
 	// iterate through the metadata
 	while((tag=av_metadata_get(m_pFormatCtx->metadata, "", tag, AV_METADATA_IGNORE_SUFFIX)))
 	{
+		iActualData = 1;
+
 		// first calculate the size of this metadata item
 		//	remember to add a buffer to account for the quote marks 
 		//	and colon used for the JSON item (we use 10 to be safe)
-		size_t	tmpSize = strlen(tag->key) + strlen(tag->value) + 12;
+		size_t	tmpSize = SafeStringLen(tag->key) + SafeStringLen(tag->value) + 12;
 		
 		// Make sure we have enough room in our main JSON string
 		CurSize += tmpSize;
@@ -469,14 +480,171 @@ const char *FFmpegWrapper::GetMetadata()
 		strcat(m_cstrMetaString, m_cstrTemp1);
 	}
 	
+	if (iActualData)
+	{
+		char *cstrTmp = m_cstrMetaString;
+		while((*cstrTmp) != '\0') cstrTmp++;
+		cstrTmp--;
+		*cstrTmp = '}';
+	}
+	else
+		sprintf(m_cstrMetaString,"{}");
+
+	return m_cstrMetaString;
+}
+
+/********************************************
+ * GetMetadataLite()
+ *
+ * Create a JSON with only title and artist
+ *
+ * OUT
+ *	JSON formatted string (its a javascript thing for those C people)
+ *		You will need to delete this using free() rather than delete[].
+ ********************************************/
+const char *FFmpegWrapper::GetMetadataLite()
+{
+	ReportError("In Metadata Lite");
+
+	if (!m_pFormatCtx)
+	{
+		return NULL;
+	}
+
+	// keep track of how many characters we have in the string
+	//	in case we need to realloc
+	size_t	CurSize = 2;
+
+	// variable to pass the metadata pairs to
+	AVMetadataTag *tag=NULL;
+
+	// add the starting bracket to the json
+	sprintf(m_cstrMetaString,"{");
+
+	ReportError("About to get artist");
+
+	tag=av_metadata_get(m_pFormatCtx->metadata, "artist", tag, AV_METADATA_IGNORE_SUFFIX);
+	// first calculate the size of this metadata item
+	//	remember to add a buffer to account for the quote marks
+	//	and colon used for the JSON item (we use 10 to be safe)
+
+	size_t	tmpSize;
+
+	if (tag)
+	{
+		tmpSize = strlen("artist") + strlen(tag->value) + 12;
+
+		// Make sure we have enough room in our main JSON string
+		CurSize += tmpSize;
+		if (CurSize >= m_iMetaAllocAmt)
+		{
+			m_iMetaAllocAmt = CurSize + 1024;
+			m_cstrMetaString = (char *) REALLOC(m_cstrMetaString, m_iMetaAllocAmt);
+		}
+
+
+		m_cstrTemp2 = ReallocSafeStringCopy(m_cstrTemp2, &m_iTempAlloc, tag->value);
+
+		if (tmpSize + 20 > m_iTempAlloc)
+		{
+			m_iTempAlloc = tmpSize + 1024;
+			m_cstrTemp1 = (char *) REALLOC(m_cstrTemp1, m_iTempAlloc);
+			m_cstrTemp2 = (char *) REALLOC(m_cstrTemp2, m_iTempAlloc);
+		}
+
+		sprintf(m_cstrTemp1, "\"artist\":\"%s\",", m_cstrTemp2);
+	}
+	else
+		sprintf(m_cstrTemp1, "\"artist\":\"\",");
+
+	strcat(m_cstrMetaString, m_cstrTemp1);
+
+	ReportError("About to get title");
+
+	tag = NULL;
+
+	tag=av_metadata_get(m_pFormatCtx->metadata, "title", tag, AV_METADATA_IGNORE_SUFFIX);
+
+	if (tag)
+	{
+		// first calculate the size of this metadata item
+		//	remember to add a buffer to account for the quote marks
+		//	and colon used for the JSON item (we use 10 to be safe)
+		tmpSize = strlen("title") + strlen(tag->value) + 12;
+
+		// Make sure we have enough room in our main JSON string
+		CurSize += tmpSize;
+		if (CurSize >= m_iMetaAllocAmt)
+		{
+			m_iMetaAllocAmt = CurSize + 1024;
+			m_cstrMetaString = (char *) REALLOC(m_cstrMetaString, m_iMetaAllocAmt);
+		}
+
+
+		m_cstrTemp2 = ReallocSafeStringCopy(m_cstrTemp2, &m_iTempAlloc, tag->value);
+
+		if (tmpSize + 20 > m_iTempAlloc)
+		{
+			m_iTempAlloc = tmpSize + 1024;
+			m_cstrTemp1 = (char *) REALLOC(m_cstrTemp1, m_iTempAlloc);
+			m_cstrTemp2 = (char *) REALLOC(m_cstrTemp2, m_iTempAlloc);
+		}
+
+		sprintf(m_cstrTemp1, " \"title\":\"%s\",", m_cstrTemp2);
+	}
+	else
+		sprintf(m_cstrTemp1, "\"title\":\"\",");
+
+	strcat(m_cstrMetaString, m_cstrTemp1);
+
+	ReportError("About to get album");
+	
+	tag = NULL;
+
+	tag=av_metadata_get(m_pFormatCtx->metadata, "album", tag, AV_METADATA_IGNORE_SUFFIX);
+
+	if (tag)
+	{
+		// first calculate the size of this metadata item
+		//	remember to add a buffer to account for the quote marks
+		//	and colon used for the JSON item (we use 10 to be safe)
+		tmpSize = strlen("album") + strlen(tag->value) + 12;
+
+		// Make sure we have enough room in our main JSON string
+		CurSize += tmpSize;
+		if (CurSize >= m_iMetaAllocAmt)
+		{
+			m_iMetaAllocAmt = CurSize + 1024;
+			m_cstrMetaString = (char *) REALLOC(m_cstrMetaString, m_iMetaAllocAmt);
+		}
+
+
+		m_cstrTemp2 = ReallocSafeStringCopy(m_cstrTemp2, &m_iTempAlloc, tag->value);
+
+		if (tmpSize + 20 > m_iTempAlloc)
+		{
+			m_iTempAlloc = tmpSize + 1024;
+			m_cstrTemp1 = (char *) REALLOC(m_cstrTemp1, m_iTempAlloc);
+			m_cstrTemp2 = (char *) REALLOC(m_cstrTemp2, m_iTempAlloc);
+		}
+
+		sprintf(m_cstrTemp1, " \"album\":\"%s\",", m_cstrTemp2);
+	}
+	else
+		sprintf(m_cstrTemp1, " \"album\":\"%s\",");
+
+	strcat(m_cstrMetaString, m_cstrTemp1);
+	
 	char *cstrTmp = m_cstrMetaString;
 
 	while((*cstrTmp) != '\0') cstrTmp++;
 	cstrTmp--;
 	*cstrTmp = '}';
+
+	ReportError1("Out Metadata Lite: %s", m_cstrMetaString);
+
 	return m_cstrMetaString;
 }
-
 
 /********************************
  *	GetValue()

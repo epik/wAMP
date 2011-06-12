@@ -58,8 +58,9 @@ public:
 	int16_t PrepareMetadata(const char *cstrFileName);
 	const char *GetValue(const char *Name);
 	const char *GetMetadata();
+	const char *GetMetadataLite();
 	
-	int32_t GetSampleRate() {return m_lRate;};
+	int32_t GetSampleRate();
 	int64_t GetDuration() {return m_iSongLength;};
 };
 

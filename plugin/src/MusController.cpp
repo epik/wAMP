@@ -133,6 +133,8 @@ void MusController::Mixer(uint8_t *destStream, int lRequested)
 int16_t MusController::Init(void (*funcCallBack)(const char *),
 							void (*funcSeekCallBack)(const char *))
 {
+	ReportError("In MusController Init");
+
 	m_funcCallBack = funcCallBack;
 	m_funcSeekCallBack = funcSeekCallBack;
 
@@ -151,6 +153,8 @@ int16_t MusController::Init(void (*funcCallBack)(const char *),
 		MUS_ERROR(MUS_ERROR_SDL_AUDIO_OPEN, SDL_GetError());
 		return 1;
 	}
+
+	ReportError("In MusController Init - Made it past the SDL stuff");
 
 	m_puiBuffToFill = (uint32_t **)MALLOC((1 + NUM_CHANNELS) * sizeof(uint32_t *));
 
@@ -206,6 +210,8 @@ int16_t MusController::Open(const char *cstrFileName,
 		return 1;
 	}
 
+	m_apPipeline[iTrack].RunDecodeStage();
+
 	//ReportError("Finished Open");
 
 	return 0;
@@ -242,23 +248,20 @@ int16_t MusController::SetNext(const char *cstrFileName,
  * 	seconds - absolute position in seconds to seek to
  * Out
  *	0 is no error, 1 if error
- ***************************************/
+ ***************************************/ 
 int16_t MusController::Seek(double seconds, int32_t iTrack)
 {
 	uint32_t iCallbackVal;
 
 	// call the seek routine of the playback library
-	SDL_LockAudio();
 	iCallbackVal = m_apPipeline[iTrack].Seek(seconds);
-	SDL_UnlockAudio();
 
-	char *cstrRet = (char *) MALLOC(64);
+	m_apPipeline[iTrack].RunDecodeStage();
 
-	sprintf(cstrRet, "%i", iCallbackVal);
+	sprintf(m_pcstrSeekCallback, "%i", iCallbackVal);
 
-	m_funcSeekCallBack(cstrRet);
-
-	FREE(cstrRet);
+	m_funcSeekCallBack(m_pcstrSeekCallback);
+	
 
 	return 0;
 }
@@ -435,7 +438,6 @@ int16_t MusController::Uninit()
 
 const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 {
-	const char *cstrRet = NULL;
 	LockMusMsgQueue();
 	va_list Args;
 	va_start(Args, cmMsg);
@@ -483,9 +485,17 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 	{
 
 	}
-	else if (cmMsg == MUS_MESSAGE_GET_SONG_STATE)
+	else if (cmMsg == MUS_MESSAGE_GET_SONG_CUR)
 	{
-		cstrRet = m_apPipeline[0].GetSongState();
+		sprintf(m_pcstrCurTimeCallback, "%u", m_apPipeline[0].GetCurTime());
+		UnlockMusMsgQueue();
+		return m_pcstrCurTimeCallback;
+	}
+	else if (cmMsg == MUS_MESSAGE_GET_SONG_END)
+	{
+		sprintf(m_pcstrEndTimeCallback, "%u", m_apPipeline[0].GetEndTime());
+		UnlockMusMsgQueue();
+		return m_pcstrEndTimeCallback;
 	}
 	else
 	{
@@ -518,7 +528,7 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 		{
 			MusicMsg->Msg = MUS_MESSAGE_SEEK;
 			MusicMsg->DoubleData = va_arg(Args, double);
-			//ReportError1("Seeking to position %f", MusicMsg->DoubleData);
+			ReportError1("Seeking to position %f", MusicMsg->DoubleData);
 		}
 		else if (cmMsg == MUS_MESSAGE_PASS_SONG_INFO)
 		{
@@ -537,7 +547,7 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 	va_end(Args);
 	UnlockMusMsgQueue();
 	//ReportError("Unlock Msg Queue after pass");
-	return cstrRet;
+	return NULL;
 }
 
 void MusController::_AddMessage(MusicMessage *Message, int16_t iClearSongInfoBuf)

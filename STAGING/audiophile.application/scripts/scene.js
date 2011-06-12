@@ -9,6 +9,15 @@ var backManager =
 	handleBackGesture: function(e)
 	{
 		
+		/*if (e.keyCode == 86)
+		{
+			if ($('body').hasClass("classVeer"))
+				$('body').removeClass("classVeer");
+			else
+				$('body').addClass("classVeer");
+			return;
+		}*/
+		
 		if (e.keyCode != 27)
 		{
 			return;
@@ -35,7 +44,7 @@ var backManager =
 			return;
 		else if (strCurrentScene == "idIndex")
 		{
-			if (scenePlay.iFirstRun == 0)
+			if (scenePlay.iFirstRun)
 				return;
 			else
 				ChangePage($('#idPlayer'));
@@ -200,7 +209,7 @@ var scenePlaylist =
 												clearInterval(scenePlaylist.intScroll);
 										}, 50);
 					}
-					else if (ev.pageY < 72)
+					else if (ev.pageY < 40)
 					{
 						if (scenePlaylist.ScrollBox.y >= 0)
 							return;
@@ -239,16 +248,18 @@ var scenePlaylist =
 
 					if (ev.pageY > iLowPoint)
 					{
+						if (liLast.attr('id') == liParent.attr('id'))
+							liLast = liLast.prev();
 						liParent.detach();
 						liParent.insertAfter(liLast);
 					}
-					else if (ev.pageY < 73)
+					else if (ev.pageY < 40)
 					{
 						$('#idPlyLstUL').children().each(function()
 						{
 							var posOffset = $(this).offset();
 							
-							if ((posOffset.top > 65) && (posOffset.top < 93))
+							if ((posOffset.top > 20) && (posOffset.top < 60))
 							{
 								liParent.detach();
 								liParent.insertBefore($(this));
@@ -390,26 +401,35 @@ var scenePlay = {
 	bHideVol: false,
 	bPlayOnLoad: false,
 	bFilterUp: false,
-	bSoundVis: false,
 	fVolScale: 0,
 	fVolAmt: 0.5,
+	iPauseOnHOut: 1,
+	iPlayOnHIn: 0,
+	iFirstRun: 1,
+	iOneState: 0,
 	
 	InitMyDiv: function()
 	{
-		this.Record = new RecordSpin();
-		this.Record.init(60, 73, 200, 44, "idRecord");
+		this.Record = new RecordSpin($('#idRecPane'));
+		this.Record.Init();
+		
+		objwAMP.funcImgGenCB = function(strArtist, strAlbum)
+		{
+			console.log("About to call CheckLastFM with Art: " +
+						strArtist + " Album: " + strAlbum);
+			scenePlay.Record.CheckLastFM(strArtist, strAlbum);
+		
+		};
 		
 		this.ScrubOne = new MusScrubber();
 		this.ScrubOne.Init($('#idScrubOne'));
 		
 		$('#idPlayer').children(".classVolAdjust").bind(START_EV, function()
 		{
-			if (scenePlay.bSoundVis = !(scenePlay.bSoundVis))
-			{			
-				$('#idVolVertAdj').show(200);
-			}
+			if ($('#idVolVertAdj').is(":visible"))		
+				$('#idVolVertAdj').hide(0);
 			else
-				$('#idVolVertAdj').hide(200);
+				$('#idVolVertAdj').show(0);	
 		});
 		
 		$('#idVolKnob').drag("start",function( ev, dd )
@@ -417,25 +437,170 @@ var scenePlay = {
 			var div = $(this).prev(); 
 	
 			dd.limit = div.offset();
-			dd.limit.bottom = dd.limit.top + div.outerHeight() - $( this ).outerHeight()/2;
-			dd.limit.top -= $( this ).outerHeight()/2;
+			dd.limit.bottom = dd.limit.top + div.outerHeight() - $( this ).outerHeight();
+			dd.limit.visAdjust = $('#idVolVertAdj').offset().top;
 		})
 		.drag(function( ev, dd )
 		{
 			var iTop = Math.min(dd.limit.bottom, 
 								Math.max(dd.limit.top, dd.offsetY));
 			
-			var iRelTop = iTop - dd.limit.top;
-			var fVal = iRelTop * scenePlay.fVolScale;
+			var iRelTop = iTop - dd.limit.visAdjust;
+			
+			var fVal = (iRelTop - $('#idVolVerAdjTarg').position().top) * 
+						scenePlay.fVolScale;
+						
 			$(this).css("top", iRelTop);
 			$('#idVolDisplayBar').attr("style", 
 									   "clip: rect(" + 
-											iRelTop +
+											(iRelTop - 20) +
 											"px, auto, 400px, auto);");
 			scenePlay.SetVol(fVal);
 			
 		});
 		
+		$('#idSpeedKnob').drag("start",function( ev, dd )
+		{
+			var div = $('#idSpeedHorAdjTarg'); 
+	
+			dd.limit = div.offset();
+			dd.limit.right = dd.limit.left + div.outerWidth() - $( this ).width();
+			dd.limit.iVisAdj = $('#idSpeedCtl').offset().left;
+		})
+		.drag(function( ev, dd )
+		{
+			clearTimeout(scenePlay.timeoutNormSpd);
+		
+			var iLeft = Math.min(dd.limit.right, 
+								Math.max(dd.limit.left, dd.offsetX));
+			
+			var iRelLeft = iLeft - dd.limit.iVisAdj;
+			
+			var fVal;
+			
+			if (iRelLeft > 145)
+			{
+				var div = $('#idHorDisplayBarR');
+			
+				$(this).css("left", iRelLeft);
+			
+				fVal = iLeft - 145 - dd.limit.left;
+				fVal *= scenePlay.fSpdFastScl;
+				fVal = 1 - fVal;
+				
+				$('#idHorDisplayBarL').attr("style", 
+						"display: none");
+				div.attr("style", 
+						"clip: rect(auto, " +
+						(iRelLeft - 145) +
+						"px, auto, 0px);");
+			}
+			else if (iRelLeft >= 125)
+			{
+				fVal = 1;
+				$(this).css("left", iRelLeft);
+				$('#idHorDisplayBarR').attr("style", 
+						"display: none");
+				$('#idHorDisplayBarL').attr("style", 
+						"display: none");
+				scenePlay.timeoutNormSpd = setTimeout(function()
+											{
+												$('#idSpeedKnob').css("left", '135px');
+											}, 1000);
+			}
+			else
+			{
+			
+				fVal = (iLeft - dd.limit.left);
+				fVal *= scenePlay.fSpdSlowScl;
+				fVal = 4 - fVal;
+				
+				$('#idHorDisplayBarR').attr("style", 
+						"display: none");
+				$(this).css("left", iRelLeft);
+				$('#idHorDisplayBarL').attr("style", 
+						"clip: rect(auto, 152px, auto, " + 
+						Number(iRelLeft + 10).toString() +
+						"px);");
+			}
+			
+			//console.log(fVal);
+			
+			objwAMP.SetSpeed(fVal);
+			
+		});
+		scenePlay.fSpdSlowScl = 3/125;
+
+		$('#idTransitionKnob').drag("start",function( ev, dd )
+		{
+			var div = $('#idTransitionAdjTarg'); 
+	
+			dd.limit = div.offset();
+			dd.limit.right = dd.limit.left + div.outerWidth() - $( this ).width() + 5;
+			dd.limit.iVisAdj = $('#idTransitionCtl').offset().left;
+		})
+		.drag(function( ev, dd )
+		{
+			clearTimeout(scenePlay.timeoutNormSpd);
+		
+			var iLeft = Math.min(dd.limit.right, 
+								Math.max(dd.limit.left, dd.offsetX));
+			
+			var iRelLeft = iLeft - dd.limit.iVisAdj;
+			
+			var fVal;
+			
+			if (iRelLeft > 120)
+			{
+				var div = $('#idTHorDisplayBarR');
+			
+				$(this).css("left", iRelLeft);
+			
+				fVal = iLeft - 120 - dd.limit.left;
+				fVal *= scenePlay.fTranGapScl;
+				
+				$('#idTHorDisplayBarL').attr("style", 
+						"display: none");
+				div.attr("style", 
+						"clip: rect(auto, " +
+						(iRelLeft - 120) +
+						"px, auto, 0px);");
+			}
+			else if (iRelLeft >= 110)
+			{
+				fVal = 0.0;
+				$(this).css("left", iRelLeft);
+				$('#idTHorDisplayBarR').attr("style", 
+						"display: none");
+				$('#idTHorDisplayBarL').attr("style", 
+						"display: none");
+				scenePlay.timeoutNormSpd = setTimeout(function()
+											{
+												$('#idTransitionKnob').css("left", '112px');
+											}, 1000);
+			}
+			else
+			{
+			
+				fVal = (iLeft - dd.limit.left);
+				fVal *= scenePlay.fTranCrossScl;
+				fVal = fVal - 10;
+				
+				$('#idTHorDisplayBarR').attr("style", 
+						"display: none");
+				$(this).css("left", iRelLeft);
+				$('#idTHorDisplayBarL').attr("style", 
+						"clip: rect(auto, 152px, auto, " + 
+						Number(iRelLeft + 10).toString() +
+						"px);");
+			}
+			
+			objwAMP.SetSongTransition(fVal);
+			
+		});
+		scenePlay.fTranCrossScl = 10/110;
+
+						
 		this.SetVol(this.fVolAmt);
 		
 		$('#btnplay').click(function() {scenePlay.PlayPauseChange(PLAYER_PLAY_STATE);});
@@ -472,7 +637,7 @@ var scenePlay = {
 		});
 					
 		this.objBassControl = new PalmKnobControl(objOptions.fBass);
-		this.objBassControl.init(-10, 120, 160, "idFiltHere", 
+		this.objBassControl.init(-15, 195, 160, "idFiltHere", 
 								function(fSet) 
 								{
 									scenePlay.SetBass(fSet);
@@ -481,7 +646,7 @@ var scenePlay = {
 								);		
 		
 		this.objTrebControl = new PalmKnobControl(objOptions.fTreble);
-		this.objTrebControl.init(161, 120, 160, "idFiltHere", 
+		this.objTrebControl.init(145, 195, 160, "idFiltHere", 
 								function(fSet) 
 								{
 									scenePlay.SetTreble(fSet);
@@ -489,86 +654,240 @@ var scenePlay = {
 								"Treble"
 								);
 		
+		var me = this;
+		
+		//scenePlay.UpdateState();
+		
+		if (window.PalmSystem) 
+		{
+			// Headset control
+		
+			var reqObject = new PalmServiceBridge();
+			
+			var parameters = {};
+			parameters.subscribe = true;
+			parameters.$activity = {
+				activityId: window.PalmSystem.activityId
+			};
+
+			parameters = JSON.stringify(parameters);
+			reqObject.onservicecallback = function(status) 
+			{
+				status = JSON.parse(status);
+				
+				if (me.iPauseOnHOut)
+				{
+					if (status["state"] == "up")
+					{
+						me.PlayPauseChange(PLAYER_PAUSED_STATE);
+						return;
+					}
+				}
+				
+				if (me.iPlayOnHIn)
+				{
+					if (status["state"] == "down")
+					{
+						me.PlayPauseChange(PLAYER_PLAY_STATE);
+						return;
+					}
+				}
+				
+			};
+			reqObject.call("palm://com.palm.keys/headset/status", parameters );
+		
+			// Bluetooth controls
+		
+			var reqObject = new PalmServiceBridge();
+			
+			var parameters = {};
+			parameters.subscribe = true;
+			parameters.$activity = {
+				activityId: window.PalmSystem.activityId
+			};
+
+			parameters = JSON.stringify(parameters);
+			reqObject.onservicecallback = function(status) 
+			{
+			
+				status = JSON.parse(status);
+			
+				console.log(JSON.stringify(status));
+			
+				var state = status.state;
+
+				if (state === "up")
+				{
+					var key = status.key;
+	
+					switch (key)
+					{
+					// this looks strange, but there may be events we need to translate
+					
+						case "next":
+							objwAMP.OpenNextSong();
+							break;
+						case "prev":
+							objwAMP.OpenPrevSong();
+							break;
+						case "pause":
+							scenePlay.PlayPauseChange(PLAYER_PAUSED_STATE);
+							break;
+						case "play":
+							scenePlay.PlayPauseChange(PLAYER_PLAY_STATE);
+							break;
+						case "stop":
+							scenePlay.PlayPauseChange(PLAYER_PAUSED_STATE);
+							break;
+						case "repeat-all":
+							scenePlay.ModeControl(PLAY_MODE_REPEAT);
+							break;
+						case "repeat-track":
+							scenePlay.ModeControl(PLAY_MODE_REPEAT);
+							break;
+						case "repeat-none":
+							scenePlay.ModeControl(PLAY_MODE_NORMAL);
+							break;
+						case "shuffle-on":
+							scenePlay.ModeControl(PLAY_MODE_SHUFFLE);
+							break;
+						case "shuffle-off":
+							scenePlay.ModeControl(PLAY_MODE_NORMAL);
+							break;
+					}
+	
+				}
+			}
+			
+			reqObject.call("luna://com.palm.keys/media/status", parameters );
+		}
+		
 	},
 	
 	Display: function()
 	{
-		this.ScrubOne.bScrubInProgress = false;
+		if (scenePlay.iFirstRun)
+		{
+			scenePlay.iFirstRun = 0;
 	
-		this.fVolScale = 1/($('#idVolVerAdjTarg').height());
-		var iHeight = $('#idVolVerAdjTarg').height();
-		
-		iHeight = $('#idVolKnob').height();
-		
-		var iRelTop = $('#idVolVerAdjTarg').height() * 
-							scenePlay.fVolAmt - 
-						$('#idVolKnob').height()/2;
-		$('#idVolKnob').css("top", iRelTop);
-		$('#idVolDisplayBar').attr("style", "clip: rect(" + iRelTop + "px, auto, 400px, auto);");
-		$('#idVolVertAdj').hide();
+			this.ScrubOne.bScrubInProgress = false;
 	
-		this.ScrubOne.OrientChange();
+			this.fVolScale = 1/($('#idVolVerAdjTarg').height() - $('#idVolKnob').height());
+			
+			console.log($('#idVolVerAdjTarg').height() + " - " + $('#idVolKnob').height() +
+						" - " + $('#idVolVerAdjTarg').offset().top + " - " +
+						$('#idVolVertAdj').offset().top);
+			
+			var iRelTop = $('#idVolVerAdjTarg').height() * 
+								scenePlay.fVolAmt - 
+								$('#idVolKnob').height()/2 + 
+								$('#idVolVerAdjTarg').offset().top -
+								$('#idVolVertAdj').offset().top + 5;
+			$('#idVolKnob').css("top", iRelTop);
+			$('#idVolDisplayBar').attr("style", 
+										"clip: rect(" + 
+										(iRelTop - 20) + 
+										"px, auto, 400px, auto);");
+			
+			$('#idVolVertAdj').hide();
+		
+			$('#idSpeedKnob').css("left", '135px');
+			$('#idHorDisplayBarR').attr("style", 
+										"display: none");
+			$('#idHorDisplayBarL').attr("style", 
+										"display: none");
+			scenePlay.fSpdFastScl = 0.5/($('#idSpeedHorAdjTarg').width() - 145 - 36);
+			
+			this.objTrebControl.RestoreVal(objOptions.fTreble);
+			this.objBassControl.RestoreVal(objOptions.fBass);
+			this.ScrubOne.OrientChange();
+		}
+	
+		var fTranVal = Number(objwAMP.GetSongTransition());
+		
+		if (fTranVal > 0.5)
+		{
+			var iLeft = fTranVal * ($('#idTransitionAdjTarg').width() - 130 - 36)/10;
+			iLeft += 130;
+			$('#idTransitionKnob').css("left", iLeft);
+			$('#idTHorDisplayBarL').attr("style", 
+						"display: none");
+			$('#idTHorDisplayBarR').attr("style", 
+						"clip: rect(auto, " +
+						(iLeft - 130) +
+						"px, auto, 0px);");
+		
+		}
+		else if (fTranVal < -0.5)
+		{
+			var iLeft = fTranVal + 10;
+			iLeft *= 10.5;
+			iLeft += $('#idTransitionAdjTarg').offset().left;
+			//iLeft += $('#idTransitionCtl').offset().left
+		
+			$('#idTransitionKnob').css("left", iLeft-21);
+			$('#idTHorDisplayBarR').attr("style", 
+							"display: none");	
+			$('#idTHorDisplayBarL').attr("style", 
+						"clip: rect(auto, 152px, auto, " + 
+						iLeft +
+						"px);");							
+		}
+		else
+		{
+			$('#idTransitionKnob').css("left", '112px');
+			$('#idTHorDisplayBarR').attr("style", 
+							"display: none");
+			$('#idTHorDisplayBarL').attr("style", 
+							"display: none");
+		}
+		scenePlay.fTranGapScl = 10/($('#idTransitionAdjTarg').width() - 120 - 30);	
+	
+
 		this.PlayPauseChange(scenePlay.iPausePlayState);	
 		this.ModeControl(objwAMP.GetMode());
-		scenePlay.UpdateState();
 	},
 	
 	UpdateState: function()
 	{
-		try
-		{
-			if (objwAMP.bReinitInProgress == true)
-			{
-				console.log("Checking on reinit");
-				if (objwAMP.checkIfPluginInit())
-				{
-					scenePlay.ScrubOne.bScrubInProgress = false;
-					objwAMP.bReinitInProgress = false;					
-				}
-				setTimeout(function() {scenePlay.UpdateState();}, STATE_WAIT_PERIOD);
-				return;			
-			}
+		//console.log("Entering UpdateState");
+	
+		clearTimeout(scenePlay.timoutOneState);
 		
-			this.PluginState = objwAMP.GetState();
+		if (scenePlay.iOneState)
+			return;
+		
+		scenePlay.iOneState = 1;
 			
-			if (!this.PluginState)
-			{
-				console.log("No state");
-				if (!objwAMP.bReinitInProgress && !(objwAMP.checkIfPluginInit()))
-				{
-					console.log("Need a restart");
-					objwAMP.RedowAMP();
-				}
-				
-				setTimeout(function() {scenePlay.UpdateState();}, STATE_WAIT_PERIOD);
-				return;
-			}
-		
-			if (this.PluginState["EndAmt"] != this.ScrubOne.iEndTime)
-				this.ScrubOne.SetEndTime(this.PluginState["EndAmt"]);
+		this.PluginState = objwAMP.GetState();
+			
+		if (this.PluginState.EndTime != this.ScrubOne.iEndTime)
+				this.ScrubOne.SetEndTime(this.PluginState.EndTime);
 
-			this.ScrubOne.SetCurTime(this.PluginState["CurPos"]);
+		this.ScrubOne.SetCurTime(this.PluginState.CurTime);
 				
-			setTimeout(function() {scenePlay.UpdateState();}, STATE_WAIT_PERIOD);
-		}
-		catch(e)
-		{
-			console.log(e);
-			setTimeout(function() {scenePlay.UpdateState();}, STATE_WAIT_PERIOD);
-		}
+		scenePlay.timoutOneState = setTimeout(function() 
+										{
+											scenePlay.UpdateState();
+										}, STATE_WAIT_PERIOD);
+
+		scenePlay.iOneState = 0;
 	},
 
 	ShowFilters: function () 
 	{
+		$('#idVolVertAdj').hide();
 		$('#idFiltHere').addClass('classAnimateFilterUp');
 	},
 	
 	FilterDone: function() 
 	{
 		$('#idFiltHere').removeClass('classAnimateFilterUp');
+		objwAMP.SetNextSong();
 	
 		objOptions.UpdateOption(OPT_ID_BASS, this.objBassControl.GetVal());
 		objOptions.UpdateOption(OPT_ID_TREB, this.objTrebControl.GetVal());
+		objOptions.UpdateOption(OPT_ID_TRANS, objwAMP.GetSongTransition());
 	},
 
 	FilterReset: function() 
@@ -578,6 +897,21 @@ var scenePlay = {
 		
 		this.objTrebControl.RestoreVal(0.5);
 		objwAMP.SetTreble(1.0);
+		
+		$('#idSpeedKnob').css("left", '135px');
+		$('#idHorDisplayBarR').attr("style", 
+						"display: none");
+		$('#idHorDisplayBarL').attr("style", 
+						"display: none");
+		objwAMP.SetSpeed(1.0);
+		
+		$('#idTransitionKnob').css("left", '112px');
+		$('#idTHorDisplayBarR').attr("style", 
+						"display: none");
+		$('#idTHorDisplayBarL').attr("style", 
+						"display: none");
+		objwAMP.SetSongTransition(0.0);
+		objwAMP.SetNextSong();
 	},
 	
 	SetTreble: function(event)
@@ -628,18 +962,20 @@ var scenePlay = {
 		{
 			this.iPausePlayState = PLAYER_PLAY_STATE;
 			objwAMP.play();
-			this.Record.spin();
+			this.Record.Start();
 			$('#btnplay').hide();
 			$('#btnpause').show();
+			scenePlay.UpdateState();
 		}
 		else
 		{
 			this.iPausePlayState = PLAYER_PAUSED_STATE;
 			objwAMP.pause();
 			this.bPlayOnLoad = false;
-			this.Record.stop();
+			this.Record.Stop();
 			$('#btnplay').show();
 			$('#btnpause').hide();
+			clearTimeout(scenePlay.timoutOneState);
 		}
 	},
 	
@@ -881,11 +1217,14 @@ var sceneIndex = {
 
 	InitMyDiv: function()
 	{
-		this.btnPlayAll = new widwAMPIndex($("#idFirstIndex"), PlayAll);
-		this.btnAlbumIndex = new widwAMPIndex($("#idSecondIndex"), DrawAlbum);
-		this.btnArtistIndex = new widwAMPIndex($("#idThirdIndex"), DrawArtist);
-		this.btnGenreIndex = new widwAMPIndex($("#idFourthIndex"), DrawGenre);
-		this.btnTitleIndex = new widwAMPIndex($("#idFifthIndex"), DrawTitle);
+		if (!this.bFileOnly)
+		{
+			this.btnPlayAll = new widwAMPIndex($("#idFirstIndex"), PlayAll);
+			this.btnAlbumIndex = new widwAMPIndex($("#idSecondIndex"), DrawAlbum);
+			this.btnArtistIndex = new widwAMPIndex($("#idThirdIndex"), DrawArtist);
+			this.btnGenreIndex = new widwAMPIndex($("#idFourthIndex"), DrawGenre);
+			this.btnTitleIndex = new widwAMPIndex($("#idFifthIndex"), DrawTitle);
+		}
 		this.btnFolderIndex = new widwAMPIndex($("#idSixthIndex"), DrawDir);			
 		this.btnOptionIndex = new widwAMPIndex($('#idSeventhIndex'),
 												function()
@@ -935,18 +1274,86 @@ var sceneIndex = {
 
 var sceneSplash = {
 
+	iDoubleCheck: 0,
+
 	InitWAMP: function()
-	{
-	try
 	{
 		objOptions.LoadDatabase();
 		sceneIndex.InitMyDiv();
 		sceneList.InitMyDiv();
-		scenePlay.InitMyDiv();
 		scenePlaylist.Init();
-	} catch (e) {alert(e);}
+		scenePlay.InitMyDiv();
 	},
 
+	FinishIndex: function(iIndexStatus)
+	{
+		clearTimeout(sceneSplash.timoutFailsafe);
+		
+		this.iDoubleCheck = -1;
+	
+		if (iIndexStatus == INDEX_FAILED_LOAD)
+		{
+			objwAMP.bFolderOnly = true; 
+			$('#idTellUser').text("The indexer failed to run properly last time.  " + 
+								  "wAMP will only be able to run in Folder Only " + 
+								  "View until you are able to successfully run the" + 
+								  " indexer. You can rerun the indexer from the " +
+								  "options menu.");
+								  
+			$('#idButtonGoesHere').removeClass();
+			$('#idButtonGoesHere').addClass('wampButton');
+		
+			$('#idButtonGoesHere span').text("Continue");
+								  
+			$('#idButtonGoesHere').click(function () 
+			{
+				sceneIndex.bFileOnly = true;
+				widStatusPill.Stop();
+				ChangePage($('#idIndex'));
+			});
+			ChangePage($('#idDialog'));
+		}
+		else
+			ChangePage($('#idIndex'));
+	},
+	
+	FailSafe: function()
+	{
+		if (this.iDoubleCheck == -1)
+			return;
+	
+		sceneSplash.timoutFailsafe = setTimeout(function()
+		{
+			if (sceneSplash.iDoubleCheck++ > 6)
+			{
+				objwAMP.bFolderOnly = true; 
+				$('#idTellUser').text("The indexer is taking longer then it should, and may " +
+									  "be having problems.  As a result, Audiophile will " +
+									  "run in safemode until you are able to rerun the indexer " + 
+									  "from the options menu.  In safemode, you will only be able " +
+									  "to run access files using Folder view.");
+									  
+				$('#idButtonGoesHere').removeClass();
+				$('#idButtonGoesHere').addClass('wampButton');
+			
+				$('#idButtonGoesHere span').text("Continue");
+									  
+				$('#idButtonGoesHere').click(function () 
+				{
+					sceneIndex.bFileOnly = true;
+					widStatusPill.Stop();
+					ChangePage($('#idIndex'));
+				});
+				ChangePage($('#idDialog'));
+			
+			}
+			else
+			{
+				sceneSplash.FailSafe()
+			}
+		}, 10000); 
+	},
+	
 	LoadSplash: function()
 	{
 
@@ -958,159 +1365,17 @@ var sceneSplash = {
 			return;
 		}
 		
-		var jsonIndexer = objwAMP.GetIndexerStatus();
-		
-		if(jsonIndexer.iIndexingStatus == 0)
-		{
-			setTimeout(function() {sceneSplash.LoadSplash();}, 100);
-			return;
-		}
+		clearTimeout(sceneSplash.timeoutCheckPlug);
+		this.iDoubleCheck++;		
 		
 		this.InitWAMP();
+		widStatusPill.Start();
 		
-		if ((jsonIndexer.iIndexingStatus == 1) || (jsonIndexer.iIndexingStatus == 3))
-		{
+		objwAMP.CheckIndex(function(iIndexStatus) {sceneSplash.FinishIndex(iIndexStatus);});
 		
-			$('#idTellUser').html("<p>This appears to be the first time you have run " +
-								  "Audiophile or you are using an old version." +
-								  " The program will now take a few minutes to " +
-								  "search through your memory card " +
-								  "and locate any media files.  Once it has finished, it" +
-								  " will create two files on your memory card, ~wamp.tmp " +
-								  " and wamp.index.</p><p>  If the process fails for some reason" +
-								  " or the indexing takes longer than 5 minutes, you can" +
-								  " restart Audiophile and it will run without an" +
-								  " Index.</p>");
-		
-			$('#idButtonGoesHere').removeClass();
-			$('#idButtonGoesHere').addClass('wampButton');
-			
-			$('#idButtonGoesHere span').text("Run Index");
-		
-			$('#idButtonGoesHere').click(function () 
-			{
-				setTimeout(function() {sceneSplash.WaitForFirstIndex();}, 20);
-				ChangePage($('#idSplash'));
-			});
-	
-			ChangePage($('#idDialog'));
-		}
-		else if (jsonIndexer.iIndexingStatus == -1)
-		{
-				objwAMP.bFolderOnly = true; 
-				$('#idTellUser').text("The indexer failed to run properly last time.  " + 
-									  "wAMP will only be able to run in Folder Only " + 
-									  "View until you are able to successfully run the" + 
-									  " indexer. You can rerun the indexer from the " +
-									  "options menu.");
-									  
-				$('#idButtonGoesHere').removeClass();
-				$('#idButtonGoesHere').addClass('wampButton');
-			
-				$('#idButtonGoesHere span').text("OK");
-									  
-				$('#idButtonGoesHere').click(function () 
-				{
-					sceneIndex.bFileOnly = true;
-					ChangePage($('#idIndex'));
-				});
-				ChangePage($('#idDialog'));
-		}
-		else
-		{
-			setTimeout(function() {sceneSplash.WaitForIndexUpdate();}, 20);
-		}
-	
-	},
-	
-	WaitForIndexUpdate: function()
-	{
-		var jsonIndexer;
-		jsonIndexer = objwAMP.GetIndexerStatus();
-		if (jsonIndexer.iIndexingStatus == 4)
-		{
-			objSongIndex.addArray(jsonIndexer.arrayFileList);
-			ChangePage($('#idIndex'));
-		}
-		else if (jsonIndexer.iIndexingStatus == -1)
-		{
-			objwAMP.bFolderOnly = true; 
-			$('#idTellUser').text("A problem occured while the indexer was " +
-								  " running.  Audiophile will only be able to" +
-								  " run in Folder Only View until you are" + 
-								  "able to successfully run the indexer. " +
-								  "You can rerun the indexer from the " +
-								  "options menu.");
-			
-			$('#idButtonGoesHere').removeClass();
-			$('#idButtonGoesHere').addClass('.wampButton');
-			$('#idButtonGoesHere span').text("OK");
-								
-			$('#idButtonGoesHere').click(function () 
-			{
-				sceneIndex.bFileOnly = true;
-				ChangePage($('#idIndex'), SLIDE_DOWN);
-			});
-			ChangePage($('#idDialog'));
-		}
-		else
-		{
-			widStatusPill.Animate();
-			widStatusPill.DisplayText("Loading: Checking For Changes");
-			setTimeout(function() {sceneSplash.WaitForIndexUpdate();}, 20);
-		}
-	},
-	
-	WaitForFirstIndex: function()
-	{
-		try
-		{
-			var jsonIndexer = objwAMP.GetIndexerStatus();
-			if (jsonIndexer.iIndexingStatus == 4)
-			{
-				objSongIndex.addArray(jsonIndexer.arrayFileList);
-				ChangePage($('#idIndex'));
-			}
-			else if ((jsonIndexer.iIndexingStatus == -1) ||
-					 (jsonIndexer.iIndexingStatus == 0))
-			{
-				objwAMP.bFolderOnly = true; 
-				$('#idTellUser').text("A problem occured while the indexer was " +
-									  " running.  Audiophile will only be able to" +
-									  " run in Folder Only View until you are" + 
-									  "able to successfully run the indexer. " +
-									  "You can rerun the indexer from the " +
-									  "options menu.");
-				
-				$('#idButtonGoesHere').removeClass();
-				$('#idButtonGoesHere').addClass('wampButton');
-				$('#idButtonGoesHere span').text("OK");
-									  
-				$('#idButtonGoesHere').click(function () 
-				{
-					sceneIndex.bFileOnly = true;
-					ChangePage($('#idIndex'));
-				});
-				ChangePage($('#idDialog'));
-			}
-			else
-			{
-				var iStrLen = jsonIndexer.strCurSearchDir.length;
-				var strStatus = "Indexing: " + 
-								jsonIndexer.strCurSearchDir.substr(iStrLen - 18);
-				widStatusPill.DisplayText(strStatus);
-				widStatusPill.Animate();
-				setTimeout(function() {sceneSplash.WaitForFirstIndex();}, 20);
-			}
-		}
-		catch (e)
-		{
-			console.log("Error:" + e);
-		}
-	}
-		
+		this.FailSafe();
+	}		
 }
-
 
 /******************************************************************************
 ******************************************************************************
@@ -1169,7 +1434,7 @@ function PlayAll()
 
 /******************************
  * Record class
- ******************************/
+ ******************************
 function RecordSpin()
 {
 	this.strImgWrapperID = "divRecord" + 
@@ -1293,17 +1558,17 @@ function RecordSpin()
 	
 		console.log("In checkLast");
 	
-		/* Create a cache object */
+		// Create a cache object 
 		var cache = new LastFMCache();
 
-		/* Create a LastFM object */
+		// Create a LastFM object 
 		var lastfm = new LastFM({
 			apiKey    : '03164f37686e29a8af8c368071204b8a',
 			apiSecret : 'fd6eb5357b415ead8c67793edfb6dd1b',
 			cache     : cache
 		});
 
-		/* Load some artist info. */
+		// Load some artist info. 
 		lastfm.album.getInfo({artist: strArtist, album: strAlbum}, 
 				{success: 
 					function(data){
@@ -1317,7 +1582,7 @@ function RecordSpin()
 				});
 
 	}
-}
+}*/
 
 var INV_PI = 1/3.14159265;
 

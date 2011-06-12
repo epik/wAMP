@@ -1,1 +1,0 @@
-palm-install -r com.epikmayo.audiophile

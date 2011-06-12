@@ -62,7 +62,7 @@ enum EQ_KNOBS {
 
 #define FILTER_GAIN_SCALE		8
 #define VOL_FIXED_Q_FACTOR		10
-#define VOL_NORM_LEVEL			((1<<VOL_FIXED_Q_FACTOR)*0.85)			
+#define VOL_NORM_LEVEL			((1<<VOL_FIXED_Q_FACTOR)*1.3)
 
 
 #define FILTER_GAIN_RANGE 		24

@@ -75,15 +75,6 @@ char *ReallocStringCopy(char *cstrDest, int32_t *iCurAllocSize, const char *cstr
 	{
 		if(size+1 >= med) 
 		{
-			// This is far larger than it really needs to be, but 
-			//	better to be safe.
-			if (med > 16384)
-			{
-				//errant string
-				result[0] = '\0';
-				*iCurAllocSize = med;
-				return result;
-			}
 		
 			med += 1024;
 			*iCurAllocSize = med;
