@@ -1,9 +1,0 @@
-{
-	"title": "Audiophile",
-	"type": "web",
-	"main": "index.html",
-	"id": "com.epikmayo.audiophile",
-	"version": "0.1.6",
-	"vendor": "EpikMayo, Inc.",
-	"plug-ins": true
-}
