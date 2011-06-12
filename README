@@ -1,4 +1,9 @@
-We will update this as we move forward.
+Additional licensing:
 
-For now, this is the early stages of a music player that uses the
-WebOS plug-in framework for the actual audio.
+Please note that all code in the plugin directory is released under the LGPL.
+
+All other code is released under the MIT license if not used on the WebOS platform.  If the code is used on the WebOS platform, it is licensed under a modified LGPL unless you send an email to harmanjoshua[at]comcast[dot]net and explain how you will be using the code.  The modification to the LGPL is that you may not release any app that uses code from this project, other than what is in the plugin directory, on any organized WebOS app distribution system, including but not limited to the HP app store, Precentral's homebrew feed, or WebOS Internal's feeds, without express written permission.
+
+I reserve the right to deny any request to deviate from this license for any reason, even if not reasonable.  
+
+Unless otherwise marked, all code, images, and other material is copyright to Joshua Soreth-Harman, and provided without warranty.  You should never use code you download without understanding it first, and knowing what its limitations, effects, and possible bugs are.
