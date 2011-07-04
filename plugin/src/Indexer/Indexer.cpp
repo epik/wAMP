@@ -66,17 +66,17 @@ char *FileList::ConvertToPathString()
 			cstrTemp = (char *) REALLOC(cstrTemp, med);
 		}
 
-		sprintf(cstrTemp, "%s\\%u-%u-%s", 
+		sprintf(cstrTemp, "%s\\\\%u-%u-%s",
 							pIter->Path,
 							pIter->LastMod,
 							pIter->Hash,
 							pIter->Name);
 		
-		ReportError1("cstrTemp: %s", cstrTemp);
+		//ReportError1("cstrTemp: %s", cstrTemp);
 
 		iStrLen = strlen(cstrTemp);
 
-		if (size + iStrLen + 1 >= med)
+		if (size + iStrLen + 2 >= med)
 		{
 			med += 1024 + iStrLen;
 			cstrRet = (char *) REALLOC(cstrRet, med);
@@ -85,7 +85,9 @@ char *FileList::ConvertToPathString()
 		strcat(cstrRet + size, cstrTemp);
 		size += iStrLen;
 
-		strcat(cstrRet + size++, "\\");
+		strcat(cstrRet + size, "\\\\");
+
+		size += 2;
 
 		pIter = pIter->Next;
 	}

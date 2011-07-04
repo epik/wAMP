@@ -61,6 +61,8 @@ private:
 	char			m_pcstrCurTimeCallback[64];
 	char			m_pcstrEndTimeCallback[64];
 
+	GraphEQ			m_eqGraphEQ;
+
 public:
 
 	MusController()

@@ -13,12 +13,12 @@
 const int16_t NUM_EXTEN = 18;
 
 uint32_t g_puiExtenHashVals[] = {5863768, 193436047, 193485930, 193486309, 193497511, 193499443, 193499444,
-						193499445, 193499446, 193499497, 193501378, 193501753, 193504453, 193509907,
-						193510282, 193510303, 2089074171, 2090260091};
+						193499445,  193499497, 193501378, 193501753, 193504453, 193509907,
+						193510282, 2089074171, 2090260091};
 // These are all the hash values of the following using DJBHash
 const char *g_pcExten[] = {"ra", "3gp", "aac", "als", "m4a", "mp1", "mp2",
-					 "mp3", "mp4", "mpg", "ogg", "ors", "ram", "wav",
-					 "wma", "wmv", "FLAC", "flac"};
+					 "mp3", "mpg", "ogg", "ors", "ram", "wav",
+					 "wma", "FLAC", "flac"};
 
 
 

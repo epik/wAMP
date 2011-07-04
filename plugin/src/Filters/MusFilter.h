@@ -183,6 +183,7 @@ public:
 	void SetFilterRate(float f);
 	int32_t AdvanceByAmount(int32_t iRequested);
 
+	static int32_t AdvanceByAmtStat(int32_t iRequested, int32_t FilterRate);
 };
 
 

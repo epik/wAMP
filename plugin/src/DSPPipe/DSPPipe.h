@@ -21,7 +21,7 @@
 #define FIXED_POINT_SEC_CONVERT_FACTOR ((1<<26)/(DEST_FREQ))
 #define RESAMPLE_PADDING				8
 
-#define BUFFER_SIZE_X_LARGE	(1 << 20)
+#define BUFFER_SIZE_X_LARGE	(1 << 21)
 #define BUFFER_SIZE_LARGE	((1 << 19) + (1 << 18))
 #define BUFFER_SIZE_MEDIUM	(1 << 18)
 #define BUFFER_SIZE_SMALL	(1 << 17)
@@ -44,14 +44,9 @@ struct SoundPacket
 {
 public:
 
-#ifdef DEBUG
-	int32_t		_FIRST;
-	int32_t		AllocPos;
-#else
+
 	int64_t		FFmpeg_DTS;
 	int64_t		ConverganceDur;
-#endif
-
 	int32_t 	NumChan;
 	int64_t		TimeStamp;
 	int64_t 	FFmpeg_PTS;
@@ -60,10 +55,7 @@ public:
 	int64_t		Position;
 	size_t		Duration;
 	void		*_Helper;
-#ifdef DEBUG
-	SoundPacket	*Next;
-	int32_t		_LAST;
-#endif
+
 	
 	void CopyPacket(AVPacket *avpkt, AVStream *avstrm)
 	{
@@ -72,10 +64,9 @@ public:
 		Duration		= avpkt->duration;
 		Size			= 0;
 
-#ifndef DEBUG
 		FFmpeg_DTS 		= avpkt->dts;
 		ConverganceDur 	= avpkt->convergence_duration;
-#endif
+
 		
 		if (FFmpeg_PTS != (int64_t) AV_NOPTS_VALUE)
 			TimeStamp =  av_q2d(avstrm->time_base) * FFmpeg_PTS;
@@ -94,12 +85,13 @@ private:
 	volatile size_t		m_uiEnd;
 	volatile size_t		m_uiStart;
 	volatile int32_t	m_iNumUsed;
+	volatile int32_t	m_iClean;
 
 public:
 
 	void Init()
 	{
-		m_uiNumAllocated = 1024;
+		m_uiNumAllocated = 16384;
 		ReportError1("Size of SoundPacket=%i", sizeof(SoundPacket));
 		assert(sizeof(SoundPacket) % 32 == 0);
 		m_pspPacketArray = (SoundPacket *) MALLOC(sizeof(SoundPacket) * (m_uiNumAllocated + 2));
@@ -107,14 +99,8 @@ public:
 		m_uiEnd 	= 0;
 		m_uiStart 	= 0;
 		m_iNumUsed = 0;
-#ifdef DEBUG
-		for (uint32_t i=0; i<m_uiNumAllocated; i++)
-		{
-			m_pspPacketArray[i].AllocPos = i;
-			m_pspPacketArray[i]._FIRST = 0xBAADC0DE;
-			m_pspPacketArray[i]._LAST = 0xBAADC0DE;
-		}
-#endif
+		m_iClean = 1;
+
 	}
 
 	void Flush()
@@ -122,6 +108,7 @@ public:
 		m_uiEnd 	= 0;
 		m_uiStart 	= 0;
 		m_iNumUsed  = 0;
+		m_iClean 	= 1;
 	}
 
 	SoundPacket *StereoPacket(void *pHelper);
@@ -129,36 +116,14 @@ public:
 	int32_t	FinishPckt()
 	{
 
-#ifdef DEBUG
-
-		SoundPacket *pspPacket = &m_pspPacketArray[m_uiStart];
-
-		/*ReportError3("Freeing: %i with memaddress %i | m_uiStart: %i",
-					 pspPacket->AllocPos,
-					 pspPacket,
-					 m_uiStart);*/
-
-		if (pspPacket->_FIRST != (int32_t) 0xBAADC0DE)
-		{
-			ReportError3("Expected Memory Overwrite Problem at mem: %i | AllocPos: %i | Val: %X",
-						 pspPacket,
-						 pspPacket->AllocPos,
-						 pspPacket->_FIRST);
-
-			assert(0);
-		}
-
-		if (pspPacket->_LAST != (int32_t) 0xBAADC0DE)
-		{
-			ReportError("Strange Memory Write Problem");
-			assert(0);
-		}
-#endif
 
 		m_uiStart++;
-		m_uiStart &= (m_uiNumAllocated - 1);
+		m_uiStart %= m_uiNumAllocated;
 
-		ReportError1("m_iNumUsed=%i", m_iNumUsed);
+		/*ReportError3("FinishPckt Num: %i, Num Allocated: %i, Num m_uiStart: %i",
+					 m_uiEnd,
+					 m_iNumUsed,
+					 m_uiStart);*/
 
 		m_iNumUsed--;
 
@@ -167,6 +132,9 @@ public:
 
 		if (m_iNumUsed <= 0)
 		{
+			m_iNumUsed = 0;
+			m_uiStart = 0;
+			m_uiEnd = 0;
 			return BUFFER_EMPTY;
 		}
 
@@ -177,21 +145,38 @@ public:
 
 	volatile int64_t GetCurPacketTimeStamp()
 	{
+		if (m_iClean)
+		{
+			ReportError("Clean for some reason");
+			return 0;
+		}
+
 		return m_pspPacketArray[m_uiStart].TimeStamp;
 	}
 
 	volatile size_t GetDataStartPnt()
 	{
+		if (m_iClean)
+			return 0;
+	
 		return m_pspPacketArray[m_uiStart].DataStartPoint;
 	}
 
 	volatile size_t GetSize()
 	{
+		if (m_iClean)
+		{
+			ReportError("Umm, Clean?");
+			return 0;
+		}
+	
 		return m_pspPacketArray[m_uiStart].Size;
 	}
 
 	volatile void SetNewData(uint32_t uiAmt, size_t uiSize)
 	{
+		m_iClean 	= 0;
+	
 		m_pspPacketArray[m_uiStart].DataStartPoint = uiAmt;
 		m_pspPacketArray[m_uiStart].Size = uiSize;
 	}
@@ -428,6 +413,7 @@ public:
 			iFadeHelper = 1;
 		else if (iFadeHelper >= END_MAX_GAP)
 			iFadeHelper = 0;
+		ReportError1("iFadeHelper=%i", iFadeHelper);
 		m_iFadeHelper = iFadeHelper;
 	}
 
@@ -463,11 +449,23 @@ public:
 	
 	size_t GetCurTime()
 	{
+		if ((m_msgPipeOutStatus == MUS_STATUS_WAITING_FOR_SONG) ||
+			(m_msgPipeInStatus == MUS_STATUS_WAITING_FOR_SONG))
+		{
+			return 0;
+		}
+	
 		return m_cbBuf.GetCurClock();
 	}
 
 	size_t GetEndTime()
 	{
+		if ((m_msgPipeOutStatus == MUS_STATUS_WAITING_FOR_SONG) ||
+			(m_msgPipeInStatus == MUS_STATUS_WAITING_FOR_SONG))
+		{
+			return 0;
+		}
+	
 		return m_lSongEndInSec;
 	}
 	
@@ -477,12 +475,12 @@ public:
 		if ((m_msgPipeInStatus == MUS_STATUS_SOURCE_EOF) ||
 			(m_msgPipeInStatus == MUS_STATUS_ERROR))
 		{
-			return m_cbBuf.GetBuffSamps();
+			return m_cbBuf.GetBuffSamps()/DEST_FREQ;
 		}
 		else
 		{
 			size_t uiRetVal = GetEndTime() - GetCurTime();
-			return uiRetVal * DEST_FREQ;
+			return uiRetVal;
 		}
 	}
 	
@@ -532,7 +530,10 @@ private:
 	int32_t			m_iEndType;
 	int32_t			m_iEndLength;
 	int32_t			m_iCurScale;
+	int32_t			m_iScaleBy;
 	
+	int32_t			m_iFixedResampFilt;
+
 	uint32_t		**m_puiMixBuf;
 	
 	MsgHandler 		*m_pMsgHandler;
@@ -562,12 +563,16 @@ public:
 		m_fTreb = 1.0;
 		m_fBass = 1.0;
 		
+		m_iScaleBy = 0;
+
+		m_iFixedResampFilt = (1<<10);
+
 		m_iFade = END_MAX_GAP;
 		
 		m_iNumChan = NUM_CHANNELS;
 	
-		m_spPipe[0].Init(m_iNumChan, BUFFER_SIZE_MEDIUM);
-		m_spPipe[1].Init(m_iNumChan, BUFFER_SIZE_MEDIUM);
+		m_spPipe[0].Init(m_iNumChan, BUFFER_SIZE_X_LARGE);
+		m_spPipe[1].Init(m_iNumChan, BUFFER_SIZE_X_LARGE);
 		m_iActivePipe = 0;
 		
 		m_puiMixBuf = (uint32_t **)MALLOC(NUM_CHANNELS * sizeof(uint32_t *));
@@ -620,10 +625,17 @@ public:
 		m_spPipe[0].SetFilterRate(f);
 		m_spPipe[1].SetFilterRate(f);
 		m_fRate = f;
+		m_iFixedResampFilt = (1<<10) * f;
 	}
 	
 	int16_t Open(const char *cstrFileName)
 	{
+		if(QuickExtCheck(cstrFileName) == 0)
+		{
+			_PassSongTransMsgBad();
+			return MUS_STATUS_ERROR;
+		}
+
 		int32_t iInactive = _GetInactivePipe();
 		m_spPipe[iInactive].Flush();
 		m_spPipe[iInactive].SetFilterRate(m_fRate);

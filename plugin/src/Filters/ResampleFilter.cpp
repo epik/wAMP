@@ -145,7 +145,13 @@ int32_t ResampleFilter::AdvanceByAmount(int32_t iRequested)
 	return retVal>>10;
 };
 
-
+// Used to figure out how far to advance the read pointer
+int32_t ResampleFilter::AdvanceByAmtStat(int32_t iRequested, int32_t FilterRate)
+{
+	int32_t retVal = iRequested * FilterRate;
+	retVal += (1<<9);
+	return retVal>>10;
+};
 
 // In
 // ---

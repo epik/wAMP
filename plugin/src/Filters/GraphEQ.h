@@ -10,6 +10,9 @@
 
 #include "EQFilter.h"
 
+#define TOTAL_EQ_NUM  (NUM_MID_EQ_FILT + 2)
+#define EQ_GAIN_Q		7
+
 class GraphEQ
 {
 protected:
@@ -21,10 +24,8 @@ protected:
 
 
 
-	int16_t			m_sBassGain;
-	int16_t			m_sTrebleGain;
-	int16_t			m_sMidRangeGain[NUM_MID_EQ_FILT];
-	int16_t			m_sVol;
+	int16_t		m_sEQGain[TOTAL_EQ_NUM];
+
 
 	/* Computes a BiQuad filter on a sample */
 	void ProcessSampleIIR(int16_t *insample, int16_t *outsample,
@@ -38,10 +39,12 @@ public:
 	FiltMessage Init() {return FILT_Success;};
 	FiltMessage Close() {return FILT_Success;};
 
+	void SetEQVals(const char *Vals);
+
 	void Reset() {};
 
 	void Filter(int16_t *psChanIn, size_t uiStartPos, size_t *piNumRead,
-								int16_t *pucOutBuffer, size_t pRequested) {};
+								int16_t *pucOutBuffer, size_t pRequested);
 
 };
 

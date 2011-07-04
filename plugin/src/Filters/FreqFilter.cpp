@@ -711,3 +711,70 @@ void GraphEQ::SetIIRFilterCoef( )
 		m_bqfIIRMidFilter[i][3].setBandPass(2560, 5120, DEST_FREQ);
 	}
 }
+
+
+void GraphEQ::SetEQVals(const char *Vals)
+{
+	for (int i = 0; i<TOTAL_EQ_NUM; i++)
+	{
+		m_sEQGain[i] = (int16_t) (*Vals++);
+	}
+}
+
+FiltMessage GraphEQ::Init()
+{
+	SetIIRFilterCoef();
+
+	for (int i = 0; i<TOTAL_EQ_NUM; i++)
+	{
+		m_sEQGain[i] = (1 << EQ_GAIN_Q);
+	}
+
+	return FILT_Success;
+}
+
+/* Computes a BiQuad filter on a sample */
+void GraphEQ::ProcessSampleIIR(int16_t *insample, int16_t *outsample,
+										size_t Requested, int16_t iChan)
+{
+	int16_t *outpos = outsample;
+	int16_t sample;
+	int32_t iResult;
+	int32_t iTemp;
+
+
+	while (outpos < (outsample + Requested))
+	{
+		sample = *insample++;
+
+		iTemp = m_bqfIIRBassFilter[iChan].process(sample) *
+												m_sEQGain[iChan][0];
+		iResult = iTemp >> EQ_GAIN_Q;
+
+
+		iTemp = m_bqfIIRTrebleFilter[iChan].process(sample) *
+												m_sEQGain[iChan][5];
+		iResult += iTemp >> EQ_GAIN_Q;
+
+
+		for (int i=0;i<NUM_MID_EQ_FILT;i++)
+		{
+			iTemp = m_bqfIIRMidFilter[iChan][i].process(sample) *
+												m_sEQGain[iChan][i+1];
+			iResult += iTemp >> EQ_GAIN_Q;
+		}
+
+
+		if (iResult > SHRT_MAX)
+		{
+			iResult = SHRT_MAX;
+		}
+		else if (iResult < SHRT_MIN)
+		{
+			iResult = SHRT_MIN;
+		}
+
+		*outpos = (int16_t) iResult;
+		outpos++;
+	}
+}

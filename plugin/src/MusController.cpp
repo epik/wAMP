@@ -58,6 +58,8 @@ void MusController::Mixer(uint8_t *destStream, int lRequested)
 
 	m_apPipeline[0].RunProcessStage(m_puiBuffToFill, lRequested);
 
+	//ReportError("In mixer part of mixer");
+
 	int16_t *psChan0 = (int16_t *) m_puiBuffToFill[0];
 	int16_t *psChan1 = (int16_t *) m_puiBuffToFill[1];
 
@@ -68,62 +70,30 @@ void MusController::Mixer(uint8_t *destStream, int lRequested)
 		*(psTravStream++) = *(psChan0++);
 		*(psTravStream++) = *(psChan1++);
 	}
-
-#ifdef DEBUG
-	int32_t test = ((MUS_BUFFER_SIZE/
-			LOW_SPEED_RATIO_LIM) +
-			20);
-
-	if ((m_puiBuffToFill[0][test] != 0xBAADC0DE) ||
-		(m_puiBuffToFill[1][test] != 0xBAADC0DE))
-	{
-		ReportError("Bad Memory");
-		assert(0);
-	}
-#endif
 	
+
 	//ReportError("Mixer Out");
 #else
 
 	m_apPipeline[0].RunProcessStage(m_puiBuffToFill, lRequested);
 
+	//ReportError("In mixer part of mixer");
+
 	int16_t *psChan0 = (int16_t *) m_puiBuffToFill[0];
 	int16_t *psChan1 = (int16_t *) m_puiBuffToFill[1];
 
 	int16_t	*psTravStream = (int16_t *) destStream;
-	uint8_t *psTravEnd = destStream + lRequested;
 		
-	while (psTravStream < (int16_t *) psTravEnd)
+	for(int i=0; i<lRequested/4; i++)
 	{
-		int32_t	iTemp = *(psChan0++) * m_iTrackCrossfadeLeft;
-		*(psTravStream++) = iTemp >> CROSS_FADE_FIXED_Q;
-		iTemp = *(psChan1++) * m_iTrackCrossfadeLeft;
-		*(psTravStream++) = iTemp >> CROSS_FADE_FIXED_Q;
+		*(psTravStream++) = *(psChan0++);
+		*(psTravStream++) = *(psChan1++);
 	}
 	
-	m_apPipeline[1].RunProcessStage(m_puiBuffToFill, lRequested);
-
-	psChan0 = (int16_t *) m_puiBuffToFill[0];
-	psChan1 = (int16_t *) m_puiBuffToFill[1];
-
-	psTravStream = (int16_t *) destStream;
-	psTravEnd = destStream + lRequested;
-		
-	while (psTravStream < (int16_t *) psTravEnd)
+	for (int i=0; i<iNum; i++)
 	{
-		int32_t	iTemp = *(psChan0++) * 
-							(m_CROSS_FADE_LEFT - m_iTrackCrossfadeLeft);
-		if (iTemp > SHRT_MAX)
-			iTemp = SHRT_MAX;
-		else if (iTemp < SHRT_MIN)
-			iTemp = SHRT_MIN;
-		*(psTravStream++) = iTemp >> CROSS_FADE_FIXED_Q;
-		iTemp = *(psChan1++) * (m_CROSS_FADE_LEFT - m_iTrackCrossfadeLeft);
-		if (iTemp > SHRT_MAX)
-			iTemp = SHRT_MAX;
-		else if (iTemp < SHRT_MIN)
-			iTemp = SHRT_MIN;
-		*(psTravStream++) = iTemp >> CROSS_FADE_FIXED_Q;
+		m_eqGraphEQ.ProcessSampleIIR()
+		
 	}
 #endif
 
@@ -192,6 +162,8 @@ int16_t MusController::Init(void (*funcCallBack)(const char *),
 	
 	for(int i=0; i<NUM_SIM_TRACKS; i++)
 		m_apPipeline[i].Init(this);
+
+	m_eqGraphEQ.Init();
 
 	return 0;
 
