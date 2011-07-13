@@ -32,6 +32,8 @@
 //**For resample
 #define ATTRIB_RESAMP_SPEED_VAL				5
 
+#define ATTRIB_EQ							7
+
 // *********************************************************
 // Here we declare MusMessages
 // *********************************************************
@@ -55,6 +57,7 @@
 // define the messages to handle song transitions
 #define MUS_MESSAGE_SET_NEXT_META			30
 #define MUS_MESSAGE_PASS_SONG_INFO			31
+
 
 //**MusManager status states
 #define MUS_STATUS_BUF_FULL					101

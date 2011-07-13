@@ -20,8 +20,6 @@
 
 #include "asm.S"
 
-        .syntax         unified
-
 .macro rac_get_prob     h, bs, buf, cw, pr, t0, t1
         adds            \bs, \bs, \t0
         lsl             \cw, \cw, \t0
@@ -56,7 +54,7 @@
 
 function ff_decode_block_coeffs_armv6, export=1
         push            {r0,r1,r4-r11,lr}
-        movrel          lr,  ff_vp56_norm_shift
+        movrel          lr,  X(ff_vp56_norm_shift)
         ldrd            r4,  r5,  [sp, #44]             @ token_prob, qmul
         cmp             r3,  #0
         ldr             r11, [r5]
@@ -180,7 +178,7 @@ function ff_decode_block_coeffs_armv6, export=1
         rac_get_prob    r5,  r6,  r7,  r8,  r0,  r9,  r10
         mov             r9,  #8
         addge           r12, r12, #1
-        movrel          r4,  ff_vp8_dct_cat_prob
+        movrel          r4,  X(ff_vp8_dct_cat_prob)
         lsl             r9,  r9,  r12
         ldr             r4,  [r4, r12, lsl #2]
         add             r12, r9,  #3

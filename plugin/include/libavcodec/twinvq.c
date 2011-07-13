@@ -24,6 +24,7 @@
 #include "dsputil.h"
 #include "fft.h"
 #include "lsp.h"
+#include "sinewin.h"
 
 #include <math.h>
 #include <stdint.h>
@@ -233,7 +234,7 @@ static void memset_float(float *buf, float val, int size)
  *        be a multiple of four.
  * @return the LPC value
  *
- * @todo reuse code from vorbis_dec.c: vorbis_floor0_decode
+ * @todo reuse code from Vorbis decoder: vorbis_floor0_decode
  */
 static float eval_lpc_spectrum(const float *lsp, float cos_val, int order)
 {
@@ -608,6 +609,7 @@ static void dec_lpc_spectrum_inv(TwinContext *tctx, float *lsp,
 static void imdct_and_window(TwinContext *tctx, enum FrameType ftype, int wtype,
                             float *in, float *prev, int ch)
 {
+    FFTContext *mdct = &tctx->mdct_ctx[ftype];
     const ModeTab *mtab = tctx->mtab;
     int bsize = mtab->size / mtab->fmode[ftype].sub;
     int size  = mtab->size;
@@ -640,7 +642,7 @@ static void imdct_and_window(TwinContext *tctx, enum FrameType ftype, int wtype,
 
         wsize = types_sizes[wtype_to_wsize[sub_wtype]];
 
-        ff_imdct_half(&tctx->mdct_ctx[ftype], buf1 + bsize*j, in + bsize*j);
+        mdct->imdct_half(mdct, buf1 + bsize*j, in + bsize*j);
 
         tctx->dsp.vector_fmul_window(out2,
                                      prev_buf + (bsize-wsize)/2,

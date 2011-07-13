@@ -36,6 +36,7 @@
 #include "get_bits.h"
 #include "dsputil.h"
 #include "fft.h"
+#include "sinewin.h"
 
 #include "atrac.h"
 #include "atrac1data.h"
@@ -59,11 +60,11 @@ typedef struct {
     int                 log2_block_count[AT1_QMF_BANDS];    ///< log2 number of blocks in a band
     int                 num_bfus;                           ///< number of Block Floating Units
     float*              spectrum[2];
-    DECLARE_ALIGNED(16, float, spec1)[AT1_SU_SAMPLES];     ///< mdct buffer
-    DECLARE_ALIGNED(16, float, spec2)[AT1_SU_SAMPLES];     ///< mdct buffer
-    DECLARE_ALIGNED(16, float, fst_qmf_delay)[46];         ///< delay line for the 1st stacked QMF filter
-    DECLARE_ALIGNED(16, float, snd_qmf_delay)[46];         ///< delay line for the 2nd stacked QMF filter
-    DECLARE_ALIGNED(16, float, last_qmf_delay)[256+23];    ///< delay line for the last stacked QMF filter
+    DECLARE_ALIGNED(32, float, spec1)[AT1_SU_SAMPLES];     ///< mdct buffer
+    DECLARE_ALIGNED(32, float, spec2)[AT1_SU_SAMPLES];     ///< mdct buffer
+    DECLARE_ALIGNED(32, float, fst_qmf_delay)[46];         ///< delay line for the 1st stacked QMF filter
+    DECLARE_ALIGNED(32, float, snd_qmf_delay)[46];         ///< delay line for the 2nd stacked QMF filter
+    DECLARE_ALIGNED(32, float, last_qmf_delay)[256+23];    ///< delay line for the last stacked QMF filter
 } AT1SUCtx;
 
 /**
@@ -71,13 +72,13 @@ typedef struct {
  */
 typedef struct {
     AT1SUCtx            SUs[AT1_MAX_CHANNELS];              ///< channel sound unit
-    DECLARE_ALIGNED(16, float, spec)[AT1_SU_SAMPLES];      ///< the mdct spectrum buffer
+    DECLARE_ALIGNED(32, float, spec)[AT1_SU_SAMPLES];      ///< the mdct spectrum buffer
 
-    DECLARE_ALIGNED(16, float,  low)[256];
-    DECLARE_ALIGNED(16, float,  mid)[256];
-    DECLARE_ALIGNED(16, float, high)[512];
+    DECLARE_ALIGNED(32, float,  low)[256];
+    DECLARE_ALIGNED(32, float,  mid)[256];
+    DECLARE_ALIGNED(32, float, high)[512];
     float*              bands[3];
-    DECLARE_ALIGNED(16, float, out_samples)[AT1_MAX_CHANNELS][AT1_SU_SAMPLES];
+    DECLARE_ALIGNED(32, float, out_samples)[AT1_MAX_CHANNELS][AT1_SU_SAMPLES];
     FFTContext          mdct_ctx[3];
     int                 channels;
     DSPContext          dsp;
@@ -99,7 +100,7 @@ static void at1_imdct(AT1Ctx *q, float *spec, float *out, int nbits,
         for (i = 0; i < transf_size / 2; i++)
             FFSWAP(float, spec[i], spec[transf_size - 1 - i]);
     }
-    ff_imdct_half(mdct_context, out, spec);
+    mdct_context->imdct_half(mdct_context, out, spec);
 }
 
 

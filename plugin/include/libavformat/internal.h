@@ -26,12 +26,16 @@
 
 #define MAX_URL_SIZE 4096
 
+#ifdef DEBUG
+#    define hex_dump_debug(class, buf, size) av_hex_dump_log(class, AV_LOG_DEBUG, buf, size)
+#else
+#    define hex_dump_debug(class, buf, size)
+#endif
+
 typedef struct AVCodecTag {
     enum CodecID id;
     unsigned int tag;
 } AVCodecTag;
-
-void ff_dynarray_add(intptr_t **tab_ptr, int *nb_ptr, intptr_t elem);
 
 #ifdef __GNUC__
 #define dynarray_add(tab, nb_ptr, elem)\
@@ -39,12 +43,12 @@ do {\
     __typeof__(tab) _tab = (tab);\
     __typeof__(elem) _elem = (elem);\
     (void)sizeof(**_tab == _elem); /* check that types are compatible */\
-    ff_dynarray_add((intptr_t **)_tab, nb_ptr, (intptr_t)_elem);\
+    av_dynarray_add(_tab, nb_ptr, _elem);\
 } while(0)
 #else
 #define dynarray_add(tab, nb_ptr, elem)\
 do {\
-    ff_dynarray_add((intptr_t **)(tab), nb_ptr, (intptr_t)(elem));\
+    av_dynarray_add((tab), nb_ptr, (elem));\
 } while(0)
 #endif
 
@@ -78,18 +82,6 @@ void ff_read_frame_flush(AVFormatContext *s);
 
 /** Get the current time since NTP epoch in microseconds. */
 uint64_t ff_ntp_time(void);
-
-#if FF_API_URL_SPLIT
-/**
- * @deprecated use av_url_split() instead
- */
-void ff_url_split(char *proto, int proto_size,
-                  char *authorization, int authorization_size,
-                  char *hostname, int hostname_size,
-                  int *port_ptr,
-                  char *path, int path_size,
-                  const char *url);
-#endif
 
 /**
  * Assemble a URL string from components. This is the reverse operation
@@ -130,10 +122,12 @@ int ff_url_join(char *str, int size, const char *proto,
  * @param dest_type the destination address type, may be NULL
  * @param port the destination port of the media stream, 0 if unknown
  * @param ttl the time to live of the stream, 0 if not multicast
+ * @param fmt the AVFormatContext, which might contain options modifying
+ *            the generated SDP
  */
 void ff_sdp_write_media(char *buff, int size, AVCodecContext *c,
                         const char *dest_addr, const char *dest_type,
-                        int port, int ttl);
+                        int port, int ttl, AVFormatContext *fmt);
 
 /**
  * Write a packet to another muxer than the one the user originally
@@ -157,20 +151,20 @@ int ff_get_v_length(uint64_t val);
 /**
  * Put val using a variable number of bytes.
  */
-void ff_put_v(ByteIOContext *bc, uint64_t val);
+void ff_put_v(AVIOContext *bc, uint64_t val);
 
 /**
- * Read a whole line of text from ByteIOContext. Stop reading after reaching
+ * Read a whole line of text from AVIOContext. Stop reading after reaching
  * either a \n, a \0 or EOF. The returned string is always \0 terminated,
  * and may be truncated if the buffer is too small.
  *
- * @param s the read-only ByteIOContext
+ * @param s the read-only AVIOContext
  * @param buf buffer to store the read line
  * @param maxlen size of the buffer
  * @return the length of the string written in the buffer, not including the
  *         final \0
  */
-int ff_get_line(ByteIOContext *s, char *buf, int maxlen);
+int ff_get_line(AVIOContext *s, char *buf, int maxlen);
 
 #define SPACE_CHARS " \t\r\n"
 
@@ -238,5 +232,18 @@ AVChapter *ff_new_chapter(AVFormatContext *s, int id, AVRational time_base,
  * too large.
  */
 void ff_reduce_index(AVFormatContext *s, int stream_index);
+
+/*
+ * Convert a relative url into an absolute url, given a base url.
+ *
+ * @param buf the buffer where output absolute url is written
+ * @param size the size of buf
+ * @param base the base url, may be equal to buf.
+ * @param rel the new url, which is interpreted relative to base
+ */
+void ff_make_absolute_url(char *buf, int size, const char *base,
+                          const char *rel);
+
+enum CodecID ff_guess_image2_codec(const char *filename);
 
 #endif /* AVFORMAT_INTERNAL_H */

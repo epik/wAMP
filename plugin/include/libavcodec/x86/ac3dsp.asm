@@ -16,11 +16,21 @@
 ;*
 ;* You should have received a copy of the GNU Lesser General Public
 ;* License along with FFmpeg; if not, write to the Free Software
-;* 51, Inc., Foundation Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+;* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 ;******************************************************************************
 
 %include "x86inc.asm"
 %include "x86util.asm"
+
+SECTION_RODATA
+
+; 16777216.0f - used in ff_float_to_fixed24()
+pf_1_24: times 4 dd 0x4B800000
+
+; used in ff_ac3_compute_mantissa_size()
+cextern ac3_bap_bits
+pw_bap_mul1: dw 21846, 21846, 0, 32768, 21846, 21846, 0, 32768
+pw_bap_mul2: dw 5, 7, 0, 7, 5, 7, 0, 7
 
 SECTION .text
 
@@ -133,3 +143,206 @@ INIT_XMM
 AC3_MAX_MSB_ABS_INT16 sse2, min_max
 %define ABS2 ABS2_SSSE3
 AC3_MAX_MSB_ABS_INT16 ssse3, or_abs
+
+;-----------------------------------------------------------------------------
+; macro used for ff_ac3_lshift_int16() and ff_ac3_rshift_int32()
+;-----------------------------------------------------------------------------
+
+%macro AC3_SHIFT 4 ; l/r, 16/32, shift instruction, instruction set
+cglobal ac3_%1shift_int%2_%4, 3,3,5, src, len, shift
+    movd      m0, shiftd
+.loop:
+    mova      m1, [srcq         ]
+    mova      m2, [srcq+mmsize  ]
+    mova      m3, [srcq+mmsize*2]
+    mova      m4, [srcq+mmsize*3]
+    %3        m1, m0
+    %3        m2, m0
+    %3        m3, m0
+    %3        m4, m0
+    mova  [srcq         ], m1
+    mova  [srcq+mmsize  ], m2
+    mova  [srcq+mmsize*2], m3
+    mova  [srcq+mmsize*3], m4
+    add     srcq, mmsize*4
+    sub     lend, mmsize*32/%2
+    ja .loop
+.end:
+    REP_RET
+%endmacro
+
+;-----------------------------------------------------------------------------
+; void ff_ac3_lshift_int16(int16_t *src, unsigned int len, unsigned int shift)
+;-----------------------------------------------------------------------------
+
+INIT_MMX
+AC3_SHIFT l, 16, psllw, mmx
+INIT_XMM
+AC3_SHIFT l, 16, psllw, sse2
+
+;-----------------------------------------------------------------------------
+; void ff_ac3_rshift_int32(int32_t *src, unsigned int len, unsigned int shift)
+;-----------------------------------------------------------------------------
+
+INIT_MMX
+AC3_SHIFT r, 32, psrad, mmx
+INIT_XMM
+AC3_SHIFT r, 32, psrad, sse2
+
+;-----------------------------------------------------------------------------
+; void ff_float_to_fixed24(int32_t *dst, const float *src, unsigned int len)
+;-----------------------------------------------------------------------------
+
+; The 3DNow! version is not bit-identical because pf2id uses truncation rather
+; than round-to-nearest.
+INIT_MMX
+cglobal float_to_fixed24_3dnow, 3,3,0, dst, src, len
+    movq   m0, [pf_1_24]
+.loop:
+    movq   m1, [srcq   ]
+    movq   m2, [srcq+8 ]
+    movq   m3, [srcq+16]
+    movq   m4, [srcq+24]
+    pfmul  m1, m0
+    pfmul  m2, m0
+    pfmul  m3, m0
+    pfmul  m4, m0
+    pf2id  m1, m1
+    pf2id  m2, m2
+    pf2id  m3, m3
+    pf2id  m4, m4
+    movq  [dstq   ], m1
+    movq  [dstq+8 ], m2
+    movq  [dstq+16], m3
+    movq  [dstq+24], m4
+    add  srcq, 32
+    add  dstq, 32
+    sub  lend, 8
+    ja .loop
+    REP_RET
+
+INIT_XMM
+cglobal float_to_fixed24_sse, 3,3,3, dst, src, len
+    movaps     m0, [pf_1_24]
+.loop:
+    movaps     m1, [srcq   ]
+    movaps     m2, [srcq+16]
+    mulps      m1, m0
+    mulps      m2, m0
+    cvtps2pi  mm0, m1
+    movhlps    m1, m1
+    cvtps2pi  mm1, m1
+    cvtps2pi  mm2, m2
+    movhlps    m2, m2
+    cvtps2pi  mm3, m2
+    movq  [dstq   ], mm0
+    movq  [dstq+ 8], mm1
+    movq  [dstq+16], mm2
+    movq  [dstq+24], mm3
+    add      srcq, 32
+    add      dstq, 32
+    sub      lend, 8
+    ja .loop
+    REP_RET
+
+INIT_XMM
+cglobal float_to_fixed24_sse2, 3,3,9, dst, src, len
+    movaps     m0, [pf_1_24]
+.loop:
+    movaps     m1, [srcq    ]
+    movaps     m2, [srcq+16 ]
+    movaps     m3, [srcq+32 ]
+    movaps     m4, [srcq+48 ]
+%ifdef m8
+    movaps     m5, [srcq+64 ]
+    movaps     m6, [srcq+80 ]
+    movaps     m7, [srcq+96 ]
+    movaps     m8, [srcq+112]
+%endif
+    mulps      m1, m0
+    mulps      m2, m0
+    mulps      m3, m0
+    mulps      m4, m0
+%ifdef m8
+    mulps      m5, m0
+    mulps      m6, m0
+    mulps      m7, m0
+    mulps      m8, m0
+%endif
+    cvtps2dq   m1, m1
+    cvtps2dq   m2, m2
+    cvtps2dq   m3, m3
+    cvtps2dq   m4, m4
+%ifdef m8
+    cvtps2dq   m5, m5
+    cvtps2dq   m6, m6
+    cvtps2dq   m7, m7
+    cvtps2dq   m8, m8
+%endif
+    movdqa  [dstq    ], m1
+    movdqa  [dstq+16 ], m2
+    movdqa  [dstq+32 ], m3
+    movdqa  [dstq+48 ], m4
+%ifdef m8
+    movdqa  [dstq+64 ], m5
+    movdqa  [dstq+80 ], m6
+    movdqa  [dstq+96 ], m7
+    movdqa  [dstq+112], m8
+    add      srcq, 128
+    add      dstq, 128
+    sub      lenq, 32
+%else
+    add      srcq, 64
+    add      dstq, 64
+    sub      lenq, 16
+%endif
+    ja .loop
+    REP_RET
+
+;------------------------------------------------------------------------------
+; int ff_ac3_compute_mantissa_size(uint16_t mant_cnt[6][16])
+;------------------------------------------------------------------------------
+
+%macro PHADDD4 2 ; xmm src, xmm tmp
+    movhlps  %2, %1
+    paddd    %1, %2
+    pshufd   %2, %1, 0x1
+    paddd    %1, %2
+%endmacro
+
+INIT_XMM
+cglobal ac3_compute_mantissa_size_sse2, 1,2,4, mant_cnt, sum
+    movdqa      m0, [mant_cntq      ]
+    movdqa      m1, [mant_cntq+ 1*16]
+    paddw       m0, [mant_cntq+ 2*16]
+    paddw       m1, [mant_cntq+ 3*16]
+    paddw       m0, [mant_cntq+ 4*16]
+    paddw       m1, [mant_cntq+ 5*16]
+    paddw       m0, [mant_cntq+ 6*16]
+    paddw       m1, [mant_cntq+ 7*16]
+    paddw       m0, [mant_cntq+ 8*16]
+    paddw       m1, [mant_cntq+ 9*16]
+    paddw       m0, [mant_cntq+10*16]
+    paddw       m1, [mant_cntq+11*16]
+    pmaddwd     m0, [ac3_bap_bits   ]
+    pmaddwd     m1, [ac3_bap_bits+16]
+    paddd       m0, m1
+    PHADDD4     m0, m1
+    movd      sumd, m0
+    movdqa      m3, [pw_bap_mul1]
+    movhpd      m0, [mant_cntq     +2]
+    movlpd      m0, [mant_cntq+1*32+2]
+    movhpd      m1, [mant_cntq+2*32+2]
+    movlpd      m1, [mant_cntq+3*32+2]
+    movhpd      m2, [mant_cntq+4*32+2]
+    movlpd      m2, [mant_cntq+5*32+2]
+    pmulhuw     m0, m3
+    pmulhuw     m1, m3
+    pmulhuw     m2, m3
+    paddusw     m0, m1
+    paddusw     m0, m2
+    pmaddwd     m0, [pw_bap_mul2]
+    PHADDD4     m0, m1
+    movd       eax, m0
+    add        eax, sumd
+    RET

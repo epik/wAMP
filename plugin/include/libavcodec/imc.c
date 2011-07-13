@@ -41,6 +41,7 @@
 #include "dsputil.h"
 #include "fft.h"
 #include "libavutil/audioconvert.h"
+#include "sinewin.h"
 
 #include "imcdata.h"
 
@@ -87,7 +88,7 @@ typedef struct {
 
     DSPContext dsp;
     FFTContext fft;
-    DECLARE_ALIGNED(16, FFTComplex, samples)[COEFFS/2];
+    DECLARE_ALIGNED(32, FFTComplex, samples)[COEFFS/2];
     float *out_samples;
 } IMCContext;
 
@@ -564,8 +565,8 @@ static void imc_imdct256(IMCContext *q) {
     }
 
     /* FFT */
-    ff_fft_permute(&q->fft, q->samples);
-    ff_fft_calc (&q->fft, q->samples);
+    q->fft.fft_permute(&q->fft, q->samples);
+    q->fft.fft_calc   (&q->fft, q->samples);
 
     /* postrotation, window and reorder */
     for(i = 0; i < COEFFS/2; i++){

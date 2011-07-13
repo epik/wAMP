@@ -27,7 +27,7 @@
 //#define DEBUG 1
 #endif
 
-
+#define BUILD_FOR_TOUCHPAD
 
 //#define PROFILE
 

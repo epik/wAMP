@@ -19,9 +19,9 @@
 #include "Indexer/Indexer.h"
 #include "DSPPipe/DSPPipe.h"
 
-#define CROSS_FADE_FIXED_Q		13
-#define CROSS_FADE_FIXED_ONE	(1<<CROSS_FADE_FIXED_Q)
-#define CROSS_FADE_FIXED_HALF	(1<<(CROSS_FADE_FIXED_Q-1))
+#define CROSS_FADE_FIXED_Q		END_SCALE_Q
+#define CROSS_FADE_FIXED_ONE	(1<<END_SCALE_Q)
+#define CROSS_FADE_FIXED_HALF	(1<<(END_SCALE_Q-1))
 
 
 class MusController:public MsgHandler
@@ -62,6 +62,7 @@ private:
 	char			m_pcstrEndTimeCallback[64];
 
 	GraphEQ			m_eqGraphEQ;
+	int32_t			m_iUseEQ;
 
 public:
 
@@ -74,6 +75,8 @@ public:
 	~MusController() {};
 
 	void Tick();
+
+	void UseEQ(int32_t Use) {m_iUseEQ = Use;};
 
 	// Callback functions
 	//	Needed for sdl, to replace default music controller

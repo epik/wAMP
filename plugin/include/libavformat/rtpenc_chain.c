@@ -20,7 +20,10 @@
  */
 
 #include "avformat.h"
+#include "avio_internal.h"
 #include "rtpenc_chain.h"
+#include "avio_internal.h"
+#include "libavutil/opt.h"
 
 AVFormatContext *ff_rtp_chain_mux_open(AVFormatContext *s, AVStream *st,
                                        URLContext *handle, int packet_size)
@@ -46,6 +49,14 @@ AVFormatContext *ff_rtp_chain_mux_open(AVFormatContext *s, AVStream *st,
     rtpctx->max_delay = s->max_delay;
     /* Copy other stream parameters. */
     rtpctx->streams[0]->sample_aspect_ratio = st->sample_aspect_ratio;
+    rtpctx->flags |= s->flags & AVFMT_FLAG_MP4A_LATM;
+
+    av_set_parameters(rtpctx, NULL);
+    /* Copy the rtpflags values straight through */
+    if (s->oformat->priv_class &&
+        av_find_opt(s->priv_data, "rtpflags", NULL, 0, 0))
+        av_set_int(rtpctx->priv_data, "rtpflags",
+                   av_get_int(s->priv_data, "rtpflags", NULL));
 
     /* Set the synchronized start time. */
     rtpctx->start_time_realtime = s->start_time_realtime;
@@ -53,17 +64,17 @@ AVFormatContext *ff_rtp_chain_mux_open(AVFormatContext *s, AVStream *st,
     avcodec_copy_context(rtpctx->streams[0]->codec, st->codec);
 
     if (handle) {
-        url_fdopen(&rtpctx->pb, handle);
+        ffio_fdopen(&rtpctx->pb, handle);
     } else
-        url_open_dyn_packet_buf(&rtpctx->pb, packet_size);
-    ret = av_write_header(rtpctx);
+        ffio_open_dyn_packet_buf(&rtpctx->pb, packet_size);
+    ret = avformat_write_header(rtpctx, NULL);
 
     if (ret) {
         if (handle) {
-            url_fclose(rtpctx->pb);
+            avio_close(rtpctx->pb);
         } else {
             uint8_t *ptr;
-            url_close_dyn_buf(rtpctx->pb, &ptr);
+            avio_close_dyn_buf(rtpctx->pb, &ptr);
             av_free(ptr);
         }
         avformat_free_context(rtpctx);

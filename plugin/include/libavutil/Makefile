@@ -3,6 +3,7 @@ include $(SUBDIR)../config.mak
 NAME = avutil
 
 HEADERS = adler32.h                                                     \
+          aes.h                                                         \
           attributes.h                                                  \
           audioconvert.h                                                \
           avassert.h                                                    \
@@ -26,6 +27,7 @@ HEADERS = adler32.h                                                     \
           mathematics.h                                                 \
           md5.h                                                         \
           mem.h                                                         \
+          dict.h                                                        \
           opt.h                                                         \
           parseutils.h                                                  \
           pixdesc.h                                                     \
@@ -33,7 +35,7 @@ HEADERS = adler32.h                                                     \
           random_seed.h                                                 \
           rational.h                                                    \
           samplefmt.h                                                   \
-          sha1.h                                                        \
+          sha.h                                                         \
 
 BUILT_HEADERS = avconfig.h
 
@@ -59,6 +61,7 @@ OBJS = adler32.o                                                        \
        mathematics.o                                                    \
        md5.o                                                            \
        mem.o                                                            \
+       dict.o                                                           \
        opt.o                                                            \
        parseutils.o                                                     \
        pixdesc.o                                                        \
@@ -74,7 +77,7 @@ OBJS-$(ARCH_ARM) += arm/cpu.o
 OBJS-$(ARCH_PPC) += ppc/cpu.o
 OBJS-$(ARCH_X86) += x86/cpu.o
 
-TESTPROGS = adler32 aes base64 cpu crc des lls md5 pca sha softfloat tree
+TESTPROGS = adler32 aes base64 cpu crc des eval lls md5 pca sha tree
 TESTPROGS-$(HAVE_LZO1X_999_COMPRESS) += lzo
 
 DIRS = arm bfin sh4 x86

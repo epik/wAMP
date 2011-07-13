@@ -24,10 +24,6 @@
 #include "bytestream.h"
 #include "libavutil/colorspace.h"
 
-//#define DEBUG
-//#define DEBUG_PACKET_CONTENTS
-//#define DEBUG_SAVE_IMAGES
-
 #define DVBSUB_PAGE_SEGMENT     0x10
 #define DVBSUB_REGION_SEGMENT   0x11
 #define DVBSUB_CLUT_SEGMENT     0x12
@@ -37,8 +33,9 @@
 
 #define cm (ff_cropTbl + MAX_NEG_CROP)
 
-#ifdef DEBUG_SAVE_IMAGES
+#ifdef DEBUG
 #undef fprintf
+#undef perror
 #if 0
 static void png_save(const char *filename, uint8_t *bitmap, int w, int h,
                      uint32_t *rgba_palette)
@@ -53,7 +50,7 @@ static void png_save(const char *filename, uint8_t *bitmap, int w, int h,
     f = fopen(fname, "w");
     if (!f) {
         perror(fname);
-        exit(1);
+        return;
     }
     fprintf(f, "P6\n"
             "%d %d\n"
@@ -75,7 +72,7 @@ static void png_save(const char *filename, uint8_t *bitmap, int w, int h,
     f = fopen(fname2, "w");
     if (!f) {
         perror(fname2);
-        exit(1);
+        return;
     }
     fprintf(f, "P5\n"
             "%d %d\n"
@@ -109,7 +106,7 @@ static void png_save2(const char *filename, uint32_t *bitmap, int w, int h)
     f = fopen(fname, "w");
     if (!f) {
         perror(fname);
-        exit(1);
+        return;
     }
     fprintf(f, "P6\n"
             "%d %d\n"
@@ -131,7 +128,7 @@ static void png_save2(const char *filename, uint32_t *bitmap, int w, int h)
     f = fopen(fname2, "w");
     if (!f) {
         perror(fname2);
-        exit(1);
+        return;
     }
     fprintf(f, "P5\n"
             "%d %d\n"
@@ -321,20 +318,9 @@ static void delete_region_display_list(DVBSubContext *ctx, DVBSubRegion *region)
 
 }
 
-static void delete_state(DVBSubContext *ctx)
+static void delete_cluts(DVBSubContext *ctx)
 {
-    DVBSubRegion *region;
     DVBSubCLUT *clut;
-
-    while (ctx->region_list) {
-        region = ctx->region_list;
-
-        ctx->region_list = region->next;
-
-        delete_region_display_list(ctx, region);
-        av_free(region->pbuf);
-        av_free(region);
-    }
 
     while (ctx->clut_list) {
         clut = ctx->clut_list;
@@ -343,12 +329,35 @@ static void delete_state(DVBSubContext *ctx)
 
         av_free(clut);
     }
+}
 
-    av_freep(&ctx->display_definition);
+static void delete_objects(DVBSubContext *ctx)
+{
+    DVBSubObject *object;
 
-    /* Should already be null */
-    if (ctx->object_list)
-        av_log(0, AV_LOG_ERROR, "Memory deallocation error!\n");
+    while (ctx->object_list) {
+        object = ctx->object_list;
+
+        ctx->object_list = object->next;
+
+        av_free(object);
+    }
+}
+
+static void delete_regions(DVBSubContext *ctx)
+{
+    DVBSubRegion *region;
+
+    while (ctx->region_list) {
+        region = ctx->region_list;
+
+        ctx->region_list = region->next;
+
+        delete_region_display_list(ctx, region);
+
+        av_free(region->pbuf);
+        av_free(region);
+    }
 }
 
 static av_cold int dvbsub_init_decoder(AVCodecContext *avctx)
@@ -433,7 +442,13 @@ static av_cold int dvbsub_close_decoder(AVCodecContext *avctx)
     DVBSubContext *ctx = avctx->priv_data;
     DVBSubRegionDisplay *display;
 
-    delete_state(ctx);
+    delete_regions(ctx);
+
+    delete_objects(ctx);
+
+    delete_cluts(ctx);
+
+    av_freep(&ctx->display_definition);
 
     while (ctx->display_list) {
         display = ctx->display_list;
@@ -750,20 +765,17 @@ static void dvbsub_parse_pixel_data_block(AVCodecContext *avctx, DVBSubObjectDis
     av_dlog(avctx, "DVB pixel block size %d, %s field:\n", buf_size,
             top_bottom ? "bottom" : "top");
 
-#ifdef DEBUG_PACKET_CONTENTS
     for (i = 0; i < buf_size; i++) {
         if (i % 16 == 0)
-            av_log(avctx, AV_LOG_INFO, "0x%08p: ", buf+i);
+            av_dlog(avctx, "0x%8p: ", buf+i);
 
-        av_log(avctx, AV_LOG_INFO, "%02x ", buf[i]);
+        av_dlog(avctx, "%02x ", buf[i]);
         if (i % 16 == 15)
-            av_log(avctx, AV_LOG_INFO, "\n");
+            av_dlog(avctx, "\n");
     }
 
     if (i % 16)
-        av_log(avctx, AV_LOG_INFO, "\n");
-
-#endif
+        av_dlog(avctx, "\n");
 
     if (region == 0)
         return;
@@ -912,27 +924,22 @@ static void dvbsub_parse_clut_segment(AVCodecContext *avctx,
     DVBSubContext *ctx = avctx->priv_data;
 
     const uint8_t *buf_end = buf + buf_size;
-    int clut_id;
+    int i, clut_id;
     DVBSubCLUT *clut;
     int entry_id, depth , full_range;
     int y, cr, cb, alpha;
     int r, g, b, r_add, g_add, b_add;
 
-#ifdef DEBUG_PACKET_CONTENTS
-    int i;
-
-    av_log(avctx, AV_LOG_INFO, "DVB clut packet:\n");
+    av_dlog(avctx, "DVB clut packet:\n");
 
     for (i=0; i < buf_size; i++) {
-        av_log(avctx, AV_LOG_INFO, "%02x ", buf[i]);
+        av_dlog(avctx, "%02x ", buf[i]);
         if (i % 16 == 15)
-            av_log(avctx, AV_LOG_INFO, "\n");
+            av_dlog(avctx, "\n");
     }
 
     if (i % 16)
-        av_log(avctx, AV_LOG_INFO, "\n");
-
-#endif
+        av_dlog(avctx, "\n");
 
     clut_id = *buf++;
     buf += 1;
@@ -1125,7 +1132,9 @@ static void dvbsub_parse_page_segment(AVCodecContext *avctx,
     av_dlog(avctx, "Page time out %ds, state %d\n", ctx->time_out, page_state);
 
     if (page_state == 2) {
-        delete_state(ctx);
+        delete_regions(ctx);
+        delete_objects(ctx);
+        delete_cluts(ctx);
     }
 
     tmp_display_list = ctx->display_list;
@@ -1174,7 +1183,7 @@ static void dvbsub_parse_page_segment(AVCodecContext *avctx,
 }
 
 
-#ifdef DEBUG_SAVE_IMAGES
+#ifdef DEBUG
 static void save_display_set(DVBSubContext *ctx)
 {
     DVBSubRegion *region;
@@ -1323,10 +1332,7 @@ static int dvbsub_display_end_segment(AVCodecContext *avctx, const uint8_t *buf,
     int i;
     int offset_x=0, offset_y=0;
 
-    sub->rects = NULL;
-    sub->start_display_time = 0;
     sub->end_display_time = ctx->time_out * 1000;
-    sub->format = 0;
 
     if (display_def) {
         offset_x = display_def->x;
@@ -1387,7 +1393,7 @@ static int dvbsub_display_end_segment(AVCodecContext *avctx, const uint8_t *buf,
 
     sub->num_rects = i;
 
-#ifdef DEBUG_SAVE_IMAGES
+#ifdef DEBUG
     save_display_set(ctx);
 #endif
 
@@ -1406,22 +1412,18 @@ static int dvbsub_decode(AVCodecContext *avctx,
     int segment_type;
     int page_id;
     int segment_length;
-
-#ifdef DEBUG_PACKET_CONTENTS
     int i;
 
-    av_log(avctx, AV_LOG_INFO, "DVB sub packet:\n");
+    av_dlog(avctx, "DVB sub packet:\n");
 
     for (i=0; i < buf_size; i++) {
-        av_log(avctx, AV_LOG_INFO, "%02x ", buf[i]);
+        av_dlog(avctx, "%02x ", buf[i]);
         if (i % 16 == 15)
-            av_log(avctx, AV_LOG_INFO, "\n");
+            av_dlog(avctx, "\n");
     }
 
     if (i % 16)
-        av_log(avctx, AV_LOG_INFO, "\n");
-
-#endif
+        av_dlog(avctx, "\n");
 
     if (buf_size <= 6 || *buf != 0x0f) {
         av_dlog(avctx, "incomplete or broken packet");

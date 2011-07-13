@@ -28,7 +28,8 @@
 #define AVCODEC_AC3_H
 
 #define AC3_MAX_CODED_FRAME_SIZE 3840 /* in bytes */
-#define AC3_MAX_CHANNELS 6 /* including LFE channel */
+#define AC3_MAX_CHANNELS 7            /**< maximum number of channels, including coupling channel */
+#define CPL_CH 0                      /**< coupling channel index */
 
 #define AC3_MAX_COEFS   256
 #define AC3_BLOCK_SIZE  256
@@ -36,7 +37,10 @@
 #define AC3_FRAME_SIZE (AC3_MAX_BLOCKS * 256)
 #define AC3_WINDOW_SIZE (AC3_BLOCK_SIZE * 2)
 #define AC3_CRITICAL_BANDS 50
+#define AC3_MAX_CPL_BANDS  18
 
+#include "libavutil/opt.h"
+#include "avcodec.h"
 #include "ac3tab.h"
 
 /* exponent encoding strategy */
@@ -46,6 +50,17 @@
 #define EXP_D15   1
 #define EXP_D25   2
 #define EXP_D45   3
+
+/* pre-defined gain values */
+#define LEVEL_PLUS_3DB          1.4142135623730950
+#define LEVEL_PLUS_1POINT5DB    1.1892071150027209
+#define LEVEL_MINUS_1POINT5DB   0.8408964152537145
+#define LEVEL_MINUS_3DB         0.7071067811865476
+#define LEVEL_MINUS_4POINT5DB   0.5946035575013605
+#define LEVEL_MINUS_6DB         0.5000000000000000
+#define LEVEL_MINUS_9DB         0.3535533905932738
+#define LEVEL_ZERO              0.0000000000000000
+#define LEVEL_ONE               1.0000000000000000
 
 /** Delta bit allocation strategy */
 typedef enum {
@@ -86,6 +101,7 @@ typedef struct {
     uint16_t crc1;
     uint8_t sr_code;
     uint8_t bitstream_id;
+    uint8_t bitstream_mode;
     uint8_t channel_mode;
     uint8_t lfe_on;
     uint8_t frame_type;
@@ -115,7 +131,46 @@ typedef enum {
     EAC3_FRAME_TYPE_RESERVED
 } EAC3FrameType;
 
+/**
+ * Encoding Options used by AVOption.
+ */
+typedef struct AC3EncOptions {
+    /* AC-3 metadata options*/
+    int dialogue_level;
+    int bitstream_mode;
+    float center_mix_level;
+    float surround_mix_level;
+    int dolby_surround_mode;
+    int audio_production_info;
+    int mixing_level;
+    int room_type;
+    int copyright;
+    int original;
+    int extended_bsi_1;
+    int preferred_stereo_downmix;
+    float ltrt_center_mix_level;
+    float ltrt_surround_mix_level;
+    float loro_center_mix_level;
+    float loro_surround_mix_level;
+    int extended_bsi_2;
+    int dolby_surround_ex_mode;
+    int dolby_headphone_mode;
+    int ad_converter_type;
+
+    /* other encoding options */
+    int allow_per_frame_metadata;
+    int stereo_rematrixing;
+    int channel_coupling;
+    int cpl_start;    
+} AC3EncOptions;
+
 void ff_ac3_common_init(void);
+
+extern const int64_t ff_ac3_channel_layouts[];
+extern const AVOption ff_ac3_options[];
+
+extern AVCodec ff_ac3_float_encoder;
+extern AVCodec ff_ac3_fixed_encoder;
 
 /**
  * Calculate the log power-spectral density of the input signal.
@@ -161,24 +216,5 @@ int ff_ac3_bit_alloc_calc_mask(AC3BitAllocParameters *s, int16_t *band_psd,
                                int dba_mode, int dba_nsegs, uint8_t *dba_offsets,
                                uint8_t *dba_lengths, uint8_t *dba_values,
                                int16_t *mask);
-
-/**
- * Calculate bit allocation pointers.
- * The SNR is the difference between the masking curve and the signal.  AC-3
- * uses this value for each frequency bin to allocate bits.  The snroffset
- * parameter is a global adjustment to the SNR for all bins.
- *
- * @param[in]  mask       masking curve
- * @param[in]  psd        signal power for each frequency bin
- * @param[in]  start      starting bin location
- * @param[in]  end        ending bin location
- * @param[in]  snr_offset SNR adjustment
- * @param[in]  floor      noise floor
- * @param[in]  bap_tab    look-up table for bit allocation pointers
- * @param[out] bap        bit allocation pointers
- */
-void ff_ac3_bit_alloc_calc_bap(int16_t *mask, int16_t *psd, int start, int end,
-                               int snr_offset, int floor,
-                               const uint8_t *bap_tab, uint8_t *bap);
 
 #endif /* AVCODEC_AC3_H */

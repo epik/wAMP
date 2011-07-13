@@ -20,11 +20,13 @@
  */
 
 #include "libavutil/crc.h"
+#include "libavutil/opt.h"
 #include "libavutil/random_seed.h"
 #include "libavcodec/xiph.h"
 #include "libavcodec/bytestream.h"
 #include "libavcodec/flac.h"
 #include "avformat.h"
+#include "avio_internal.h"
 #include "internal.h"
 #include "vorbiscomment.h"
 
@@ -61,51 +63,68 @@ typedef struct OGGPageList {
 } OGGPageList;
 
 typedef struct {
+    const AVClass *class;
     OGGPageList *page_list;
+    int pref_size; ///< preferred page size (0 => fill all segments)
 } OGGContext;
 
-static void ogg_update_checksum(AVFormatContext *s, ByteIOContext *pb, int64_t crc_offset)
+
+static const AVOption options[] = {
+    { "oggpagesize", "Set preferred Ogg page size.",
+      offsetof(OGGContext, pref_size), FF_OPT_TYPE_INT, 0, 0, MAX_PAGE_SIZE, AV_OPT_FLAG_ENCODING_PARAM},
+    { NULL },
+};
+
+static const AVClass ogg_muxer_class = {
+    "Ogg muxer",
+    av_default_item_name,
+    options,
+    LIBAVUTIL_VERSION_INT,
+};
+
+
+static void ogg_update_checksum(AVFormatContext *s, AVIOContext *pb, int64_t crc_offset)
 {
-    int64_t pos = url_ftell(pb);
-    uint32_t checksum = get_checksum(pb);
-    url_fseek(pb, crc_offset, SEEK_SET);
-    put_be32(pb, checksum);
-    url_fseek(pb, pos, SEEK_SET);
+    int64_t pos = avio_tell(pb);
+    uint32_t checksum = ffio_get_checksum(pb);
+    avio_seek(pb, crc_offset, SEEK_SET);
+    avio_wb32(pb, checksum);
+    avio_seek(pb, pos, SEEK_SET);
 }
 
 static int ogg_write_page(AVFormatContext *s, OGGPage *page, int extra_flags)
 {
     OGGStreamContext *oggstream = s->streams[page->stream_index]->priv_data;
-    ByteIOContext *pb;
+    AVIOContext *pb;
     int64_t crc_offset;
     int ret, size;
     uint8_t *buf;
 
-    ret = url_open_dyn_buf(&pb);
+    ret = avio_open_dyn_buf(&pb);
     if (ret < 0)
         return ret;
-    init_checksum(pb, ff_crc04C11DB7_update, 0);
-    put_tag(pb, "OggS");
-    put_byte(pb, 0);
-    put_byte(pb, page->flags | extra_flags);
-    put_le64(pb, page->granule);
-    put_le32(pb, oggstream->serial_num);
-    put_le32(pb, oggstream->page_counter++);
-    crc_offset = url_ftell(pb);
-    put_le32(pb, 0); // crc
-    put_byte(pb, page->segments_count);
-    put_buffer(pb, page->segments, page->segments_count);
-    put_buffer(pb, page->data, page->size);
+    ffio_init_checksum(pb, ff_crc04C11DB7_update, 0);
+    ffio_wfourcc(pb, "OggS");
+    avio_w8(pb, 0);
+    avio_w8(pb, page->flags | extra_flags);
+    avio_wl64(pb, page->granule);
+    avio_wl32(pb, oggstream->serial_num);
+    avio_wl32(pb, oggstream->page_counter++);
+    crc_offset = avio_tell(pb);
+    avio_wl32(pb, 0); // crc
+    avio_w8(pb, page->segments_count);
+    avio_write(pb, page->segments, page->segments_count);
+    avio_write(pb, page->data, page->size);
 
     ogg_update_checksum(s, pb, crc_offset);
-    put_flush_packet(pb);
+    avio_flush(pb);
 
-    size = url_close_dyn_buf(pb, &buf);
+    size = avio_close_dyn_buf(pb, &buf);
     if (size < 0)
         return size;
 
-    put_buffer(s->pb, buf, size);
-    put_flush_packet(s->pb);
+    avio_write(s->pb, buf, size);
+    avio_flush(s->pb);
     av_free(buf);
     oggstream->page_count--;
     return 0;
@@ -173,6 +192,7 @@ static int ogg_buffer_data(AVFormatContext *s, AVStream *st,
                            uint8_t *data, unsigned size, int64_t granule)
 {
     OGGStreamContext *oggstream = st->priv_data;
+    OGGContext *ogg = s->priv_data;
     int total_segments = size / 255 + 1;
     uint8_t *p = data;
     int i, segments, len, flush = 0;
@@ -208,8 +228,9 @@ static int ogg_buffer_data(AVFormatContext *s, AVStream *st,
         if (i == total_segments)
             page->granule = granule;
 
-        if (page->segments_count == 255) {
-            ogg_buffer_page(s, oggstream);
+        if(page->segments_count == 255 ||
+           (ogg->pref_size > 0 && page->size >= ogg->pref_size)) {
+           ogg_buffer_page(s, oggstream);
         }
     }
 
@@ -220,7 +241,7 @@ static int ogg_buffer_data(AVFormatContext *s, AVStream *st,
 }
 
 static uint8_t *ogg_write_vorbiscomment(int offset, int bitexact,
-                                        int *header_len, AVMetadata **m, int framing_bit)
+                                        int *header_len, AVDictionary **m, int framing_bit)
 {
     const char *vendor = bitexact ? "ffmpeg" : LIBAVFORMAT_IDENT;
     int size;
@@ -246,7 +267,7 @@ static uint8_t *ogg_write_vorbiscomment(int offset, int bitexact,
 
 static int ogg_build_flac_headers(AVCodecContext *avctx,
                                   OGGStreamContext *oggstream, int bitexact,
-                                  AVMetadata **m)
+                                  AVDictionary **m)
 {
     enum FLACExtradataFormat format;
     uint8_t *streaminfo;
@@ -286,7 +307,7 @@ static int ogg_build_flac_headers(AVCodecContext *avctx,
 
 static int ogg_build_speex_headers(AVCodecContext *avctx,
                                    OGGStreamContext *oggstream, int bitexact,
-                                   AVMetadata **m)
+                                   AVDictionary **m)
 {
     uint8_t *p;
 
@@ -513,4 +534,5 @@ AVOutputFormat ff_ogg_muxer = {
     ogg_write_header,
     ogg_write_packet,
     ogg_write_trailer,
+    .priv_class = &ogg_muxer_class,
 };

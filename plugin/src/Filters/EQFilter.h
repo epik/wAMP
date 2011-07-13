@@ -62,15 +62,13 @@ enum EQ_KNOBS {
 
 #define FILTER_GAIN_SCALE		8
 #define VOL_FIXED_Q_FACTOR		10
-#define VOL_NORM_LEVEL			((1<<VOL_FIXED_Q_FACTOR)*1.3)
+#define VOL_NORM_LEVEL			((1<<VOL_FIXED_Q_FACTOR)*1)
 
 
 #define FILTER_GAIN_RANGE 		24
 #define FILTER_GAIN_MIN			-12
 #define FILTER_GAIN_STEP		1
 #define NUM_EQ_FILTERS			3
-
-#define NUM_MID_EQ_FILT			4
 
 #define L_H_PASS_Q_FACTOR 0.707 // this is the Q for butterworth
 
@@ -95,6 +93,55 @@ public:
     void setCoefficients(double a0, double a1, double a2, double b0, double b1, double b2);
     void reset() {m_X1=m_X2=m_Y0=m_Y1=m_Y2=0.0;};
     int16_t process(int16_t x0);
+};
+
+class DualPassFilter
+{
+public:
+	BiQuadFilter FilterOne;
+	BiQuadFilter FilterTwo;
+
+	void setLowPass(double cf, double sf, double gain, double slope)
+	{
+		FilterOne.setLowPass(cf, sf, gain, slope);
+		FilterTwo.setLowPass(cf, sf, gain, slope);
+	};
+
+	void setHighPass(double cf, double sf, double gain, double slope)
+	{
+		FilterOne.setHighPass(cf, sf, gain, slope);
+		FilterTwo.setHighPass(cf, sf, gain, slope);
+	}
+
+	int16_t process(int16_t x)
+	{
+		x = FilterTwo.process(x);
+		return FilterOne.process(x);
+	}
+
+	void reset() {FilterOne.reset(); FilterTwo.reset();};
+
+};
+
+class DualCascadingFilter
+{
+private:
+	DualPassFilter 	m_pbqfFilterBank[2];
+
+public:
+	void setBandPass(double lcf, double hcf, double sf)
+	{
+		m_pbqfFilterBank[0].setLowPass(hcf, sf, 0, L_H_PASS_Q_FACTOR);
+		m_pbqfFilterBank[1].setHighPass(lcf, sf, 0, L_H_PASS_Q_FACTOR);
+	};
+
+	int16_t process(int16_t x0)
+	{
+		x0 = m_pbqfFilterBank[0].process(x0);
+		return m_pbqfFilterBank[1].process(x0);
+	};
+
+	void reset() {m_pbqfFilterBank[0].reset(); m_pbqfFilterBank[1].reset();};
 };
 
 class CascadingIIRFilter
@@ -123,9 +170,9 @@ class BassTrebleFilter
 protected:
 
 	// IIR Filter variables
-	BiQuadFilter 		m_bqfIIRBassFilter[NUM_CHANNELS];
-	BiQuadFilter		m_bqfIIRTrebleFilter[NUM_CHANNELS];
-	CascadingIIRFilter	m_bqfIIRMidFilter[NUM_CHANNELS];
+	DualPassFilter 		m_bqfIIRBassFilter[NUM_CHANNELS];
+	DualPassFilter		m_bqfIIRTrebleFilter[NUM_CHANNELS];
+	DualCascadingFilter	m_bqfIIRMidFilter[NUM_CHANNELS];
 	
 	// FIR Filter variables
 	int16_t			m_psFIRBASSKnobCoef[BASS_TAP_NUM];

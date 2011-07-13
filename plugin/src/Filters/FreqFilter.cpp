@@ -223,14 +223,17 @@ void BassTrebleFilter::ProcessSampleIIR(int16_t *insample, int16_t *outsample,
 		sample = *insample++;
 
 		iTemp = m_bqfIIRBassFilter[iChan].process(sample) * m_sBassGain;
+		iTemp += 1 << (FILTER_GAIN_SCALE - 1);
 		iResult = iTemp >> FILTER_GAIN_SCALE;
 
 
 		iTemp = m_bqfIIRTrebleFilter[iChan].process(sample) * m_sTrebleGain;
+		iTemp += 1 << (FILTER_GAIN_SCALE - 1);
 		iResult += iTemp >> FILTER_GAIN_SCALE;
 
 
 		iTemp = m_bqfIIRMidFilter[iChan].process(sample) * m_sMidRangeGain;
+		iTemp += 1 << (FILTER_GAIN_SCALE - 1);
 		iResult += iTemp >> FILTER_GAIN_SCALE;
 
 		iResult *= m_sVol;
@@ -276,9 +279,9 @@ void BassTrebleFilter::SetIIRFilterCoef( )
 		// First set the low pass filter
 		m_bqfIIRBassFilter[i].setLowPass(200, DEST_FREQ, 0, L_H_PASS_Q_FACTOR);
 		// Next set the high pass filter
-		m_bqfIIRTrebleFilter[i].setHighPass(6000, DEST_FREQ, 0, L_H_PASS_Q_FACTOR);
+		m_bqfIIRTrebleFilter[i].setHighPass(5000, DEST_FREQ, 0, L_H_PASS_Q_FACTOR);
 		// Finally set set the bandpass
-		m_bqfIIRMidFilter[i].setBandPass(400,3000, DEST_FREQ);
+		m_bqfIIRMidFilter[i].setBandPass(200,5000, DEST_FREQ);
 	}
 }
 
@@ -652,83 +655,57 @@ inline int16_t BiQuadFilter::process(int16_t inSamp)
     return y0;
 }
 
-void GraphEQ::ProcessSampleIIR(int16_t *insample, int16_t *outsample,
-										size_t Requested, int16_t iChan)
-{
-	int16_t *outpos = outsample;
-	int16_t sample;
-	int32_t iResult;
-	int32_t iTemp;
-
-
-	while (outpos < (outsample + Requested))
-	{
-		sample = *insample++;
-
-		iTemp = m_bqfIIRBassFilter[iChan].process(sample) * m_sBassGain;
-		iResult = iTemp >> FILTER_GAIN_SCALE;
-
-
-		iTemp = m_bqfIIRTrebleFilter[iChan].process(sample) * m_sTrebleGain;
-		iResult += iTemp >> FILTER_GAIN_SCALE;
-
-
-		for (int i=0; i<NUM_MID_EQ_FILT; i++)
-		{
-			iTemp = m_bqfIIRMidFilter[iChan][i].process(sample) * m_sMidRangeGain[i];
-			iResult += iTemp >> FILTER_GAIN_SCALE;
-		}
-
-		iResult *= m_sVol;
-		iResult >>= 10;
-
-		if (iResult > SHRT_MAX)
-		{
-			iResult = SHRT_MAX;
-		}
-		else if (iResult < SHRT_MIN)
-		{
-			iResult = SHRT_MIN;
-		}
-
-		*outpos = (int16_t) iResult;
-		outpos++;
-	}
-}
 
 void GraphEQ::SetIIRFilterCoef( )
 {
 	for (int i=0;i<NUM_CHANNELS;i++)
 	{
 		// First set the low pass filter
-		m_bqfIIRBassFilter[i].setLowPass(20, DEST_FREQ, 0, L_H_PASS_Q_FACTOR);
+		m_bqfIIRBassFilter[i].setLowPass(40, DEST_FREQ, 0, L_H_PASS_Q_FACTOR);
 		// Next set the high pass filter
-		m_bqfIIRTrebleFilter[i].setHighPass(10240, DEST_FREQ, 0, L_H_PASS_Q_FACTOR);
+		m_bqfIIRTrebleFilter[i].setHighPass(8448, DEST_FREQ, 0, L_H_PASS_Q_FACTOR);
 		// Finally set set the bandpass
-		m_bqfIIRMidFilter[i][0].setBandPass(40, 80, DEST_FREQ);
-		m_bqfIIRMidFilter[i][1].setBandPass(160, 320, DEST_FREQ);
-		m_bqfIIRMidFilter[i][2].setBandPass(640, 1280, DEST_FREQ);
-		m_bqfIIRMidFilter[i][3].setBandPass(2560, 5120, DEST_FREQ);
+		m_bqfIIRMidFilter[i][0].setBandPass(40, 160, DEST_FREQ);
+		m_bqfIIRMidFilter[i][1].setBandPass(160, 528, DEST_FREQ);
+		m_bqfIIRMidFilter[i][2].setBandPass(528, 2112, DEST_FREQ);
+		m_bqfIIRMidFilter[i][3].setBandPass(2112, 8448, DEST_FREQ);
 	}
 }
 
 
 void GraphEQ::SetEQVals(const char *Vals)
 {
-	for (int i = 0; i<TOTAL_EQ_NUM; i++)
-	{
-		m_sEQGain[i] = (int16_t) (*Vals++);
-	}
+	int32_t iModVal;
+
+	iModVal = (int32_t) *(Vals++);
+	m_sEQGain[0] = (iModVal < 0) ? 0 : iModVal;
+
+	iModVal = (int32_t) *(Vals++) + 1;
+	m_sEQGain[1] = (iModVal < 0) ? 0 : iModVal;
+
+	iModVal = (int32_t) *(Vals++);
+	m_sEQGain[2] = (iModVal < 0) ? 0 : iModVal;
+
+	iModVal = (int32_t) *(Vals++) - 2;
+	m_sEQGain[3] =  (iModVal < 0) ? 0 : iModVal;
+
+	iModVal = (int32_t) *(Vals++) - 2;
+	m_sEQGain[4] = (iModVal < 0) ? 0 : iModVal;
+
+	iModVal = (int32_t) *(Vals++) - 2;
+	m_sEQGain[5] = (iModVal < 0) ? 0 : iModVal;
 }
 
 FiltMessage GraphEQ::Init()
 {
 	SetIIRFilterCoef();
 
-	for (int i = 0; i<TOTAL_EQ_NUM; i++)
-	{
-		m_sEQGain[i] = (1 << EQ_GAIN_Q);
-	}
+	m_sEQGain[0] = 127;
+	m_sEQGain[1] = 128;
+	m_sEQGain[2] = 127;
+	m_sEQGain[3] = 125;
+	m_sEQGain[4] = 125;
+	m_sEQGain[5] = 125;
 
 	return FILT_Success;
 }
@@ -748,21 +725,25 @@ void GraphEQ::ProcessSampleIIR(int16_t *insample, int16_t *outsample,
 		sample = *insample++;
 
 		iTemp = m_bqfIIRBassFilter[iChan].process(sample) *
-												m_sEQGain[iChan][0];
-		iResult = iTemp >> EQ_GAIN_Q;
+												m_sEQGain[0];
+		iTemp += 1 << (EQ_GAIN_Q - 1);
+		iResult = iTemp >> (EQ_GAIN_Q);
 
 
 		iTemp = m_bqfIIRTrebleFilter[iChan].process(sample) *
-												m_sEQGain[iChan][5];
-		iResult += iTemp >> EQ_GAIN_Q;
+												m_sEQGain[TOTAL_EQ_NUM-1];
+		iTemp += 1 << (EQ_GAIN_Q - 1);
+		iResult += iTemp >> (EQ_GAIN_Q);
 
 
 		for (int i=0;i<NUM_MID_EQ_FILT;i++)
 		{
 			iTemp = m_bqfIIRMidFilter[iChan][i].process(sample) *
-												m_sEQGain[iChan][i+1];
-			iResult += iTemp >> EQ_GAIN_Q;
+												m_sEQGain[i+1];
+			iTemp += 1 << (EQ_GAIN_Q - 1);
+			iResult += iTemp >> (EQ_GAIN_Q);
 		}
+
 
 
 		if (iResult > SHRT_MAX)
@@ -775,6 +756,17 @@ void GraphEQ::ProcessSampleIIR(int16_t *insample, int16_t *outsample,
 		}
 
 		*outpos = (int16_t) iResult;
-		outpos++;
+		outpos+=2;
 	}
+}
+
+
+void GraphEQ::Filter(int16_t *psChan0, int16_t *psChan1,
+						int16_t *pucOutBuffer,
+						size_t pRequested)
+{
+
+	ProcessSampleIIR(psChan0, pucOutBuffer, pRequested, 0);
+	ProcessSampleIIR(psChan1, pucOutBuffer+1, pRequested, 1);
+
 }

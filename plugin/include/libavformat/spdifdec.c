@@ -163,20 +163,20 @@ static int spdif_read_header(AVFormatContext *s, AVFormatParameters *ap)
 
 static int spdif_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
-    ByteIOContext *pb = s->pb;
+    AVIOContext *pb = s->pb;
     enum IEC61937DataType data_type;
     enum CodecID codec_id;
     uint32_t state = 0;
     int pkt_size_bits, offset, ret;
 
     while (state != (AV_BSWAP16C(SYNCWORD1) << 16 | AV_BSWAP16C(SYNCWORD2))) {
-        state = (state << 8) | get_byte(pb);
+        state = (state << 8) | avio_r8(pb);
         if (url_feof(pb))
             return AVERROR_EOF;
     }
 
-    data_type = get_le16(pb);
-    pkt_size_bits = get_le16(pb);
+    data_type = avio_rl16(pb);
+    pkt_size_bits = avio_rl16(pb);
 
     if (pkt_size_bits % 16)
         av_log_ask_for_sample(s, "Packet does not end to a 16-bit boundary.");
@@ -185,9 +185,9 @@ static int spdif_read_packet(AVFormatContext *s, AVPacket *pkt)
     if (ret)
         return ret;
 
-    pkt->pos = url_ftell(pb) - BURST_HEADER_SIZE;
+    pkt->pos = avio_tell(pb) - BURST_HEADER_SIZE;
 
-    if (get_buffer(pb, pkt->data, pkt->size) < pkt->size) {
+    if (avio_read(pb, pkt->data, pkt->size) < pkt->size) {
         av_free_packet(pkt);
         return AVERROR_EOF;
     }
@@ -201,7 +201,7 @@ static int spdif_read_packet(AVFormatContext *s, AVPacket *pkt)
     }
 
     /* skip over the padding to the beginning of the next frame */
-    url_fskip(pb, offset - pkt->size - BURST_HEADER_SIZE);
+    avio_skip(pb, offset - pkt->size - BURST_HEADER_SIZE);
 
     if (!s->nb_streams) {
         /* first packet, create a stream */

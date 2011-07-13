@@ -255,7 +255,7 @@ static void lsf2lsp_for_mode12k2(AMRContext *p, double lsp[LP_FILTER_ORDER],
     }
 
     if (update)
-        memcpy(p->prev_lsf_r, lsf_r, LP_FILTER_ORDER * sizeof(float));
+        memcpy(p->prev_lsf_r, lsf_r, LP_FILTER_ORDER * sizeof(*lsf_r));
 
     for (i = 0; i < LP_FILTER_ORDER; i++)
         lsf_q[i] = lsf_r[i] * (LSF_R_FAC / 8000.0) + lsf_no_r[i] * (1.0 / 8000.0);
@@ -1044,5 +1044,5 @@ AVCodec ff_amrnb_decoder = {
     .init           = amrnb_decode_init,
     .decode         = amrnb_decode_frame,
     .long_name      = NULL_IF_CONFIG_SMALL("Adaptive Multi-Rate NarrowBand"),
-    .sample_fmts    = (enum AVSampleFormat[]){AV_SAMPLE_FMT_FLT,AV_SAMPLE_FMT_NONE},
+    .sample_fmts    = (const enum AVSampleFormat[]){AV_SAMPLE_FMT_FLT,AV_SAMPLE_FMT_NONE},
 };

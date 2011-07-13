@@ -33,6 +33,7 @@
 #include "libavutil/md5.h"
 #include "rm.h"
 #include "internal.h"
+#include "avio_internal.h"
 #include "libavcodec/get_bits.h"
 
 struct RDTDemuxContext {
@@ -130,7 +131,7 @@ ff_rdt_calc_response_and_checksum(char response[41], char chksum[9],
 static int
 rdt_load_mdpr (PayloadContext *rdt, AVStream *st, int rule_nr)
 {
-    ByteIOContext pb;
+    AVIOContext pb;
     int size;
     uint32_t tag;
 
@@ -150,30 +151,30 @@ rdt_load_mdpr (PayloadContext *rdt, AVStream *st, int rule_nr)
      */
     if (!rdt->mlti_data)
         return -1;
-    init_put_byte(&pb, rdt->mlti_data, rdt->mlti_data_size, 0,
+    ffio_init_context(&pb, rdt->mlti_data, rdt->mlti_data_size, 0,
                   NULL, NULL, NULL, NULL);
-    tag = get_le32(&pb);
+    tag = avio_rl32(&pb);
     if (tag == MKTAG('M', 'L', 'T', 'I')) {
         int num, chunk_nr;
 
         /* read index of MDPR chunk numbers */
-        num = get_be16(&pb);
+        num = avio_rb16(&pb);
         if (rule_nr < 0 || rule_nr >= num)
             return -1;
-        url_fskip(&pb, rule_nr * 2);
-        chunk_nr = get_be16(&pb);
-        url_fskip(&pb, (num - 1 - rule_nr) * 2);
+        avio_skip(&pb, rule_nr * 2);
+        chunk_nr = avio_rb16(&pb);
+        avio_skip(&pb, (num - 1 - rule_nr) * 2);
 
         /* read MDPR chunks */
-        num = get_be16(&pb);
+        num = avio_rb16(&pb);
         if (chunk_nr >= num)
             return -1;
         while (chunk_nr--)
-            url_fskip(&pb, get_be32(&pb));
-        size = get_be32(&pb);
+            avio_skip(&pb, avio_rb32(&pb));
+        size = avio_rb32(&pb);
     } else {
         size = rdt->mlti_data_size;
-        url_fseek(&pb, 0, SEEK_SET);
+        avio_seek(&pb, 0, SEEK_SET);
     }
     if (ff_rm_read_mdpr_codecdata(rdt->rmctx, &pb, st, rdt->rmst[st->index], size) < 0)
         return -1;
@@ -295,22 +296,22 @@ rdt_parse_packet (AVFormatContext *ctx, PayloadContext *rdt, AVStream *st,
                   const uint8_t *buf, int len, int flags)
 {
     int seq = 1, res;
-    ByteIOContext pb;
+    AVIOContext pb;
 
     if (rdt->audio_pkt_cnt == 0) {
         int pos;
 
-        init_put_byte(&pb, buf, len, 0, NULL, NULL, NULL, NULL);
+        ffio_init_context(&pb, buf, len, 0, NULL, NULL, NULL, NULL);
         flags = (flags & RTP_FLAG_KEY) ? 2 : 0;
         res = ff_rm_parse_packet (rdt->rmctx, &pb, st, rdt->rmst[st->index], len, pkt,
                                   &seq, flags, *timestamp);
-        pos = url_ftell(&pb);
+        pos = avio_tell(&pb);
         if (res < 0)
             return res;
         if (res > 0) {
             if (st->codec->codec_id == CODEC_ID_AAC) {
                 memcpy (rdt->buffer, buf + pos, len - pos);
-                rdt->rmctx->pb = av_alloc_put_byte (rdt->buffer, len - pos, 0,
+                rdt->rmctx->pb = avio_alloc_context (rdt->buffer, len - pos, 0,
                                                     NULL, NULL, NULL, NULL);
             }
             goto get_cache;
@@ -522,7 +523,7 @@ rdt_new_context (void)
 {
     PayloadContext *rdt = av_mallocz(sizeof(PayloadContext));
 
-    av_open_input_stream(&rdt->rmctx, NULL, "", &ff_rdt_demuxer, NULL);
+    avformat_open_input(&rdt->rmctx, "", &ff_rdt_demuxer, NULL);
 
     return rdt;
 }
@@ -538,7 +539,7 @@ rdt_free_context (PayloadContext *rdt)
             av_freep(&rdt->rmst[i]);
         }
     if (rdt->rmctx)
-        av_close_input_stream(rdt->rmctx);
+        av_close_input_file(rdt->rmctx);
     av_freep(&rdt->mlti_data);
     av_freep(&rdt->rmst);
     av_free(rdt);
@@ -550,8 +551,8 @@ static RTPDynamicProtocolHandler ff_rdt_ ## n ## _handler = { \
     .codec_type       = t, \
     .codec_id         = CODEC_ID_NONE, \
     .parse_sdp_a_line = rdt_parse_sdp_line, \
-    .open             = rdt_new_context, \
-    .close            = rdt_free_context, \
+    .alloc            = rdt_new_context, \
+    .free             = rdt_free_context, \
     .parse_packet     = rdt_parse_packet \
 }
 

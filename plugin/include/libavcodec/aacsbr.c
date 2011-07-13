@@ -32,9 +32,11 @@
 #include "aacsbrdata.h"
 #include "fft.h"
 #include "aacps.h"
+#include "libavutil/libm.h"
 
 #include <stdint.h>
 #include <float.h>
+#include <math.h>
 
 #define ENVELOPE_ADJUSTMENT_OFFSET 2
 #define NOISE_FLOOR_OFFSET 6.0f
@@ -125,14 +127,19 @@ av_cold void ff_aac_sbr_init(void)
     ff_ps_init();
 }
 
-av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
+av_cold void ff_aac_sbr_ctx_init(AACContext *ac, SpectralBandReplication *sbr)
 {
+    float mdct_scale;
     sbr->kx[0] = sbr->kx[1] = 32; //Typo in spec, kx' inits to 32
     sbr->data[0].e_a[1] = sbr->data[1].e_a[1] = -1;
     sbr->data[0].synthesis_filterbank_samples_offset = SBR_SYNTHESIS_BUF_SIZE - (1280 - 128);
     sbr->data[1].synthesis_filterbank_samples_offset = SBR_SYNTHESIS_BUF_SIZE - (1280 - 128);
-    ff_mdct_init(&sbr->mdct, 7, 1, 1.0/64);
-    ff_mdct_init(&sbr->mdct_ana, 7, 1, -2.0);
+    /* SBR requires samples to be scaled to +/-32768.0 to work correctly.
+     * mdct scale factors are adjusted to scale up from +/-1.0 at analysis
+     * and scale back down at synthesis. */
+    mdct_scale = ac->avctx->sample_fmt == AV_SAMPLE_FMT_FLT ? 32768.0f : 1.0f;
+    ff_mdct_init(&sbr->mdct,     7, 1, 1.0 / (64 * mdct_scale));
+    ff_mdct_init(&sbr->mdct_ana, 7, 1, -2.0 * mdct_scale);
     ff_ps_ctx_init(&sbr->ps);
 }
 
@@ -1155,7 +1162,7 @@ static void sbr_qmf_analysis(DSPContext *dsp, FFTContext *mdct, const float *in,
         }
         z[64+63] = z[32];
 
-        ff_imdct_half(mdct, z, z+64);
+        mdct->imdct_half(mdct, z, z+64);
         for (k = 0; k < 32; k++) {
             W[1][i][k][0] = -z[63-k];
             W[1][i][k][1] = z[k];
@@ -1190,7 +1197,7 @@ static void sbr_qmf_synthesis(DSPContext *dsp, FFTContext *mdct,
                 X[0][i][   n] = -X[0][i][n];
                 X[0][i][32+n] =  X[1][i][31-n];
             }
-            ff_imdct_half(mdct, mdct_buf[0], X[0][i]);
+            mdct->imdct_half(mdct, mdct_buf[0], X[0][i]);
             for (n = 0; n < 32; n++) {
                 v[     n] =  mdct_buf[0][63 - 2*n];
                 v[63 - n] = -mdct_buf[0][62 - 2*n];
@@ -1199,8 +1206,8 @@ static void sbr_qmf_synthesis(DSPContext *dsp, FFTContext *mdct,
             for (n = 1; n < 64; n+=2) {
                 X[1][i][n] = -X[1][i][n];
             }
-            ff_imdct_half(mdct, mdct_buf[0], X[0][i]);
-            ff_imdct_half(mdct, mdct_buf[1], X[1][i]);
+            mdct->imdct_half(mdct, mdct_buf[0], X[0][i]);
+            mdct->imdct_half(mdct, mdct_buf[1], X[1][i]);
             for (n = 0; n < 64; n++) {
                 v[      n] = -mdct_buf[0][63 -   n] + mdct_buf[1][  n    ];
                 v[127 - n] =  mdct_buf[0][63 -   n] + mdct_buf[1][  n    ];

@@ -14,7 +14,9 @@ extern "C" {
 
 MusMessage FFmpegWrapper::Init()
 {
-    /* initialize libavcodec, and register all codecs and formats */
+	ReportError("Starting FFmpeg Init");
+
+	/* initialize libavcodec, and register all codecs and formats */
     av_register_all();
 
     m_psTmpBufferBase = (uint16_t *) av_malloc(AVCODEC_MAX_AUDIO_FRAME_SIZE +
@@ -64,7 +66,7 @@ int16_t FFmpegWrapper::PrepareMetadata(const char *cstrFileName)
 
 MusMessage FFmpegWrapper::FindDecoder(const char *cstrFileName)
 {
-	//ReportError1("Open with FFmpeg File=%s", cstrFileName);
+	ReportError1("Open FindDecoder FFmpeg File=%s", cstrFileName);
 
     // Open audio file
 	int err = av_open_input_file(&m_pFormatCtx, cstrFileName, NULL, 0, NULL);
@@ -98,15 +100,14 @@ MusMessage FFmpegWrapper::FindDecoder(const char *cstrFileName)
 		return MUS_MOD_Error;
     }
 
-    m_iStreamID = -1;
-    for(uint16_t i=0; i<m_pFormatCtx->nb_streams; i++)
-    {
-		if(m_pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_AUDIO)
-		{
-			m_iStreamID = i;
-			break;
-		}
-    }
+    m_iStreamID = av_find_best_stream(m_pFormatCtx,
+    								  AVMEDIA_TYPE_AUDIO,
+    								  -1,
+    								  -1,
+    								  &m_pCodec,
+    								  0);
+
+    ReportError1("This gave us: %i", m_iStreamID);
 
     if(m_iStreamID==-1)
     {
@@ -114,12 +115,17 @@ MusMessage FFmpegWrapper::FindDecoder(const char *cstrFileName)
 		return MUS_MOD_Error;
     }
 
+    ReportError("About to access stream");
+
     // Get a pointer to the codec context for the music stream
     m_pCodecCtx=m_pFormatCtx->streams[m_iStreamID]->codec;
 
+    ReportError1("Finished accessing stream %i", m_pCodecCtx);
 
     // Find the decoder for the music stream
     m_pCodec = avcodec_find_decoder(m_pCodecCtx->codec_id);
+
+    ReportError("Is the error here?");
 
     // No decoder found
     if (!m_pCodec)
@@ -129,17 +135,26 @@ MusMessage FFmpegWrapper::FindDecoder(const char *cstrFileName)
 		return MUS_MOD_Error;
     }
 
+    ReportError("Success with Decoder");
+
     return MUS_MOD_Success;
 }
 
 MusMessage FFmpegWrapper::Open(const char *cstrFileName)
 {
+	ReportError("Is there something strange with FindDecoder locking up?");
+
 	MusMessage Msg = FindDecoder(cstrFileName);
+
+	ReportError1("Decoder returned %i", Msg);
 
 	m_iSkipNextFrame = 0;
 
 	if (Msg != MUS_MOD_Success)
+	{
+		ReportError("Returning without success from open");
 		return Msg;
+	}
 
     // Inform the codec that we can handle truncated bitstreams -- i.e.,
     // bitstreams where frame boundaries can fall in the middle of packets
@@ -186,11 +201,15 @@ MusMessage FFmpegWrapper::Open(const char *cstrFileName)
 		m_iSongLength = m_pFormatCtx->duration / AV_TIME_BASE;
 	}
 	
+	ReportError("Success in open");
+
     return MUS_MOD_Success;
 }
 
 int32_t FFmpegWrapper::GetSampleRate()
 {
+	ReportError("In FFmpeg Get SampleRate");
+
 	if (m_pCodecCtx)
 	{
 		if (m_pCodecCtx->sample_rate)
@@ -204,6 +223,8 @@ int32_t FFmpegWrapper::GetSampleRate()
 
 MusMessage FFmpegWrapper::Close()
 {
+	ReportError("In Close");
+
 	// Close the codec
 	if (m_pCodecCtx)
 		avcodec_close(m_pCodecCtx);
@@ -224,14 +245,31 @@ MusMessage FFmpegWrapper::Close()
 
 uint32_t FFmpegWrapper::Seek(double time)
 {
+	ReportError("In FFmpeg Seek");
+
 	if (m_pFormatCtx == 0)
 		return -1;
+
+	ReportError("About to seek frame");
 
 	int err = av_seek_frame(m_pFormatCtx, -1, time * AV_TIME_BASE,
 									AVSEEK_FLAG_ANY | AVSEEK_FLAG_BACKWARD);
 
+	ReportError("Frame seeked");
+
 	if ((err == AVERROR_EOF) || (url_feof(m_pFormatCtx->pb)))
+	{
+		char cstrFFmpegError[128];
+		char cstrErrBuf[256] = "We have an error in Seek:";
+
+		av_strerror(err, cstrFFmpegError, sizeof(cstrFFmpegError));
+
+		strcat(cstrErrBuf, cstrFFmpegError);
+
+		MUS_ERROR(MUS_ERROR_LOAD_PROBLEM, cstrErrBuf);
+
 		m_iSkipNextFrame = 2;
+	}
 	else if (err == 0)
 		m_iSkipNextFrame = 1;
 	else
@@ -246,11 +284,15 @@ uint32_t FFmpegWrapper::Seek(double time)
 		return MUS_MOD_Error;
 	}
 
+	ReportError("So far so good");
+
 	m_iSkipNextFrame = av_read_frame(m_pFormatCtx, &m_avPacket);
 
 	int64_t retVal = av_rescale(m_avPacket.pts,
 						m_pFormatCtx->streams[m_iStreamID]->time_base.num,
 						m_pFormatCtx->streams[m_iStreamID]->time_base.den);
+
+	ReportError2("Yeah, don't really get it %i, %i", m_iSkipNextFrame, retVal);
 
 	if (retVal >= 0)
 		return (uint32_t) retVal;
@@ -262,7 +304,7 @@ uint32_t FFmpegWrapper::Seek(double time)
 
 MusMessage FFmpegWrapper::GetNextPacket(void *pvPacket)
 {
-	//ReportError("Entering GetNextPacket");
+	ReportError("Entering GetNextPacket");
 
 	int32_t iCurRead = 0;
 	
@@ -430,6 +472,8 @@ MusMessage FFmpegWrapper::GetNextPacket(void *pvPacket)
  ********************************************/
 const char *FFmpegWrapper::GetMetadata()
 {
+	ReportError("In GetMetaData");
+
 	if (!m_pFormatCtx)
 	{
 		return NULL;
@@ -653,6 +697,8 @@ const char *FFmpegWrapper::GetMetadataLite()
  ********************************/
 const char *FFmpegWrapper::GetValue(const char *Key)
 {
+	ReportError("In Get Meta Speicfic val");
+
 	// variable to pass the metadata pairs to
 	AVMetadataTag *tag=NULL;
 

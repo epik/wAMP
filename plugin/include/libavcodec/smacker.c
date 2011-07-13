@@ -360,8 +360,6 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size, AVPac
 
     if(buf_size <= 769)
         return 0;
-    if(smk->pic.data[0])
-            avctx->release_buffer(avctx, &smk->pic);
 
     smk->pic.reference = 1;
     smk->pic.buffer_hints = FF_BUFFER_HINTS_VALID | FF_BUFFER_HINTS_PRESERVE | FF_BUFFER_HINTS_REUSABLE;
@@ -375,9 +373,9 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size, AVPac
     smk->pic.palette_has_changed = buf[0] & 1;
     smk->pic.key_frame = !!(buf[0] & 2);
     if(smk->pic.key_frame)
-        smk->pic.pict_type = FF_I_TYPE;
+        smk->pic.pict_type = AV_PICTURE_TYPE_I;
     else
-        smk->pic.pict_type = FF_P_TYPE;
+        smk->pic.pict_type = AV_PICTURE_TYPE_P;
 
     buf++;
     for(i = 0; i < 256; i++)
@@ -517,6 +515,7 @@ static av_cold int decode_init(AVCodecContext *avctx)
 
     avctx->pix_fmt = PIX_FMT_PAL8;
 
+    avcodec_get_frame_defaults(&c->pic);
 
     /* decode huffman trees from extradata */
     if(avctx->extradata_size < 16){

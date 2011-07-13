@@ -21,7 +21,7 @@
 #define FIXED_POINT_SEC_CONVERT_FACTOR ((1<<26)/(DEST_FREQ))
 #define RESAMPLE_PADDING				8
 
-#define BUFFER_SIZE_X_LARGE	(1 << 21)
+#define BUFFER_SIZE_X_LARGE	(1 << 20)
 #define BUFFER_SIZE_LARGE	((1 << 19) + (1 << 18))
 #define BUFFER_SIZE_MEDIUM	(1 << 18)
 #define BUFFER_SIZE_SMALL	(1 << 17)
@@ -91,7 +91,7 @@ public:
 
 	void Init()
 	{
-		m_uiNumAllocated = 16384;
+		m_uiNumAllocated = 8192;
 		ReportError1("Size of SoundPacket=%i", sizeof(SoundPacket));
 		assert(sizeof(SoundPacket) % 32 == 0);
 		m_pspPacketArray = (SoundPacket *) MALLOC(sizeof(SoundPacket) * (m_uiNumAllocated + 2));
@@ -351,6 +351,7 @@ private:
 	int32_t				m_iFadeHelper;
 	int32_t				m_iCurVol;
 	
+	int32_t				m_bUseResampFilt;
 
 public:
 
@@ -409,6 +410,8 @@ public:
 
 	void SetFade(int32_t iFadeHelper)
 	{
+		ReportError1("iFadeHelper=%i", iFadeHelper);
+
 		if (iFadeHelper <= 0)
 			iFadeHelper = 1;
 		else if (iFadeHelper >= END_MAX_GAP)
@@ -487,7 +490,15 @@ public:
 	void SetFilterRate(float f) 
 	{
 		ReportError1("SetFilterRate=%f", f);
-		m_rfResample.SetFilterRate(f * m_dResampConvFactor);
+		f *= m_dResampConvFactor;
+
+		m_rfResample.SetFilterRate(f);
+
+		if (f == 1.0)
+			m_bUseResampFilt = 0;
+		else
+			m_bUseResampFilt = 1;
+
 	}
 
 	MUS_MESSAGE DecodeAndBuffer();
@@ -514,6 +525,8 @@ public:
 class AudioPipeline
 {
 private:
+
+	int32_t			m_iTrackFade;
 
 	SoundPipe 			m_spPipe[2];
 	volatile int32_t	m_iActivePipe;
@@ -565,6 +578,8 @@ public:
 		
 		m_iScaleBy = 0;
 
+		m_iTrackFade = END_MAX_GAP;
+
 		m_iFixedResampFilt = (1<<10);
 
 		m_iFade = END_MAX_GAP;
@@ -584,6 +599,11 @@ public:
 															LOW_SPEED_RATIO_LIM +
 													   40));
 		}
+	}
+
+	void SetTrackFade(int32_t iTrackFade)
+	{
+		m_iTrackFade = iTrackFade;
 	}
 
 	void Uninit()

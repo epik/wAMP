@@ -76,7 +76,7 @@ static int read_header(AVFormatContext *s, AVFormatParameters *ap)
 {
     int i, len, header_remaining;
     ASSContext *ass = s->priv_data;
-    ByteIOContext *pb = s->pb;
+    AVIOContext *pb = s->pb;
     AVStream *st;
     int allocated[2]={0};
     uint8_t *p, **dst[2]={0};
@@ -168,7 +168,7 @@ static int read_seek2(AVFormatContext *s, int stream_index,
     ASSContext *ass = s->priv_data;
 
     if (flags & AVSEEK_FLAG_BYTE) {
-        return AVERROR_NOTSUPP;
+        return AVERROR(ENOSYS);
     } else if (flags & AVSEEK_FLAG_FRAME) {
         if (ts < 0 || ts >= ass->event_count)
             return AVERROR(ERANGE);

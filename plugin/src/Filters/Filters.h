@@ -10,5 +10,6 @@
 
 #include "MusFilter.h"
 #include "EQFilter.h"
+#include "GraphEQ.h"
 
 #endif /* FILTERS_H_ */

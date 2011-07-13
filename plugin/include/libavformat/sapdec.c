@@ -25,6 +25,8 @@
 #include "network.h"
 #include "os_support.h"
 #include "internal.h"
+#include "avio_internal.h"
+#include "url.h"
 #if HAVE_POLL_H
 #include <poll.h>
 #endif
@@ -33,7 +35,7 @@
 struct SAPState {
     URLContext *ann_fd;
     AVFormatContext *sdp_ctx;
-    ByteIOContext sdp_pb;
+    AVIOContext sdp_pb;
     uint16_t hash;
     char *sdp;
     int eof;
@@ -50,9 +52,9 @@ static int sap_read_close(AVFormatContext *s)
 {
     struct SAPState *sap = s->priv_data;
     if (sap->sdp_ctx)
-        av_close_input_stream(sap->sdp_ctx);
+        av_close_input_file(sap->sdp_ctx);
     if (sap->ann_fd)
-        url_close(sap->ann_fd);
+        ffurl_close(sap->ann_fd);
     av_freep(&sap->sdp);
     ff_network_close();
     return 0;
@@ -83,7 +85,7 @@ static int sap_read_header(AVFormatContext *s,
 
     ff_url_join(url, sizeof(url), "udp", NULL, host, port, "?localport=%d",
                 port);
-    ret = url_open(&sap->ann_fd, url, URL_RDONLY);
+    ret = ffurl_open(&sap->ann_fd, url, AVIO_FLAG_READ);
     if (ret)
         goto fail;
 
@@ -91,7 +93,7 @@ static int sap_read_header(AVFormatContext *s,
         int addr_type, auth_len;
         int pos;
 
-        ret = url_read(sap->ann_fd, recvbuf, sizeof(recvbuf) - 1);
+        ret = ffurl_read(sap->ann_fd, recvbuf, sizeof(recvbuf) - 1);
         if (ret == AVERROR(EAGAIN))
             continue;
         if (ret < 0)
@@ -142,7 +144,7 @@ static int sap_read_header(AVFormatContext *s,
     }
 
     av_log(s, AV_LOG_VERBOSE, "SDP:\n%s\n", sap->sdp);
-    init_put_byte(&sap->sdp_pb, sap->sdp, strlen(sap->sdp), 0, NULL, NULL,
+    ffio_init_context(&sap->sdp_pb, sap->sdp, strlen(sap->sdp), 0, NULL, NULL,
                   NULL, NULL);
 
     infmt = av_find_input_format("sdp");
@@ -154,9 +156,8 @@ static int sap_read_header(AVFormatContext *s,
         goto fail;
     }
     sap->sdp_ctx->max_delay = s->max_delay;
-    ap->prealloced_context = 1;
-    ret = av_open_input_stream(&sap->sdp_ctx, &sap->sdp_pb, "temp.sdp",
-                               infmt, ap);
+    sap->sdp_ctx->pb        = &sap->sdp_pb;
+    ret = avformat_open_input(&sap->sdp_ctx, "temp.sdp", infmt, NULL);
     if (ret < 0)
         goto fail;
     if (sap->sdp_ctx->ctx_flags & AVFMTCTX_NOHEADER)
@@ -181,7 +182,7 @@ fail:
 static int sap_fetch_packet(AVFormatContext *s, AVPacket *pkt)
 {
     struct SAPState *sap = s->priv_data;
-    int fd = url_get_file_handle(sap->ann_fd);
+    int fd = ffurl_get_file_handle(sap->ann_fd);
     int n, ret;
     struct pollfd p = {fd, POLLIN, 0};
     uint8_t recvbuf[1500];
@@ -193,7 +194,7 @@ static int sap_fetch_packet(AVFormatContext *s, AVPacket *pkt)
         n = poll(&p, 1, 0);
         if (n <= 0 || !(p.revents & POLLIN))
             break;
-        ret = url_read(sap->ann_fd, recvbuf, sizeof(recvbuf));
+        ret = ffurl_read(sap->ann_fd, recvbuf, sizeof(recvbuf));
         if (ret >= 8) {
             uint16_t hash = AV_RB16(&recvbuf[2]);
             /* Should ideally check the source IP address, too */

@@ -30,8 +30,6 @@
 #include "libavutil/colorspace.h"
 #include "libavutil/imgutils.h"
 
-//#define DEBUG_PACKET_CONTENTS
-
 #define RGBA(r,g,b,a) (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
 
 enum SegmentType {
@@ -246,8 +244,8 @@ static void parse_palette_segment(AVCodecContext *avctx,
     while (buf < buf_end) {
         color_id  = bytestream_get_byte(&buf);
         y         = bytestream_get_byte(&buf);
-        cb        = bytestream_get_byte(&buf);
         cr        = bytestream_get_byte(&buf);
+        cb        = bytestream_get_byte(&buf);
         alpha     = bytestream_get_byte(&buf);
 
         YUV_TO_RGB1(cb, cr);
@@ -357,7 +355,6 @@ static int display_end_segment(AVCodecContext *avctx, void *data,
      *      not been cleared by a subsequent empty display command.
      */
 
-    memset(sub, 0, sizeof(*sub));
     // Blank if last object_number was 0.
     // Note that this may be wrong for more complex subtitles.
     if (!ctx->presentation.object_number)
@@ -404,21 +401,18 @@ static int decode(AVCodecContext *avctx, void *data, int *data_size,
     const uint8_t *buf_end;
     uint8_t       segment_type;
     int           segment_length;
-
-#ifdef DEBUG_PACKET_CONTENTS
     int i;
 
-    av_log(avctx, AV_LOG_INFO, "PGS sub packet:\n");
+    av_dlog(avctx, "PGS sub packet:\n");
 
     for (i = 0; i < buf_size; i++) {
-        av_log(avctx, AV_LOG_INFO, "%02x ", buf[i]);
+        av_dlog(avctx, "%02x ", buf[i]);
         if (i % 16 == 15)
-            av_log(avctx, AV_LOG_INFO, "\n");
+            av_dlog(avctx, "\n");
     }
 
     if (i & 15)
-        av_log(avctx, AV_LOG_INFO, "\n");
-#endif
+        av_dlog(avctx, "\n");
 
     *data_size = 0;
 

@@ -36,10 +36,16 @@ if (!cstrVal)
 	cstrVal = "0000";
 
 #if USE_PDL
-	const char *params[1];
+	const char *params[2];
 	params[0] = cstrVal;
+	
+	char cstrIndex[15];
+	sprintf(cstrIndex,"%i",0);
+	
+	params[1] = cstrIndex;
 
-	PDL_Err mjErr = PDL_CallJS("StartSong", params, 1);
+	PDL_Err mjErr = PDL_CallJS("StartSong", params, 2);
+
 	if ( mjErr != PDL_NOERROR )
 	{
 	  printf("error: %s\n", PDL_GetError());
@@ -55,10 +61,13 @@ void FinishIndex(const char *cstrVal)
 {
 #if USE_PDL
 
-	const char *params[1];
+	const char *params[2];
 	params[0] = cstrVal;
 
-	PDL_Err mjErr = PDL_CallJS("FinishIndex", params, 1);
+	char cstrIndex[15];
+	sprintf(cstrIndex,"%i",0);
+
+	PDL_Err mjErr = PDL_CallJS("FinishIndex", params, 2);
 	if ( mjErr != PDL_NOERROR )
 	{
 		ReportError1("error: %s\n", PDL_GetError());
@@ -74,10 +83,13 @@ void FinishSeek(const char *cstrVal)
 
 	ReportError("Entering FinishSeek");
 
-	const char *params[1];
+	const char *params[2];
 	params[0] = cstrVal;
 
-	PDL_Err mjErr = PDL_CallJS("FinishSeek", params, 1);
+	char cstrIndex[15];
+	sprintf(cstrIndex,"%i",0);
+
+	PDL_Err mjErr = PDL_CallJS("FinishSeek", params, 2);
 	if ( mjErr != PDL_NOERROR )
 	{
 		ReportError1("error: %s\n", PDL_GetError());
@@ -91,6 +103,7 @@ void FinishSeek(const char *cstrVal)
 PDL_bool Play(PDL_JSParameters *parms)
 {
 
+	ReportError("Should Play");
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, 0, 0);
 
 
@@ -111,6 +124,8 @@ PDL_bool Pause(PDL_JSParameters *parms)
 
 PDL_bool GetMetadata(PDL_JSParameters *parms)
 {
+	ReportError("Getting metadate from indexer");
+
 	const char *cstrPath = PDL_GetJSParamString(parms, 0);
 
 	ReportError1("Getting meta for %s", cstrPath);
@@ -129,9 +144,17 @@ PDL_bool GetMetadata(PDL_JSParameters *parms)
 
 PDL_bool SetEQ(PDL_JSParameters *params)
 {
-	const char *cstrPath = PDL_GetJSParamString(parms, 0);
+	ReportError("WWWWHHHYYYY AAAARRREEE YYYYYOOOUUU CALLLLLLINNGG");
+	ReportError("WWWWHHHYYYY AAAARRREEE YYYYYOOOUUU CALLLLLLINNGG");
+	ReportError("WWWWHHHYYYY AAAARRREEE YYYYYOOOUUU CALLLLLLINNGG");
+	ReportError("WWWWHHHYYYY AAAARRREEE YYYYYOOOUUU CALLLLLLINNGG");
+	ReportError("WWWWHHHYYYY AAAARRREEE YYYYYOOOUUU CALLLLLLINNGG");
+	ReportError("WWWWHHHYYYY AAAARRREEE YYYYYOOOUUU CALLLLLLINNGG");
+	ReportError("WWWWHHHYYYY AAAARRREEE YYYYYOOOUUU CALLLLLLINNGG");
+
+	const char *cstrPath = PDL_GetJSParamString(params, 0);
 	ReportError1("Open Message being created for %s", cstrPath);
-	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, cstrPath);
+	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_EQ, cstrPath);
 
 	return PDL_TRUE;
 }
@@ -139,6 +162,8 @@ PDL_bool SetEQ(PDL_JSParameters *params)
 PDL_bool Open(PDL_JSParameters *parms)
 {
 	const char *cstrPath = PDL_GetJSParamString(parms, 0);
+	int32_t iTrack = PDL_GetJSParamInt(parms, 1);
+
 	ReportError1("Open Message being created for %s", cstrPath);
 	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, cstrPath);
 
@@ -149,6 +174,7 @@ PDL_bool SetNext(PDL_JSParameters *parms)
 {
 	const char *cstrPath = PDL_GetJSParamString(parms, 0);
 	double dGap = PDL_GetJSParamDouble(parms, 1);
+	int32_t iTrack = PDL_GetJSParamInt(parms, 2);
 	ReportError1("dGap val: %f", dGap);
 	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, cstrPath, dGap);
 
@@ -158,6 +184,7 @@ PDL_bool SetNext(PDL_JSParameters *parms)
 PDL_bool SetBass(PDL_JSParameters *parms)
 {
 	double fVal = PDL_GetJSParamDouble(parms, 0);
+	int32_t iTrack = PDL_GetJSParamInt(parms, 1);
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET,
 								ATTRIB_BASSTREB_BASS_VAL,
 								fVal, 0);
@@ -170,6 +197,7 @@ PDL_bool Seek(PDL_JSParameters *parms)
 	ReportError("Entering Seek");
 
 	double seekTime = PDL_GetJSParamDouble(parms, 0);
+	int32_t iTrack = PDL_GetJSParamInt(parms, 1);
 	g_MusController.PassMessage(MUS_MESSAGE_SEEK,
 									seekTime);
 
@@ -192,6 +220,8 @@ PDL_bool SetVol(PDL_JSParameters *parms)
 PDL_bool SetTreble(PDL_JSParameters *parms)
 {
 	double fVal = PDL_GetJSParamDouble(parms, 0);
+	int32_t iTrack = PDL_GetJSParamInt(parms, 1);
+
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET,
 									ATTRIB_BASSTREB_TREB_VAL,
 									fVal, 0);
@@ -202,6 +232,8 @@ PDL_bool SetTreble(PDL_JSParameters *parms)
 PDL_bool SetMid(PDL_JSParameters *parms)
 {
 	double fVal = PDL_GetJSParamDouble(parms, 0);
+	int32_t iTrack = PDL_GetJSParamInt(parms, 1);
+
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET,
 									ATTRIB_BASSTREB_MID_VAL,
 									fVal, 0);
@@ -212,6 +244,8 @@ PDL_bool SetMid(PDL_JSParameters *parms)
 PDL_bool SetSpeed(PDL_JSParameters *parms)
 {
 	double fVal = PDL_GetJSParamDouble(parms, 0);
+	int32_t iTrack = PDL_GetJSParamInt(parms, 1);
+
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET,
 									ATTRIB_RESAMP_SPEED_VAL,
 									fVal, 0);
@@ -351,7 +385,7 @@ int Register()
 	err = PDL_RegisterJSHandler("SetVol", SetVol);
 	err = PDL_RegisterJSHandler("Seek", Seek);
 	err = PDL_RegisterJSHandler("Quit", PluginQuit);
-	err = PDL_RegisterJSHandler("SetEQ", PluginQuit);
+	err = PDL_RegisterJSHandler("SetEQ", SetEQ);
 
 	err = PDL_JSRegistrationComplete();
 	if (err != PDL_NOERROR)
@@ -449,9 +483,17 @@ int main(int argc,char *argv[])
 
 	g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_MUSCON_PAUSED, 0);
 
-	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/Wildlife.wmv");
+	//g_MusController.PassMessage(MUS_MESSAGE_ATTRIB_SET, ATTRIB_EQ, "!!!!!!");
 
-	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/test2.mp3", 10.0);
+	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/18.flac");
+
+	//g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/e.mp3");
+
+	//g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/f.m4a");
+
+	//g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/test1.mp3");
+
+	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/test2.mp3", -10.0);
 
 	// this keeps track of how long the user has waited for
 	//	the buffering

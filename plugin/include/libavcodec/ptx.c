@@ -51,14 +51,14 @@ static int ptx_decode_frame(AVCodecContext *avctx, void *data, int *data_size,
     bytes_per_pixel = AV_RL16(buf+12) >> 3;
 
     if (bytes_per_pixel != 2) {
-        av_log(avctx, AV_LOG_ERROR, "image format is not rgb15, please report on ffmpeg-users mailing list\n");
+        av_log_ask_for_sample(avctx, "Image format is not RGB15.\n");
         return -1;
     }
 
     avctx->pix_fmt = PIX_FMT_RGB555;
 
     if (offset != 0x2c)
-        av_log(avctx, AV_LOG_WARNING, "offset != 0x2c, untested due to lack of sample files\n");
+        av_log_ask_for_sample(avctx, "offset != 0x2c\n");
 
     buf += offset;
 
@@ -74,7 +74,7 @@ static int ptx_decode_frame(AVCodecContext *avctx, void *data, int *data_size,
         return -1;
     }
 
-    p->pict_type = FF_I_TYPE;
+    p->pict_type = AV_PICTURE_TYPE_I;
 
     ptr    = p->data[0];
     stride = p->linesize[0];

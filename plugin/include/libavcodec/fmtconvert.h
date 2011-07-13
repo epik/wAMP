@@ -68,12 +68,25 @@ typedef struct FmtConvertContext {
      */
     void (*float_to_int16_interleave)(int16_t *dst, const float **src,
                                       long len, int channels);
+
+    /**
+     * Convert an array of interleaved float to multiple arrays of float.
+     */
+    void (*float_interleave)(float *dst, const float **src, unsigned int len,
+                             int channels);
 } FmtConvertContext;
+
+void ff_float_interleave_c(float *dst, const float **src, unsigned int len,
+                           int channels);
 
 void ff_fmt_convert_init(FmtConvertContext *c, AVCodecContext *avctx);
 
 void ff_fmt_convert_init_arm(FmtConvertContext *c, AVCodecContext *avctx);
-void ff_fmt_convert_init_ppc(FmtConvertContext *c, AVCodecContext *avctx);
+void ff_fmt_convert_init_altivec(FmtConvertContext *c, AVCodecContext *avctx);
 void ff_fmt_convert_init_x86(FmtConvertContext *c, AVCodecContext *avctx);
+
+/* ffdshow custom code */
+void float_interleave(float *dst, const float **src, long len, int channels);
+void float_interleave_noscale(float *dst, const float **src, long len, int channels);
 
 #endif /* AVCODEC_FMTCONVERT_H */

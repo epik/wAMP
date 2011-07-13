@@ -10,6 +10,7 @@
 
 #include "EQFilter.h"
 
+#define NUM_MID_EQ_FILT			4
 #define TOTAL_EQ_NUM  (NUM_MID_EQ_FILT + 2)
 #define EQ_GAIN_Q		7
 
@@ -18,9 +19,9 @@ class GraphEQ
 protected:
 
 	// IIR Filter variables
-	BiQuadFilter 		m_bqfIIRBassFilter[NUM_CHANNELS];
-	BiQuadFilter		m_bqfIIRTrebleFilter[NUM_CHANNELS];
-	CascadingIIRFilter	m_bqfIIRMidFilter[NUM_CHANNELS][NUM_MID_EQ_FILT];
+	DualPassFilter 		m_bqfIIRBassFilter[NUM_CHANNELS];
+	DualPassFilter		m_bqfIIRTrebleFilter[NUM_CHANNELS];
+	DualCascadingFilter	m_bqfIIRMidFilter[NUM_CHANNELS][NUM_MID_EQ_FILT];
 
 
 
@@ -36,15 +37,16 @@ protected:
 
 public:
 
-	FiltMessage Init() {return FILT_Success;};
+	FiltMessage Init();
 	FiltMessage Close() {return FILT_Success;};
 
 	void SetEQVals(const char *Vals);
 
 	void Reset() {};
 
-	void Filter(int16_t *psChanIn, size_t uiStartPos, size_t *piNumRead,
-								int16_t *pucOutBuffer, size_t pRequested);
+	void Filter(int16_t *psChan0, int16_t *psChan1,
+			int16_t *pucOutBuffer,
+			size_t pRequested);
 
 };
 

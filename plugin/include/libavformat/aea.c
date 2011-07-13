@@ -62,9 +62,9 @@ static int aea_read_header(AVFormatContext *s,
         return AVERROR(ENOMEM);
 
     /* Parse the amount of channels and skip to pos 2048(0x800) */
-    url_fskip(s->pb, 264);
-    st->codec->channels = get_byte(s->pb);
-    url_fskip(s->pb, 1783);
+    avio_skip(s->pb, 264);
+    st->codec->channels = avio_r8(s->pb);
+    avio_skip(s->pb, 1783);
 
 
     st->codec->codec_type     = AVMEDIA_TYPE_AUDIO;

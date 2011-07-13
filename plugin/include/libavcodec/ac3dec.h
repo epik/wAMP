@@ -52,24 +52,22 @@
 
 #include "libavutil/lfg.h"
 #include "ac3.h"
+#include "ac3dsp.h"
 #include "get_bits.h"
 #include "dsputil.h"
 #include "fft.h"
 #include "fmtconvert.h"
 
-/* override ac3.h to include coupling channel */
-#undef AC3_MAX_CHANNELS
-#define AC3_MAX_CHANNELS 7
-#define CPL_CH 0
-
 #define AC3_OUTPUT_LFEON  8
 
 #define SPX_MAX_BANDS    17
 
+/** Large enough for maximum possible frame size when the specification limit is ignored */
+#define AC3_FRAME_BUFFER_SIZE 32768
+
 typedef struct {
     AVCodecContext *avctx;                  ///< parent context
     GetBitContext gbc;                      ///< bitstream reader
-    uint8_t *input_buffer;                  ///< temp buffer to prevent overread
 
 ///@defgroup bsi bit stream information
 ///@{
@@ -79,6 +77,7 @@ typedef struct {
     int bit_rate;                           ///< stream bit rate, in bits-per-second
     int sample_rate;                        ///< sample frequency, in Hz
     int num_blocks;                         ///< number of audio blocks
+    int bitstream_mode;                     ///< bitstream mode                         (bsmod)
     int channel_mode;                       ///< channel mode                           (acmod)
     int channel_layout;                     ///< channel layout
     int lfe_on;                             ///< lfe channel in use
@@ -103,12 +102,12 @@ typedef struct {
     int cpl_strategy_exists[AC3_MAX_BLOCKS];///< coupling strategy exists               (cplstre)
     int channel_in_cpl[AC3_MAX_CHANNELS];   ///< channel in coupling                    (chincpl)
     int phase_flags_in_use;                 ///< phase flags in use                     (phsflginu)
-    int phase_flags[18];                    ///< phase flags                            (phsflg)
+    int phase_flags[AC3_MAX_CPL_BANDS];     ///< phase flags                            (phsflg)
     int num_cpl_bands;                      ///< number of coupling bands               (ncplbnd)
-    uint8_t cpl_band_sizes[18];             ///< number of coeffs in each coupling band
+    uint8_t cpl_band_sizes[AC3_MAX_CPL_BANDS]; ///< number of coeffs in each coupling band
     int firstchincpl;                       ///< first channel in coupling
     int first_cpl_coords[AC3_MAX_CHANNELS]; ///< first coupling coordinates states      (firstcplcos)
-    int cpl_coords[AC3_MAX_CHANNELS][18];   ///< coupling coordinates                   (cplco)
+    int cpl_coords[AC3_MAX_CHANNELS][AC3_MAX_CPL_BANDS]; ///< coupling coordinates      (cplco)
 ///@}
 
 ///@defgroup spx spectral extension
@@ -191,17 +190,19 @@ typedef struct {
 
 ///@defgroup opt optimization
     DSPContext dsp;                         ///< for optimization
+    AC3DSPContext ac3dsp;
     FmtConvertContext fmt_conv;             ///< optimized conversion functions
     float mul_bias;                         ///< scaling for float_to_int16 conversion
 ///@}
 
 ///@defgroup arrays aligned arrays
-    DECLARE_ALIGNED(16, int,   fixed_coeffs)[AC3_MAX_CHANNELS][AC3_MAX_COEFS];       ///> fixed-point transform coefficients
-    DECLARE_ALIGNED(16, float, transform_coeffs)[AC3_MAX_CHANNELS][AC3_MAX_COEFS];   ///< transform coefficients
-    DECLARE_ALIGNED(16, float, delay)[AC3_MAX_CHANNELS][AC3_BLOCK_SIZE];             ///< delay - added to the next block
-    DECLARE_ALIGNED(16, float, window)[AC3_BLOCK_SIZE];                              ///< window coefficients
-    DECLARE_ALIGNED(16, float, tmp_output)[AC3_BLOCK_SIZE];                          ///< temporary storage for output before windowing
-    DECLARE_ALIGNED(16, float, output)[AC3_MAX_CHANNELS][AC3_BLOCK_SIZE];            ///< output after imdct transform and windowing
+    DECLARE_ALIGNED(16, int,   fixed_coeffs)[AC3_MAX_CHANNELS][AC3_MAX_COEFS];       ///< fixed-point transform coefficients
+    DECLARE_ALIGNED(32, float, transform_coeffs)[AC3_MAX_CHANNELS][AC3_MAX_COEFS];   ///< transform coefficients
+    DECLARE_ALIGNED(32, float, delay)[AC3_MAX_CHANNELS][AC3_BLOCK_SIZE];             ///< delay - added to the next block
+    DECLARE_ALIGNED(32, float, window)[AC3_BLOCK_SIZE];                              ///< window coefficients
+    DECLARE_ALIGNED(32, float, tmp_output)[AC3_BLOCK_SIZE];                          ///< temporary storage for output before windowing
+    DECLARE_ALIGNED(32, float, output)[AC3_MAX_CHANNELS][AC3_BLOCK_SIZE];            ///< output after imdct transform and windowing
+    DECLARE_ALIGNED(32, uint8_t, input_buffer)[AC3_FRAME_BUFFER_SIZE + FF_INPUT_BUFFER_PADDING_SIZE]; ///< temp buffer to prevent overread
 ///@}
 } AC3DecodeContext;
 

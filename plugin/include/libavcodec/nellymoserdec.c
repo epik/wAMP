@@ -39,6 +39,7 @@
 #include "dsputil.h"
 #include "fft.h"
 #include "fmtconvert.h"
+#include "sinewin.h"
 
 #define ALT_BITSTREAM_READER_LE
 #include "get_bits.h"
@@ -46,7 +47,7 @@
 
 typedef struct NellyMoserDecodeContext {
     AVCodecContext* avctx;
-    DECLARE_ALIGNED(16, float,float_buf)[NELLY_SAMPLES];
+    DECLARE_ALIGNED(32, float, float_buf)[NELLY_SAMPLES];
     float           state[128];
     AVLFG           random_state;
     GetBitContext   gb;
@@ -54,7 +55,7 @@ typedef struct NellyMoserDecodeContext {
     DSPContext      dsp;
     FFTContext      imdct_ctx;
     FmtConvertContext fmt_conv;
-    DECLARE_ALIGNED(16, float,imdct_out)[NELLY_BUF_LEN * 2];
+    DECLARE_ALIGNED(32, float, imdct_out)[NELLY_BUF_LEN * 2];
 } NellyMoserDecodeContext;
 
 static void overlap_and_window(NellyMoserDecodeContext *s, float *state, float *audio, float *a_in)
@@ -121,7 +122,7 @@ static void nelly_decode_block(NellyMoserDecodeContext *s,
         memset(&aptr[NELLY_FILL_LEN], 0,
                (NELLY_BUF_LEN - NELLY_FILL_LEN) * sizeof(float));
 
-        ff_imdct_calc(&s->imdct_ctx, s->imdct_out, aptr);
+        s->imdct_ctx.imdct_calc(&s->imdct_ctx, s->imdct_out, aptr);
         /* XXX: overlapping and windowing should be part of a more
            generic imdct function */
         overlap_and_window(s, s->state, aptr, s->imdct_out);

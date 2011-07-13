@@ -394,27 +394,42 @@ MUS_MESSAGE SoundPipe::PipeOut(uint32_t **puiBuffToFill,
 	{
 		puiWriteBuf = m_cbBuf.GetSamples(i);
 
-		/*for (int i=0; i<m_iNumChan; i++)
+		if (m_bUseResampFilt)
 		{
-			for(int j=0;j<uiFetchAmt;j++)
+			m_rfResample.Filter(puiWriteBuf,
+								(size_t) RESAMPLE_PADDING,
+								&uiNumRead,
+								(int16_t *)  m_puiWorkingBuf,
+								uiTmpFetch*2);
+
+			*puiNumWrittem = uiNumRead;
+
+			m_btfSongLvlEQ[i].Filter((int16_t *) m_puiWorkingBuf,
+								  (size_t) 0,
+								  &uiNumRead,
+								  (int16_t *) &puiBuffToFill[i][uiStartPos],
+								  uiTmpFetch*2);
+		}
+		else
+		{
+
+			m_btfSongLvlEQ[i].Filter((int16_t *) puiWriteBuf,
+								  (size_t) RESAMPLE_PADDING,
+								  &uiNumRead,
+								  (int16_t *) &puiBuffToFill[i][uiStartPos],
+								  uiTmpFetch*2);
+
+			/*for (int i=0; i<m_iNumChan; i++)
 			{
-				puiBuffToFill[i][uiStartPos+j] = puiWriteBuf[j];
-			}
-		}*/
+				for(int j=0;j<uiFetchAmt;j++)
+				{
+					puiBuffToFill[i][uiStartPos+j] = puiWriteBuf[j];
+				}
+			}*/
 
-		m_rfResample.Filter(puiWriteBuf,
-							(size_t) RESAMPLE_PADDING,
-							&uiNumRead,
-							(int16_t *)  m_puiWorkingBuf,
-							uiTmpFetch*2);
+			uiNumRead = uiFetchAmt;
+		}
 
-		*puiNumWrittem = uiNumRead;
-
-		m_btfSongLvlEQ[i].Filter((int16_t *) m_puiWorkingBuf,
-							  (size_t) 0,
-							  &uiNumRead,
-							  (int16_t *) &puiBuffToFill[i][uiStartPos],
-							  uiTmpFetch*2);
 	}
 	
 	//ReportError("Made if past the processing stuff");
@@ -569,19 +584,21 @@ MUS_MESSAGE SoundPipe::Open(const char *cstrFileName)
 	
 	ReportError2("fCurSpeed=%f, resampconv=%f", fCurSpeed, m_dResampConvFactor);
 
-	m_rfResample.SetFilterRate(fCurSpeed * m_dResampConvFactor);
+	fCurSpeed *= m_dResampConvFactor;
+
+	m_rfResample.SetFilterRate(fCurSpeed);
+
+	if (fCurSpeed == 1.0)
+		m_bUseResampFilt = 0;
+	else
+		m_bUseResampFilt = 1;
 
 	m_lSongEndInSec = m_FFmpegDecoder.GetDuration();
 
 	if (m_lSongEndInSec == 0)
 		m_lSongEndInSec = UINT_MAX;
 
-#ifndef BUILD_FOR_TOUCHPAD
 	const char *cstrTempMeta = m_FFmpegDecoder.GetMetadataLite();
-#else
-	const char *cstrTempMeta = m_FFmpegDecoder.GetMetadata();
-#endif
-
 
 	const char *cstrName = strrchr(m_cstrCurSongPath, '/');
 
@@ -693,7 +710,7 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 
 	int64_t llSampsLeft = m_spPipe[m_iActivePipe].GetEndCntdwn();
 
-	ReportError("1");
+	//ReportError("1");
 
 	if ((END_GAP_TRIGGER == m_iEndType) && (m_iEndLength >= lRequested/8))
 	{
@@ -724,7 +741,7 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 		ReportError1("Samples Left: %i", llSampsLeft);
 		m_iEndLength = llSampsLeft;
 		m_iCurScale -= m_iScaleBy;
-		m_spPipe[m_iActivePipe].SetFade(m_iCurScale);
+		m_spPipe[m_iActivePipe].SetFade(MIN(m_iCurScale, m_iTrackFade));
 	}
 	
 	//ReportError("2");
@@ -755,7 +772,8 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 
 			size_t uiSecEndPnt = 0;
 
-			m_spPipe[_GetInactivePipe()].SetFade(END_MAX_GAP - m_iCurScale);
+			m_spPipe[_GetInactivePipe()].SetFade(MIN(m_iTrackFade,
+													 END_MAX_GAP - m_iCurScale));
 
 			Msg = m_spPipe[_GetInactivePipe()].PipeOut(m_puiMixBuf,
 												lRequested/8,
@@ -786,7 +804,7 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 				m_iEndType = 0;
 				m_iActivePipe = _GetInactivePipe();
 				_PassSongTransMsgGood(m_spPipe[m_iActivePipe].GetMeta());
-				m_spPipe[m_iActivePipe].SetFade(END_MAX_GAP);
+				m_spPipe[m_iActivePipe].SetFade(MIN(END_MAX_GAP, m_iTrackFade));
 			}
 		}
 	}

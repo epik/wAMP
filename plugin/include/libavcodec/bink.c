@@ -790,7 +790,7 @@ static int binkb_decode_plane(BinkContext *c, GetBitContext *gb, int plane_idx,
     int v, col[2];
     const uint8_t *scan;
     int xoff, yoff;
-    DECLARE_ALIGNED(16, DCTELEM, block[64]);
+    LOCAL_ALIGNED_16(DCTELEM, block, [64]);
     int coordmap[64];
     int ybias = is_key ? -15 : 0;
     int qp;
@@ -1208,7 +1208,7 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size, AVPac
 /**
  * Caclulate quantization tables for version b
  */
-static av_cold void binkb_calc_quant()
+static av_cold void binkb_calc_quant(void)
 {
     uint8_t inv_bink_scan[64];
     double s[64];

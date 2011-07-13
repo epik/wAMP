@@ -159,7 +159,7 @@ public:
 	static const double c_HIGHFILTER 			= HIGH_SPEED_RATIO_LIM;
 	static const double c_ROLLOFF				= 0.90;
 	static const double c_BETA					= 6;
-	static const unsigned short c_NlpScl 		= 17;
+	static const unsigned short c_NlpScl 		= 16;
 	static const unsigned short c_NHC			= 16;
 	static const unsigned short c_NH			= 16;
 	static const unsigned short c_NP			= 16;

@@ -21,6 +21,7 @@
 #include "avformat.h"
 #include "rtp.h"
 #include "rdt.h"
+#include "url.h"
 
 #define REGISTER_MUXER(X,x) { \
     extern AVOutputFormat ff_##x##_muxer; \
@@ -34,7 +35,7 @@
 
 #define REGISTER_PROTOCOL(X,x) { \
     extern URLProtocol ff_##x##_protocol; \
-    if(CONFIG_##X##_PROTOCOL) av_register_protocol2(&ff_##x##_protocol, sizeof(ff_##x##_protocol)); }
+    if(CONFIG_##X##_PROTOCOL) ffurl_register_protocol(&ff_##x##_protocol, sizeof(ff_##x##_protocol)); }
 
 void av_register_all(void)
 {
@@ -70,11 +71,12 @@ void av_register_all(void)
     REGISTER_DEMUXER  (BFI, bfi);
     REGISTER_DEMUXER  (BINK, bink);
     REGISTER_DEMUXER  (C93, c93);
-    REGISTER_DEMUXER  (CAF, caf);
+    REGISTER_MUXDEMUX (CAF, caf);
     REGISTER_MUXDEMUX (CAVSVIDEO, cavsvideo);
     REGISTER_DEMUXER  (CDG, cdg);
     REGISTER_MUXER    (CRC, crc);
     REGISTER_MUXDEMUX (DAUD, daud);
+    REGISTER_DEMUXER  (DFA, dfa);
     REGISTER_MUXDEMUX (DIRAC, dirac);
     REGISTER_MUXDEMUX (DNXHD, dnxhd);
     REGISTER_DEMUXER  (DSICIN, dsicin);
@@ -110,12 +112,14 @@ void av_register_all(void)
     REGISTER_DEMUXER  (ISS, iss);
     REGISTER_DEMUXER  (IV8, iv8);
     REGISTER_MUXDEMUX (IVF, ivf);
+    REGISTER_DEMUXER  (JV, jv);
     REGISTER_DEMUXER  (LMLM4, lmlm4);
     REGISTER_DEMUXER  (LXF, lxf);
     REGISTER_MUXDEMUX (M4V, m4v);
     REGISTER_MUXER    (MD5, md5);
     REGISTER_MUXDEMUX (MATROSKA, matroska);
     REGISTER_MUXER    (MATROSKA_AUDIO, matroska_audio);
+    REGISTER_MUXDEMUX (MICRODVD, microdvd);
     REGISTER_MUXDEMUX (MJPEG, mjpeg);
     REGISTER_MUXDEMUX (MLP, mlp);
     REGISTER_DEMUXER  (MM, mm);
@@ -171,6 +175,7 @@ void av_register_all(void)
     REGISTER_MUXDEMUX (PCM_U16BE, pcm_u16be);
     REGISTER_MUXDEMUX (PCM_U16LE, pcm_u16le);
     REGISTER_MUXDEMUX (PCM_U8,    pcm_u8);
+    REGISTER_DEMUXER  (PMP, pmp);
     REGISTER_MUXER    (PSP, psp);
     REGISTER_DEMUXER  (PVA, pva);
     REGISTER_DEMUXER  (QCP, qcp);
@@ -222,6 +227,7 @@ void av_register_all(void)
     REGISTER_DEMUXER  (WTV, wtv);
     REGISTER_DEMUXER  (WV, wv);
     REGISTER_DEMUXER  (XA, xa);
+    REGISTER_DEMUXER  (XWMA, xwma);
     REGISTER_DEMUXER  (YOP, yop);
     REGISTER_MUXDEMUX (YUV4MPEGPIPE, yuv4mpegpipe);
 
@@ -229,7 +235,9 @@ void av_register_all(void)
     REGISTER_MUXDEMUX (LIBNUT, libnut);
 
     /* protocols */
+    REGISTER_PROTOCOL (APPLEHTTP, applehttp);
     REGISTER_PROTOCOL (CONCAT, concat);
+    REGISTER_PROTOCOL (CRYPTO, crypto);
     REGISTER_PROTOCOL (FILE, file);
     REGISTER_PROTOCOL (GOPHER, gopher);
     REGISTER_PROTOCOL (HTTP, http);

@@ -82,19 +82,22 @@ void MusController::Mixer(uint8_t *destStream, int lRequested)
 	int16_t *psChan0 = (int16_t *) m_puiBuffToFill[0];
 	int16_t *psChan1 = (int16_t *) m_puiBuffToFill[1];
 
-	int16_t	*psTravStream = (int16_t *) destStream;
-		
-	for(int i=0; i<lRequested/4; i++)
+	if (!m_iUseEQ)
 	{
-		*(psTravStream++) = *(psChan0++);
-		*(psTravStream++) = *(psChan1++);
-	}
+		int16_t	*psTravStream = (int16_t *) destStream;
 	
-	for (int i=0; i<iNum; i++)
-	{
-		m_eqGraphEQ.ProcessSampleIIR()
-		
+		for(int i=0; i<lRequested/4; i++)
+		{
+			*(psTravStream++) = *(psChan0++);
+			*(psTravStream++) = *(psChan1++);
+		}
 	}
+	else
+	{
+		//ReportError("In EQ");
+		m_eqGraphEQ.Filter(psChan0, psChan1, (int16_t *) destStream, lRequested/2);
+	}
+
 #endif
 
 }
@@ -107,6 +110,8 @@ int16_t MusController::Init(void (*funcCallBack)(const char *),
 
 	m_funcCallBack = funcCallBack;
 	m_funcSeekCallBack = funcSeekCallBack;
+
+	m_iUseEQ = 1;
 
 	SDL_AudioSpec 	sdlasWanted, sdlasGot;
 
@@ -322,7 +327,7 @@ void MusController::Tick()
 		//	run until they have all been read
 		while (!_MsgQueueEmpty())
 		{
-			//ReportError("Message queue reading");
+			ReportError("Message queue reading");
 
 			// Get the message (this is a locking function call)
 			Msg = _ReadMessage(&MsgData);
@@ -330,19 +335,19 @@ void MusController::Tick()
 			// Check what the message says
 			if (Msg == MUS_MESSAGE_OPEN_SONG)
 			{
-				//ReportError("Acting off of open song message");
+				ReportError("Acting off of open song message");
 				Open(MsgData.StrData, 0);
 			}
 			else if (Msg == MUS_MESSAGE_SET_NEXT)
 			{
-				//ReportError("Acting off of set next message");
+				ReportError("Acting off of set next message");
 				SetNext(MsgData.StrData, MsgData.DoubleData, 0);
 			}
 			else if (Msg == MUS_MESSAGE_SEEK)
 			{
 				// The user sent a seek message.  Uncomment below to log to
 				//	stderr every time a seek message is received.
-				//ReportError1("Seeking position %f", MsgData.DoubleData);
+				ReportError1("Seeking position %f", MsgData.DoubleData);
 				Seek(MsgData.DoubleData, 0);
 			}
 			else if (Msg == MUS_INTMES_BUFFER_UNDERFLOW)
@@ -362,7 +367,7 @@ void MusController::Tick()
 			}
 			else if (Msg == MUS_MESSAGE_PASS_SONG_INFO)
 			{
-				//ReportError("Handling Pas Song Info");
+				ReportError("Handling Pas Song Info");
 				m_funcCallBack(MsgData.StrData);
 				FREE(MsgData.StrData);
 			}
@@ -417,6 +422,7 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 	{
 		float 	fSpeed;
 		int32_t iIntArg;
+		const char 	*pCharStrArg;
 
 		int32_t ID = va_arg(Args, int32_t);
 
@@ -451,6 +457,10 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 			iIntArg = va_arg(Args, int32_t);
 			m_apPipeline[iIntArg].SetVol(fSpeed);
 			break;
+		case ATTRIB_EQ:
+			pCharStrArg = va_arg(Args, const char *);
+			m_eqGraphEQ.SetEQVals(pCharStrArg);
+			break;
 		}
 	}
 	else if (cmMsg == MUS_MESSAGE_ATTRIB_GET)
@@ -471,7 +481,7 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 	}
 	else
 	{
-		//ReportError("Creating msg and putting val in it");
+		ReportError("Creating msg and putting val in it");
 
 		// This is a message that requires adding something to the
 		//	message queue
@@ -482,10 +492,18 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 		{
 			MusicMsg->Msg = MUS_MESSAGE_OPEN_SONG;
 			char *cstrArg = va_arg(Args, char *);
-			MusicMsg->StrData = (char *) MALLOC(strlen(cstrArg)+8);
-			strcpy(MusicMsg->StrData, cstrArg);
-			MusicMsg->DoubleData = va_arg(Args, double);
-			//ReportError1("Created Message to Open Song %s", cstrArg);
+			if (cstrArg)
+			{
+				MusicMsg->StrData = (char *) MALLOC(strlen(cstrArg)+8);
+				strcpy(MusicMsg->StrData, cstrArg);
+				MusicMsg->DoubleData = va_arg(Args, double);
+			}
+			else
+			{
+				UnlockMusMsgQueue();
+				return NULL;
+			}
+			ReportError1("Created Message to Open Song %s", cstrArg);
 		}
 		else if (cmMsg == MUS_MESSAGE_SET_NEXT)
 		{
@@ -494,7 +512,7 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 			MusicMsg->StrData = (char *) MALLOC(strlen(cstrArg)+8);
 			strcpy(MusicMsg->StrData, cstrArg);
 			MusicMsg->DoubleData = va_arg(Args, double);
-			//ReportError1("Created Message to SetNext %s", cstrArg);
+			ReportError1("Created Message to SetNext %s", cstrArg);
 		}
 		else if (cmMsg == MUS_MESSAGE_SEEK)
 		{
@@ -507,7 +525,7 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 			char *cstrArg = va_arg(Args, char *);
 			MusicMsg->Msg = MUS_MESSAGE_PASS_SONG_INFO;
 			MusicMsg->StrData = cstrArg;
-			//ReportError1("Created Message to with Song Info: %s", cstrArg);
+			ReportError1("Created Message to with Song Info: %s", cstrArg);
 		}
 		else
 		{
