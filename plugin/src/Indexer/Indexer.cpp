@@ -6,10 +6,13 @@
 #include <cstring>
 #include <vector>
 #include "../Decoders/Decoders.h"
+#include <pthread.h>
 #include "../WormThread.h"
 #include <stdio.h>
 
 //#define SPEC_BUILD
+
+volatile int32_t WormIndexer::READY = 0;
 
 void FileEntry::SetMeta(FFmpegWrapper *FFmpeg)
 {
@@ -100,15 +103,8 @@ char *FileList::ConvertToPathString()
 	return cstrRet;
 }
 
-void WormIndexer::BuildIndex(int16_t sUseIndex)
+void WormIndexer::BuildIndex()
 {
-	m_sUseCallback = sUseIndex;
-
-	if (m_sUseCallback)
-	{
-		m_flIndex.Uninit();
-		m_flIndex.Init();
-	}
 
 	// Don't need to save this, Thread should be self sufficient
 	pthread_t Thread;
@@ -149,7 +145,7 @@ void WormIndexer::RunIndexer()
 		DirsToVisit = DirsToVisit->Next;
 		delete Cur;
 
-		ReportError1("About to visit %s", cstrDirName);
+		//ReportError1("About to visit %s", cstrDirName);
 
 		int16_t bVisited;
 
@@ -186,7 +182,7 @@ void WormIndexer::RunIndexer()
 					continue;
 
 				char *strFileFullPath = (char *) MALLOC(strlen(cstrDirName) +
-														5 +
+														64 +
 														strlen(pDir->ents[i]));
 				strcpy(strFileFullPath, cstrDirName);
 				strcat(strFileFullPath, FMGUI_PATHSEP);
@@ -228,17 +224,11 @@ void WormIndexer::RunIndexer()
 					if(QuickExtCheck(pDir->ents[i]) != 0)
 					{
 						//ReportError1("Found Song: %s", pDir->ents[i]);
-						char *cstrName = (char *) MALLOC(strlen(pDir->ents[i]) + 1);
-						strcpy(cstrName, pDir->ents[i]);
-						FileEntry *pfeEntry = (FileEntry *) MALLOC(sizeof(FileEntry));
-						pfeEntry->Init(strFileFullPath, cstrName, Time);
-						m_flIndex.AddNode((pfeEntry));
+						m_funcIndexAdd(strFileFullPath, Time);
 					}
-					else
-					{
-						//ReportError("Nope, Freeing");
-						FREE(strFileFullPath);
-					}
+
+					FREE(strFileFullPath);
+
 				} // else if (Info.type == FMGUI_FILE_DIRECTORY)
 
 				//ReportError("Finished whatever it was that we were doing to the file");
@@ -256,11 +246,7 @@ void WormIndexer::RunIndexer()
 
 	ReportError("Finished building dir list");
 	
-	char *cstrJSON = m_flIndex.ConvertToPathString();
-
-	m_funcIndexCB(cstrJSON);
-
-	FREE(cstrJSON);
+	m_funcFinish();
 }
 
 
@@ -289,7 +275,7 @@ char *WormIndexer::GetDirFileList(const char *cstrDirName)
 			continue;
 		} //(pDir->ents[i][0] == '.')
 
-		char *strFileFullPath = (char *) malloc(strlen(cstrDirName) +
+		char *strFileFullPath = (char *) MALLOC(strlen(cstrDirName) +
 												5 +
 												strlen(pDir->ents[i]));
 		strcpy(strFileFullPath, cstrDirName);
@@ -527,6 +513,9 @@ char *FileEntry::ToStringSimple()
  ***************************************/
 void *WormIndexer::StartIndexThread(void *pvObject)
 {
+	if (!WormIndexer::READY)
+		WormSleep(200);
+
 	// Cast the object passed by the thread start routine to
 	//	MusController
 	WormIndexer *pWormIndexer = (WormIndexer *) pvObject;
@@ -539,15 +528,118 @@ void *WormIndexer::StartIndexThread(void *pvObject)
 }
 
 
-const char *WormIndexer::GetMetadata(const char *cstrPath)
+const char *WormIndexer::GetMetadata(const char *cstrTag)
 {
-	const char *cstrRet = NULL;
+	if (m_bCurIndexPathSet == 0)
+		return "0";
+		
+	const char *cstrRet = m_ffmpegObject.GetValue(cstrTag);
 	
-	if(m_ffmpegObject.PrepareMetadata(cstrPath))
+	if (!cstrRet)
+		return "0";
+	else
+		return cstrRet;
+}
+
+
+int32_t	WormIndexer::CheckForImg(const char *cstrPath,
+								char *cstrRetVal)
+{
+	ReportError1("At least we are here: %s", cstrPath);
+
+	FMGUI_Dir 	*pDir = FMGUI_OpenDir(cstrPath);
+
+	if (pDir == NULL)
 	{
-		cstrRet = m_ffmpegObject.GetMetadata();
-		m_ffmpegObject.Close();
+		//ReportError1("Error opening %s", cstrDirName);
+		return 0;
 	}
 
-	return cstrRet;
+	for (size_t i = 0; i < (size_t) pDir->nents; i++)
+	{
+		ReportError1("File We Are On: %s", pDir->ents[i]);
+
+		if (strlen(pDir->ents[i]) > CHECK_FOR_IMG_MAX)
+			continue;
+
+		const char *ext = strrchr(pDir->ents[i], '.');
+
+		ReportError1("After strrchr: %s", ext);
+
+	    if (ext)
+	    {
+	        ext++;
+
+	        int16_t sLen = strlen(ext);
+	        if (sLen != 3)
+	        	continue;
+
+	        char c = tolower(*(ext++));
+	        int32_t bFound = 0;
+
+	        if (c == 'b')
+	        {
+	        	if ((tolower(*(ext++)) == 'm') &&
+	        			(tolower(*(ext)) == 'p'))
+	        	{
+	        		bFound = 1;
+	        	}
+	        }
+	        else if (c == 'g')
+	        {
+	        	if ((tolower(*(ext++)) == 'i') &&
+	        			(tolower(*(ext)) == 'f'))
+	        	{
+	        		bFound = 1;
+	        	}
+	        }
+	        else if (c == 'p')
+	        {
+	        	if ((tolower(*(ext++)) == 'n') &&
+	        			(tolower(*(ext)) == 'g'))
+	        	{
+	        		bFound = 1;
+	        	}
+	        }
+	        else if (c == 'j')
+	        {
+	        	ReportError("We tripped 'J'");
+
+	        	if ((tolower(*(ext++)) == 'p') &&
+	        			(tolower(*(ext)) == 'g'))
+	        	{
+	        		bFound = 1;
+	        	}
+	        }
+
+	        if (bFound)
+	        {
+	        	strcpy(cstrRetVal, pDir->ents[i]);
+	        	return 1;
+	        }
+		}
+	}
+
+	return 0;
+}
+
+void WormIndexer::SetMetadataPath(const char *cstrPath)
+{
+	if (m_bCurIndexPathSet)
+		m_ffmpegObject.Close();
+	
+	if (!cstrPath)
+	{
+		m_bCurIndexPathSet = 0;
+		return;
+	}
+
+	if(m_ffmpegObject.PrepareMetadata(cstrPath))
+	{
+		m_bCurIndexPathSet = 1;
+	}
+	else
+	{
+		m_bCurIndexPathSet = 0;
+	}
 }

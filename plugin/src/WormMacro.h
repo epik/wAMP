@@ -48,6 +48,8 @@
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
+#define ABS(a) ((a) >= 0 ? (a) : (a) * -1)
+
 // A macro to generate the standard enum functions
 #define DefineEnumIteratorsMacro(eEnumType) \
 inline void operator++(eEnumType& eVal) \

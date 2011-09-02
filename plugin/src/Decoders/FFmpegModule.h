@@ -11,6 +11,7 @@
 extern "C" {
 #include "libavformat\avformat.h"
 #include "libavcodec\avcodec.h"
+#include "libavcodec\audioconvert.h"
 }
 
 #define MAX_PACKET_SIZE (AVCODEC_MAX_AUDIO_FRAME_SIZE + \
@@ -24,12 +25,17 @@ private:
 
     AVFormatContext *m_pFormatCtx;
     AVCodecContext 	*m_pCodecCtx;
+    AVAudioConvert *m_pAudConvert;
+	
+	AVDictionaryEntry *m_pTag;
+	
     int16_t			m_iStreamID;
     AVCodec 		*m_pCodec;
 
 	AVPacket		m_avPacket;
 	
 	uint16_t		*m_psTmpBufferBase;
+	uint16_t		*m_psTmpBufConvtStore;
 	
 	int32_t			m_lRate;
 	int32_t			m_iSkipNextFrame;

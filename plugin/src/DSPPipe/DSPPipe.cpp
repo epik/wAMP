@@ -7,6 +7,7 @@
 
 #include "DSPPipe.h"
 #include "../WormThread.h"
+#include "../WormFFT.h"
 
 #define FILTER_PADDING	
 
@@ -144,9 +145,13 @@ volatile int64_t CircularBuffer::GetCurClock()
 	int64_t llRetVal = m_spaAllocator.GetCurPacketTimeStamp();
 
 	if (llRetVal == -1)
+	{
 		return GetBufferClock();
+	}
 	else
+	{
 		return llRetVal;
+	}
 }
 
 MUS_MESSAGE CircularBuffer::AddStereoPacket(SoundPacket *pspNextPacket,
@@ -390,6 +395,10 @@ MUS_MESSAGE SoundPipe::PipeOut(uint32_t **puiBuffToFill,
 		FadeDown();
 	}
 
+	fixed real[FFT_DECOMP_SIZE];
+	
+	memset(real, 0, sizeof(fixed) * FFT_DECOMP_SIZE);
+	
 	for (int i=0; i<m_iNumChan; i++)
 	{
 		puiWriteBuf = m_cbBuf.GetSamples(i);
@@ -404,6 +413,13 @@ MUS_MESSAGE SoundPipe::PipeOut(uint32_t **puiBuffToFill,
 
 			*puiNumWrittem = uiNumRead;
 
+			int16_t *pConvBuf = (int16_t *) m_puiWorkingBuf;
+
+			for (int i=0; i<FFT_DECOMP_SIZE; i++)
+			{
+				real[i] += (pConvBuf[i] / 2);
+			}
+			
 			m_btfSongLvlEQ[i].Filter((int16_t *) m_puiWorkingBuf,
 								  (size_t) 0,
 								  &uiNumRead,
@@ -413,6 +429,13 @@ MUS_MESSAGE SoundPipe::PipeOut(uint32_t **puiBuffToFill,
 		else
 		{
 
+			int16_t *pConvBuf = (int16_t *) puiWriteBuf;
+
+			for (int i=0; i<FFT_DECOMP_SIZE; i++)
+			{
+				real[i] += (pConvBuf[i] / 2);
+			}
+		
 			m_btfSongLvlEQ[i].Filter((int16_t *) puiWriteBuf,
 								  (size_t) RESAMPLE_PADDING,
 								  &uiNumRead,
@@ -431,8 +454,32 @@ MUS_MESSAGE SoundPipe::PipeOut(uint32_t **puiBuffToFill,
 		}
 
 	}
+
 	
-	//ReportError("Made if past the processing stuff");
+	if (m_BPMDetect.DetectBeat(real))
+	{
+		m_iTicks[m_iCurrentTick++] = 1;
+	}
+	else
+	{
+		m_iTicks[m_iCurrentTick++] = 0;
+	}
+
+	if (m_iCurrentTick >= BPM_TICK_HIST)
+		m_iCurrentTick = 0;
+	
+	int32_t iBPMCnt = 0;
+	
+	for (int i=0;i<BPM_TICK_HIST;i++)
+	{
+		if (m_iTicks[i])
+			iBPMCnt++;
+	}
+	
+	m_iBPMCnt = iBPMCnt * 3;
+	
+	/*if ((m_iCurrentTick % 32) == 0)
+		ReportError1("BPM = %i", iBPMCnt);*/
 
 	*msg = m_cbBuf.AdvanceCurPnt(uiNumRead);
 	
@@ -479,10 +526,14 @@ MUS_MESSAGE SoundPipe::Init(int32_t iNumChan,
 												(MUS_BUFFER_SIZE/LOW_SPEED_RATIO_LIM +
 												40));
 
-	m_cbBuf.Flush();
+	m_cbBuf.Start(44100);
 
-	m_cstrCurSongPath = (char *) MALLOC(2048);
-	m_iCurSongAlloc = 2048;
+	m_cstrCurSongPath = (char *) MALLOC(4096);
+	m_cstrCurSongPath[0] = 0;
+	
+	m_BPMDetect.Init();
+	memset(m_iTicks, 0, BPM_TICK_HIST);
+	m_iCurrentTick = 0;
 	
 	m_msgPipeInStatus 		= MUS_STATUS_WAITING_FOR_SONG;
 	m_msgPipeOutStatus 		= MUS_STATUS_WAITING_FOR_SONG;	
@@ -498,14 +549,16 @@ MUS_MESSAGE SoundPipe::Flush()
 	//ReportError("Flushing Pipe");
 	m_cbBuf.Flush();
 	
-	m_cstrCurSongPath[0] = '\0';
+	m_cstrCurSongPath[0] = 0;
 	
 	m_dResampConvFactor = 1.0;
 
 	m_iFadeHelper = 0;
 
-	free(m_cstrMetaJSON);
-	m_cstrMetaJSON = NULL;
+	m_BPMDetect.Init();
+	memset(m_iTicks, 0, BPM_TICK_HIST);
+	m_iCurrentTick = 0;
+
 	m_FFmpegDecoder.Close();
 	ResetFilters();
 
@@ -530,6 +583,8 @@ uint32_t SoundPipe::Seek(double dTime)
 	SDL_UnlockAudio();
 
 	m_cbBuf.Flush();
+	m_cbBuf.SetBuffClock(dTime);
+
 	ResetFilters();
 
 	ReportError1("About to call FFmpeg seek with %f", dTime);
@@ -567,16 +622,17 @@ MUS_MESSAGE SoundPipe::Open(const char *cstrFileName)
 	{
 		m_msgPipeInStatus 	= MUS_STATUS_ERROR;
 		m_msgPipeOutStatus	= MUS_STATUS_ERROR;
+		m_cstrCurSongPath[0] = 0;
 		return MUS_STATUS_ERROR;
 	}
 
-	m_cstrCurSongPath = ReallocStringCopy(m_cstrCurSongPath, 
-										  &m_iCurSongAlloc, 
-										  cstrFileName);
+	strcpy(m_cstrCurSongPath, cstrFileName);
 
 	m_fSampleRate = m_FFmpegDecoder.GetSampleRate();
 
 	if (m_fSampleRate == 0) m_fSampleRate = 44100;
+
+	m_cbBuf.Start(m_fSampleRate);
 
 	m_dResampConvFactor = DEST_FREQ/m_fSampleRate;
 
@@ -598,27 +654,9 @@ MUS_MESSAGE SoundPipe::Open(const char *cstrFileName)
 	if (m_lSongEndInSec == 0)
 		m_lSongEndInSec = UINT_MAX;
 
-	const char *cstrTempMeta = m_FFmpegDecoder.GetMetadataLite();
-
-	const char *cstrName = strrchr(m_cstrCurSongPath, '/');
-
-	cstrName++;
-
-	m_cstrMetaJSON = (char *) MALLOC(strlen(cstrName) +
-									 strlen(cstrTempMeta) +
-									 strlen(m_cstrCurSongPath) +
-									 64);
-
-	sprintf(m_cstrMetaJSON,
-			"{\"path\":\"%s\","
-			"\"name\":\"%s\","
-			"\"Metadata\":%s}",
-			m_cstrCurSongPath,
-			cstrName,
-			cstrTempMeta);
-
-
-	ReportError1("MetaJSON: %s", m_cstrMetaJSON);
+	m_BPMDetect.Init();
+	memset(m_iTicks, 0, BPM_TICK_HIST);
+	m_iCurrentTick = 0;
 
 	// Create message to start song
 
@@ -644,6 +682,8 @@ int16_t AudioPipeline::SetNext(const char *cstrFileName, float fTransition)
 
 	if(QuickExtCheck(cstrFileName) == 0)
 		return 0;
+
+	m_bNextNotSet = 0;
 
 	if ((fTransition > 0.5) || (fTransition < -0.5))
 	{
@@ -715,7 +755,7 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 	if ((END_GAP_TRIGGER == m_iEndType) && (m_iEndLength >= lRequested/8))
 	{
 
-		ReportError1("m_iEndLength:%i", m_iEndLength);
+		//ReportError1("m_iEndLength:%i", m_iEndLength);
 
 		for (int i=0; i<m_iNumChan; i++)
 		{
@@ -731,17 +771,21 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 			m_iEndType = 0;
 			m_spPipe[m_iActivePipe].SetDoneStatus();
 			m_iActivePipe = _GetInactivePipe();
-			_PassSongTransMsgGood(m_spPipe[m_iActivePipe].GetMeta());
+			_PassSongTransMsgGood(m_iActivePipe);
 		}
 		return;
 	}
 	else if ((END_TYPE_CROSSFADE == m_iEndType) &&
 			 (llSampsLeft < m_iEndLength))
 	{
-		ReportError1("Samples Left: %i", llSampsLeft);
+		//ReportError1("Samples Left: %i", llSampsLeft);
 		m_iEndLength = llSampsLeft;
 		m_iCurScale -= m_iScaleBy;
 		m_spPipe[m_iActivePipe].SetFade(MIN(m_iCurScale, m_iTrackFade));
+	}
+	else
+	{
+		m_spPipe[m_iActivePipe].SetFade(m_iTrackFade);
 	}
 	
 	//ReportError("2");
@@ -754,11 +798,13 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 	//ReportError("3");
 
 	if ((Msg == MUS_STATUS_WAITING_FOR_SONG) ||
-		(Msg == MUS_INTMES_BUFFER_UNDERFLOW))
+		(Msg == MUS_INTMES_BUFFER_UNDERFLOW) ||
+		(Msg == MUS_STATUS_ERROR))
 		return;
 
 	if ((END_TYPE_CROSSFADE & m_iEndType) &&
-		(Msg != MUS_STATUS_ERROR))
+		(Msg != MUS_STATUS_ERROR) &&
+		(!m_bNextNotSet))
 	{
 
 		if (llSampsLeft <= m_iEndLength)
@@ -794,7 +840,7 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 
 			//int32_t lAdjRequest = ResampleFilter::AdvanceByAmtStat(lRequested, m_iFixedResampFilt);
 
-			ReportError1("m_iEndLangth=%i", m_iEndLength);
+			//ReportError1("m_iEndLangth=%i", m_iEndLength);
 
 			if (m_iEndLength <= 0)
 			{
@@ -803,7 +849,7 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 				m_iEndLength = 0;
 				m_iEndType = 0;
 				m_iActivePipe = _GetInactivePipe();
-				_PassSongTransMsgGood(m_spPipe[m_iActivePipe].GetMeta());
+				_PassSongTransMsgGood(m_iActivePipe);
 				m_spPipe[m_iActivePipe].SetFade(MIN(END_MAX_GAP, m_iTrackFade));
 			}
 		}
@@ -820,7 +866,8 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 		
 		int32_t uiNumToWrite = lRequested/8 - uiEndPnt;
 
-		if (END_TYPE_GAP == m_iEndType)
+		if ((END_TYPE_GAP == m_iEndType) &&
+			(!m_bNextNotSet))
 		{
 			if (uiNumToWrite > 0)
 			{
@@ -839,9 +886,10 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 		}
 		else
 		{
-			ReportError1("uiNumToWrite=%i", uiNumToWrite);
+			//ReportError1("uiNumToWrite=%i", uiNumToWrite);
 
-			if (uiNumToWrite > 0)
+			if ((uiNumToWrite > 0) &&
+				(!m_bNextNotSet))
 			{
 				Msg = m_spPipe[_GetInactivePipe()].PipeOut(puiBuffToFill,
 												uiNumToWrite,
@@ -850,11 +898,17 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 			}
 
 			m_spPipe[m_iActivePipe].SetDoneStatus();
-			m_iActivePipe = _GetInactivePipe();
+
+			if (!m_bNextNotSet)
+				m_iActivePipe = _GetInactivePipe();
+
 			m_iEndLength = 0;
 			m_iEndType = 0;
 
-			_PassSongTransMsgGood(m_spPipe[m_iActivePipe].GetMeta());
+			if (!m_bNextNotSet)
+				_PassSongTransMsgGood(m_iActivePipe);
+			else
+				_PassSongTransMsgBad();
 
 		}
 
@@ -863,7 +917,7 @@ void AudioPipeline::RunProcessStage(uint32_t **puiBuffToFill, int lRequested)
 	//ReportError("Here at end of this");
 }
 
-void AudioPipeline::RunDecodeStage()
+int32_t AudioPipeline::RunDecodeStage()
 {
 	//ReportError("In RunDecodeState");
 
@@ -873,8 +927,10 @@ void AudioPipeline::RunDecodeStage()
 		(m_spPipe[m_iActivePipe].IsEnoughBuffer()))
 	{
 		//ReportError("Inactive Work Performed");
-		m_spPipe[_GetInactivePipe()].PipeIn();
+		msg = m_spPipe[_GetInactivePipe()].PipeIn();
+		
+		return 15;
 	}
 
-	//ReportError("Finished RunDecodeStage");
+	return 10;
 }

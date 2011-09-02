@@ -23,12 +23,18 @@ MusMessage FFmpegWrapper::Init()
     									   	   FF_INPUT_BUFFER_PADDING_SIZE + 
 											   64);
 	
+	m_psTmpBufConvtStore = (uint16_t *) av_malloc(AVCODEC_MAX_AUDIO_FRAME_SIZE +
+    									   	   FF_INPUT_BUFFER_PADDING_SIZE + 
+											   64);
+	
 	m_cstrMetaString = (char *) MALLOC(8192);
 	m_iMetaAllocAmt = 8192;
 
 	m_cstrTemp1 = (char *) MALLOC(2048);
 	m_cstrTemp2 = (char *) MALLOC(2048);
 	m_iTempAlloc = 2048;
+	
+	m_pAudConvert = NULL;
 	
 #ifdef DEBUG
 	m_psTmpBufferBase[((AVCODEC_MAX_AUDIO_FRAME_SIZE +
@@ -40,6 +46,7 @@ MusMessage FFmpegWrapper::Init()
 MusMessage FFmpegWrapper::Uninit()
 {
 	av_free(m_psTmpBufferBase);
+	av_free(m_psTmpBufConvtStore);
 
     return MUS_MOD_Success;
 }
@@ -140,6 +147,7 @@ MusMessage FFmpegWrapper::FindDecoder(const char *cstrFileName)
     return MUS_MOD_Success;
 }
 
+
 MusMessage FFmpegWrapper::Open(const char *cstrFileName)
 {
 	ReportError("Is there something strange with FindDecoder locking up?");
@@ -201,6 +209,27 @@ MusMessage FFmpegWrapper::Open(const char *cstrFileName)
 		m_iSongLength = m_pFormatCtx->duration / AV_TIME_BASE;
 	}
 	
+	m_pAudConvert = NULL;
+
+	if (m_pCodecCtx->sample_fmt != AV_SAMPLE_FMT_S16)
+	{
+		m_pAudConvert = av_audio_convert_alloc(AV_SAMPLE_FMT_S16, 1,
+                                                m_pCodecCtx->sample_fmt, 1, 
+												NULL, 0);
+												
+		if (!m_pAudConvert)
+		{
+			char cstrErrBuf[512];
+	
+			sprintf(cstrErrBuf, "Cannot convert %s sample format to %s sample format\n",
+								av_get_sample_fmt_name(m_pCodecCtx->sample_fmt),
+								av_get_sample_fmt_name(AV_SAMPLE_FMT_S16));
+			
+			MUS_ERROR(MUS_ERROR_LOAD_PROBLEM, cstrErrBuf);
+			return MUS_MOD_Error;
+		}
+	}
+	
 	ReportError("Success in open");
 
     return MUS_MOD_Success;
@@ -224,6 +253,11 @@ int32_t FFmpegWrapper::GetSampleRate()
 MusMessage FFmpegWrapper::Close()
 {
 	ReportError("In Close");
+
+	if (m_pAudConvert)
+		av_audio_convert_free(m_pAudConvert);
+	
+	m_pAudConvert = NULL;
 
 	// Close the codec
 	if (m_pCodecCtx)
@@ -292,7 +326,7 @@ uint32_t FFmpegWrapper::Seek(double time)
 						m_pFormatCtx->streams[m_iStreamID]->time_base.num,
 						m_pFormatCtx->streams[m_iStreamID]->time_base.den);
 
-	ReportError2("Yeah, don't really get it %i, %i", m_iSkipNextFrame, retVal);
+	ReportError2("Yeah, don't really get it %i, %lli", m_iSkipNextFrame, retVal);
 
 	if (retVal >= 0)
 		return (uint32_t) retVal;
@@ -304,7 +338,7 @@ uint32_t FFmpegWrapper::Seek(double time)
 
 MusMessage FFmpegWrapper::GetNextPacket(void *pvPacket)
 {
-	ReportError("Entering GetNextPacket");
+	//ReportError("Entering GetNextPacket");
 
 	int32_t iCurRead = 0;
 	
@@ -353,17 +387,52 @@ MusMessage FFmpegWrapper::GetNextPacket(void *pvPacket)
 				iSize = AVCODEC_MAX_AUDIO_FRAME_SIZE +
 									FF_INPUT_BUFFER_PADDING_SIZE +
 									4;
-
-				int tmpErr = avcodec_decode_audio3(m_pCodecCtx,
+				
+				int tmpErr;
+				
+				if (!m_pAudConvert)
+				{
+					tmpErr = avcodec_decode_audio3(m_pCodecCtx,
 												   (int16_t *) m_psTmpBufferBase,
 												   &iSize,
+												   &m_avPacket);				
+				}
+				else
+				{
+					ReportError("About to start audio format conversion");
+				
+					tmpErr = avcodec_decode_audio3(m_pCodecCtx,
+												   (int16_t *) m_psTmpBufConvtStore,
+												   &iSize,
 												   &m_avPacket);
-#ifdef DEBUG
-				assert(m_psTmpBufferBase[((AVCODEC_MAX_AUDIO_FRAME_SIZE +
-										FF_INPUT_BUFFER_PADDING_SIZE)/2)+2] == 0xBAAD);
-#endif
-												   
-												   
+					
+					if (tmpErr > 0)
+					{
+						const void *ibuf[6]= {m_psTmpBufConvtStore};
+						void *obuf[6]= {m_psTmpBufferBase};
+						int istride[6]= {av_get_bytes_per_sample(m_pCodecCtx->sample_fmt)};
+						int ostride[6]= {2};
+						iSize = iSize/istride[0];
+						if (av_audio_convert(m_pAudConvert, 
+											obuf, 
+											ostride, 
+											ibuf, 
+											istride, 
+											iSize)<0)	
+						{
+							char cstrFFmpegError[128];
+							char cstrErrBuf[256] = "Problem with conversion:";
+
+							av_strerror(err, cstrFFmpegError, sizeof(cstrFFmpegError));
+
+							strcat(cstrErrBuf, cstrFFmpegError);
+
+							MUS_ERROR(MUS_ERROR_LOAD_PROBLEM, cstrErrBuf);
+
+						}
+					}
+					
+				}
 												   
 				ReportError3("Finished packet Decode, with an iSize of %i,"
 						     "packet size %i, and tmpErr of %i",
@@ -406,10 +475,61 @@ MusMessage FFmpegWrapper::GetNextPacket(void *pvPacket)
 							FF_INPUT_BUFFER_PADDING_SIZE +
 							40;
 
-		int tmpErr = avcodec_decode_audio3(m_pCodecCtx, 
+		int tmpErr;
+		if (!m_pAudConvert)
+		{
+			tmpErr = avcodec_decode_audio3(m_pCodecCtx,
 										   (int16_t *) m_psTmpBufferBase,
-										   &iSize, 
+										   &iSize,
 										   &m_avPacket);
+		}
+		else
+		{
+			ReportError("About to start audio format conversion");
+
+			tmpErr = avcodec_decode_audio3(m_pCodecCtx,
+										   (int16_t *) m_psTmpBufConvtStore,
+										   &iSize,
+										   &m_avPacket);
+
+			if (tmpErr > 0)
+			{
+				int iTmpErr2;
+
+				ReportError2("Samplefmt: %i, bytes per sample:%i",
+							m_pCodecCtx->sample_fmt,
+							av_get_bytes_per_sample(m_pCodecCtx->sample_fmt));
+
+				const void *ibuf[6]= {m_psTmpBufConvtStore};
+				void *obuf[6]= {m_psTmpBufferBase};
+				int istride[6]= {av_get_bytes_per_sample(m_pCodecCtx->sample_fmt)};
+				int ostride[6]= {2};
+				iSize = iSize / (istride[0]/2);
+				iTmpErr2 = av_audio_convert(m_pAudConvert,
+									obuf,
+									ostride,
+									ibuf,
+									istride,
+									iSize);
+				if (iTmpErr2 < 0)
+				{
+
+					char cstrFFmpegError[128];
+					char cstrErrBuf[256] = "Problem trying to convert:";
+
+					av_strerror(tmpErr, cstrFFmpegError, sizeof(cstrFFmpegError));
+
+					strcat(cstrErrBuf, cstrFFmpegError);
+
+					MUS_ERROR(MUS_ERROR_LOAD_PROBLEM, cstrErrBuf);
+					
+					return MUS_MOD_Success;
+					
+				}
+
+			}
+
+		}
 
 		/*ReportError3("Finished packet Decode, with an iSize of %i,"
 				     "packet size %i, and tmpErr of %i",
@@ -560,14 +680,14 @@ const char *FFmpegWrapper::GetMetadataLite()
 	size_t	CurSize = 2;
 
 	// variable to pass the metadata pairs to
-	AVMetadataTag *tag=NULL;
+	AVDictionaryEntry *tag = NULL;
 
 	// add the starting bracket to the json
 	sprintf(m_cstrMetaString,"{");
 
 	ReportError("About to get artist");
 
-	tag=av_metadata_get(m_pFormatCtx->metadata, "artist", tag, AV_METADATA_IGNORE_SUFFIX);
+	tag=av_dict_get(m_pFormatCtx->metadata, "artist", tag, AV_DICT_IGNORE_SUFFIX);
 	// first calculate the size of this metadata item
 	//	remember to add a buffer to account for the quote marks
 	//	and colon used for the JSON item (we use 10 to be safe)
@@ -576,7 +696,7 @@ const char *FFmpegWrapper::GetMetadataLite()
 
 	if (tag)
 	{
-		tmpSize = strlen("artist") + strlen(tag->value) + 12;
+		tmpSize = strlen("artist") + SafeStringLen(tag->value) + 12;
 
 		// Make sure we have enough room in our main JSON string
 		CurSize += tmpSize;
@@ -607,14 +727,14 @@ const char *FFmpegWrapper::GetMetadataLite()
 
 	tag = NULL;
 
-	tag=av_metadata_get(m_pFormatCtx->metadata, "title", tag, AV_METADATA_IGNORE_SUFFIX);
+	tag=av_dict_get(m_pFormatCtx->metadata, "title", tag, AV_DICT_IGNORE_SUFFIX);
 
 	if (tag)
 	{
 		// first calculate the size of this metadata item
 		//	remember to add a buffer to account for the quote marks
 		//	and colon used for the JSON item (we use 10 to be safe)
-		tmpSize = strlen("title") + strlen(tag->value) + 12;
+		tmpSize = strlen("title") + SafeStringLen(tag->value) + 12;
 
 		// Make sure we have enough room in our main JSON string
 		CurSize += tmpSize;
@@ -645,14 +765,16 @@ const char *FFmpegWrapper::GetMetadataLite()
 	
 	tag = NULL;
 
-	tag=av_metadata_get(m_pFormatCtx->metadata, "album", tag, AV_METADATA_IGNORE_SUFFIX);
+	tag=av_dict_get(m_pFormatCtx->metadata, "album", tag, AV_DICT_IGNORE_SUFFIX);
 
 	if (tag)
 	{
 		// first calculate the size of this metadata item
 		//	remember to add a buffer to account for the quote marks
 		//	and colon used for the JSON item (we use 10 to be safe)
-		tmpSize = strlen("album") + strlen(tag->value) + 12;
+		tmpSize = strlen("album") + SafeStringLen(tag->value) + 12;
+
+		ReportError1("tmpSize:=%i", tmpSize);
 
 		// Make sure we have enough room in our main JSON string
 		CurSize += tmpSize;
@@ -662,6 +784,7 @@ const char *FFmpegWrapper::GetMetadataLite()
 			m_cstrMetaString = (char *) REALLOC(m_cstrMetaString, m_iMetaAllocAmt);
 		}
 
+		ReportError("about to safe string copy");
 
 		m_cstrTemp2 = ReallocSafeStringCopy(m_cstrTemp2, &m_iTempAlloc, tag->value);
 
@@ -672,10 +795,14 @@ const char *FFmpegWrapper::GetMetadataLite()
 			m_cstrTemp2 = (char *) REALLOC(m_cstrTemp2, m_iTempAlloc);
 		}
 
+		ReportError("about to sprintf");
+
 		sprintf(m_cstrTemp1, " \"album\":\"%s\",", m_cstrTemp2);
 	}
 	else
-		sprintf(m_cstrTemp1, " \"album\":\"%s\",");
+		sprintf(m_cstrTemp1, " \"album\":\"\",");
+
+	ReportError("Meep");
 
 	strcat(m_cstrMetaString, m_cstrTemp1);
 	
@@ -699,15 +826,14 @@ const char *FFmpegWrapper::GetValue(const char *Key)
 {
 	ReportError("In Get Meta Speicfic val");
 
-	// variable to pass the metadata pairs to
-	AVMetadataTag *tag=NULL;
+	m_pTag = NULL;
 
 	//ReportError1("Getting Key %s", Key);
 
-	tag = av_metadata_get(m_pFormatCtx->metadata, Key, tag, AV_METADATA_IGNORE_SUFFIX);
+	m_pTag = av_dict_get(m_pFormatCtx->metadata, Key, m_pTag, AV_DICT_IGNORE_SUFFIX);
 
-	if (tag == NULL)
+	if (m_pTag == NULL)
 		return NULL;
 
-	return tag->value;
+	return m_pTag->value;
 }

@@ -33,6 +33,7 @@
 #define ATTRIB_RESAMP_SPEED_VAL				5
 
 #define ATTRIB_EQ							7
+#define ATTRIB_CROSS_FADE					8
 
 // *********************************************************
 // Here we declare MusMessages
@@ -53,6 +54,10 @@
 // Here we define messages to to send to the indexer
 #define MUS_MESSAGE_GET_CURRENT_DIR_LS		20
 #define MUS_MESSAGE_GET_FULL_SONG_INDEX		21
+#define MUS_MESSAGE_GET_BPM					22
+#define MUS_MESSAGE_SET_NO_NEXT				23
+#define MUS_MESSAGE_GET_FREQ_STR			24
+#define MUS_MESSAGE_GET_MAG_STR				25
 
 // define the messages to handle song transitions
 #define MUS_MESSAGE_SET_NEXT_META			30
@@ -103,6 +108,10 @@
 // *********************************************************
 // Here we declare some generic message structs
 // *********************************************************
+#define META_PATH	0
+#define META_TITLE	1
+#define META_ARTIST	2
+
 struct MusicMessage
 {
 	MUS_MESSAGE Msg;
@@ -111,6 +120,8 @@ struct MusicMessage
 	char *StrData;
 	int32_t	IntData;
 	double 	DoubleData;
+	int32_t Track;
+	char *Meta[3];
 
 	MusicMessage *Next;
 };

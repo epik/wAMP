@@ -54,7 +54,7 @@ void MusController::audio_callback_sdl(void *MusicController,
 
 void MusController::Mixer(uint8_t *destStream, int lRequested)
 {
-#ifndef BUILD_FOR_TOUCHPAD	
+#ifndef BUILD_FOR_TOUCHPAD
 
 	m_apPipeline[0].RunProcessStage(m_puiBuffToFill, lRequested);
 
@@ -74,28 +74,54 @@ void MusController::Mixer(uint8_t *destStream, int lRequested)
 
 	//ReportError("Mixer Out");
 #else
+	int16_t *psTrack0Chan0;
+	int16_t *psTrack0Chan1;
+	int16_t *psTrack1Chan0;
+	int16_t *psTrack1Chan1;
+	int16_t *psChan0;
+	int16_t *psChan1;
 
-	m_apPipeline[0].RunProcessStage(m_puiBuffToFill, lRequested);
-
-	//ReportError("In mixer part of mixer");
-
-	int16_t *psChan0 = (int16_t *) m_puiBuffToFill[0];
-	int16_t *psChan1 = (int16_t *) m_puiBuffToFill[1];
-
-	if (!m_iUseEQ)
+	if (!m_bTrackPlaying[0])
 	{
-		int16_t	*psTravStream = (int16_t *) destStream;
-	
-		for(int i=0; i<lRequested/4; i++)
-		{
-			*(psTravStream++) = *(psChan0++);
-			*(psTravStream++) = *(psChan1++);
-		}
+		m_apPipeline[0].RunProcessStage(m_puiBuffToFillZero, lRequested);
+
+		psChan0 = psTrack0Chan0 = (int16_t *) m_puiBuffToFillZero[0];
+		psChan1 = psTrack0Chan1 = (int16_t *) m_puiBuffToFillZero[1];
+	}
+
+
+	if (!m_bTrackPlaying[1])
+	{
+		m_apPipeline[1].RunProcessStage(m_puiBuffToFillOne, lRequested);
+
+		psTrack1Chan0 = (int16_t *) m_puiBuffToFillOne[0];
+		psTrack1Chan1 = (int16_t *) m_puiBuffToFillOne[1];
 	}
 	else
 	{
-		//ReportError("In EQ");
-		m_eqGraphEQ.Filter(psChan0, psChan1, (int16_t *) destStream, lRequested/2);
+		psTrack1Chan0 = (int16_t *) m_puiStaticZeroBuff;
+		psTrack1Chan1 = (int16_t *) m_puiStaticZeroBuff;
+	}
+
+	if (!m_bTrackPlaying[0])
+	{
+		for(int i=0; i<lRequested/4; i++)
+		{
+			*(psTrack0Chan0++) += *(psTrack1Chan0++);
+			*(psTrack0Chan1++) += *(psTrack1Chan1++);
+		}
+
+		m_eqGraphEQ.Filter(psChan0,
+							psChan1,
+						   (int16_t *) destStream,
+						   lRequested/2);
+	}
+	else if (!m_bTrackPlaying[1])
+	{
+		m_eqGraphEQ.Filter(psTrack1Chan0,
+							psTrack1Chan1,
+						   (int16_t *) destStream,
+						   lRequested/2);
 	}
 
 #endif
@@ -103,15 +129,14 @@ void MusController::Mixer(uint8_t *destStream, int lRequested)
 }
 
 
-int16_t MusController::Init(void (*funcCallBack)(const char *),
-							void (*funcSeekCallBack)(const char *))
+int16_t MusController::Init(void (*funcCallBack)(const char *, const 
+												char *, const char *, int32_t),
+		 void (*funcSeekCallBack)(const char *, int32_t))
 {
 	ReportError("In MusController Init");
 
 	m_funcCallBack = funcCallBack;
 	m_funcSeekCallBack = funcSeekCallBack;
-
-	m_iUseEQ = 1;
 
 	SDL_AudioSpec 	sdlasWanted, sdlasGot;
 
@@ -122,6 +147,9 @@ int16_t MusController::Init(void (*funcCallBack)(const char *),
 	sdlasWanted.userdata	= this;
 	sdlasWanted.format		= AUDIO_S16;
 
+	m_bTrackPlaying[0] = 1;
+	m_bTrackPlaying[1] = 1;
+
 	if ( SDL_OpenAudio(&sdlasWanted, &sdlasGot) )
 	{
 		ReportError1("Couldn't open SDL audio: %s\n", SDL_GetError());
@@ -131,44 +159,45 @@ int16_t MusController::Init(void (*funcCallBack)(const char *),
 
 	ReportError("In MusController Init - Made it past the SDL stuff");
 
-	m_puiBuffToFill = (uint32_t **)MALLOC((1 + NUM_CHANNELS) * sizeof(uint32_t *));
+	m_puiBuffToFillZero = (uint32_t **)MALLOC((1 + NUM_CHANNELS) * sizeof(uint32_t *));
+	m_puiBuffToFillOne = (uint32_t **)MALLOC((1 + NUM_CHANNELS) * sizeof(uint32_t *));
 
-#ifdef DEBUG
-	*(m_puiBuffToFill+NUM_CHANNELS) = (uint32_t *) 0xBAADC0DE;
-#endif
 
 	for(int i=0; i<NUM_CHANNELS; i++)
 	{
-		m_puiBuffToFill[i] = (uint32_t *) MALLOC(sizeof(uint32_t) *
+		m_puiBuffToFillZero[i] = (uint32_t *) MALLOC(sizeof(uint32_t) *
 												  ((MUS_BUFFER_SIZE/
 														LOW_SPEED_RATIO_LIM) +
 												   40));
-#ifdef DEBUG
-		int32_t test = ((MUS_BUFFER_SIZE/
-				LOW_SPEED_RATIO_LIM) +
-				20);
+		m_puiBuffToFillOne[i] = (uint32_t *) MALLOC(sizeof(uint32_t) *
+												  ((MUS_BUFFER_SIZE/
+														LOW_SPEED_RATIO_LIM) +
+												   40));
 
-		m_puiBuffToFill[i][test] = 0xBAADC0DE;
-#endif
 	}
-
-#ifdef DEBUG
-	if (*(m_puiBuffToFill+NUM_CHANNELS) != (uint32_t *) 0xBAADC0DE)
-	{
-		ReportError("Mem Problem");
-		assert(0);
-	}
-#endif
 	
+	m_puiStaticZeroBuff = (uint32_t *) MALLOC(sizeof(uint32_t) *
+											  ((MUS_BUFFER_SIZE/
+													LOW_SPEED_RATIO_LIM) +
+											   40));
+
+	memset(m_puiStaticZeroBuff, 0, sizeof(uint32_t) *
+								  ((MUS_BUFFER_SIZE/
+										LOW_SPEED_RATIO_LIM) +
+								   40));
+
 	// Load the fir values for the resample filter
 	//	which is a static variable shared across each
 	//	instances of the filter.
 	ResampleFilter::Init();
 	
 	for(int i=0; i<NUM_SIM_TRACKS; i++)
-		m_apPipeline[i].Init(this);
+		m_apPipeline[i].Init(this, i);
 
 	m_eqGraphEQ.Init();
+
+	m_apPipeline[1].SetTrackFade(0);
+	m_apPipeline[0].SetTrackFade(CROSS_FADE_FIXED_ONE);
 
 	return 0;
 
@@ -178,9 +207,9 @@ int16_t MusController::Init(void (*funcCallBack)(const char *),
 int16_t MusController::Open(const char *cstrFileName,
 							int32_t iTrack)
 {
-	//ReportError1("File path %s", cstrFileName);
+	ReportError2("File path %s, for track %i", cstrFileName, iTrack);
 
-	MUS_MESSAGE err = m_apPipeline[0].Open(cstrFileName);
+	MUS_MESSAGE err = m_apPipeline[iTrack].Open(cstrFileName);
 
 	if (err == MUS_STATUS_ERROR)
 	{
@@ -200,7 +229,7 @@ int16_t MusController::SetNext(const char *cstrFileName,
 {
 	//ReportError1("File path %s", cstrFileName);
 
-	MUS_MESSAGE err = m_apPipeline[0].SetNext(cstrFileName, fTransition);
+	MUS_MESSAGE err = m_apPipeline[iTrack].SetNext(cstrFileName, fTransition);
 
 	if (err == MUS_STATUS_ERROR)
 	{
@@ -237,7 +266,7 @@ int16_t MusController::Seek(double seconds, int32_t iTrack)
 
 	sprintf(m_pcstrSeekCallback, "%i", iCallbackVal);
 
-	m_funcSeekCallBack(m_pcstrSeekCallback);
+	m_funcSeekCallBack(m_pcstrSeekCallback, iTrack);
 	
 
 	return 0;
@@ -336,19 +365,19 @@ void MusController::Tick()
 			if (Msg == MUS_MESSAGE_OPEN_SONG)
 			{
 				ReportError("Acting off of open song message");
-				Open(MsgData.StrData, 0);
+				Open(MsgData.StrData, MsgData.Track);
 			}
 			else if (Msg == MUS_MESSAGE_SET_NEXT)
 			{
 				ReportError("Acting off of set next message");
-				SetNext(MsgData.StrData, MsgData.DoubleData, 0);
+				SetNext(MsgData.StrData, MsgData.DoubleData, MsgData.Track);
 			}
 			else if (Msg == MUS_MESSAGE_SEEK)
 			{
 				// The user sent a seek message.  Uncomment below to log to
 				//	stderr every time a seek message is received.
 				ReportError1("Seeking position %f", MsgData.DoubleData);
-				Seek(MsgData.DoubleData, 0);
+				Seek(MsgData.DoubleData, MsgData.Track);
 			}
 			else if (Msg == MUS_INTMES_BUFFER_UNDERFLOW)
 			{
@@ -368,8 +397,13 @@ void MusController::Tick()
 			else if (Msg == MUS_MESSAGE_PASS_SONG_INFO)
 			{
 				ReportError("Handling Pas Song Info");
-				m_funcCallBack(MsgData.StrData);
-				FREE(MsgData.StrData);
+				m_funcCallBack(MsgData.Meta[META_PATH], 
+							   MsgData.Meta[META_TITLE], 
+							   MsgData.Meta[META_ARTIST], 
+							   MsgData.Track);
+				FREE(MsgData.Meta[META_PATH]);
+				FREE(MsgData.Meta[META_TITLE]);
+				FREE(MsgData.Meta[META_ARTIST]);
 			}
 
 
@@ -378,12 +412,14 @@ void MusController::Tick()
 		//ReportError("About to decode");
 
 		for(int i=0; i<NUM_SIM_TRACKS; i++)
+		{
 			m_apPipeline[i].RunDecodeStage();
+		}
 
 		//ReportError("Finished decode stage");
 
 		// Allow another thread the chance to run
-		WormSleep(1);
+		WormSleep(10);
 
 	} // While (1)
 
@@ -412,6 +448,8 @@ int16_t MusController::Uninit()
 	return 0;
 };
 
+#define SCALE_DOWN_CROSSFADE_L	(CROSS_FADE_FIXED_ONE * 0.1)
+#define SCALE_DOWN_CROSSFADE_S	(CROSS_FADE_FIXED_ONE * 0.05)
 
 const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 {
@@ -422,6 +460,7 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 	{
 		float 	fSpeed;
 		int32_t iIntArg;
+		int32_t iTrack;
 		const char 	*pCharStrArg;
 
 		int32_t ID = va_arg(Args, int32_t);
@@ -430,7 +469,15 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 		{
 		case ATTRIB_MUSCON_PAUSED:
 			iIntArg = va_arg(Args, int32_t);
-			SDL_PauseAudio(iIntArg);
+			iTrack = va_arg(Args, int32_t);
+			ReportError2("iIntArg=%i, iTrack=%i", iIntArg, iTrack);
+
+			m_bTrackPlaying[iTrack] = iIntArg;
+
+			if (!m_bTrackPlaying[0] || !m_bTrackPlaying[1])
+				SDL_PauseAudio(0);
+			else
+				SDL_PauseAudio(1);
 			break;
 		case ATTRIB_RESAMP_SPEED_VAL:
 			fSpeed = va_arg(Args, double);
@@ -461,23 +508,71 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 			pCharStrArg = va_arg(Args, const char *);
 			m_eqGraphEQ.SetEQVals(pCharStrArg);
 			break;
+		case ATTRIB_CROSS_FADE:
+			fSpeed = va_arg(Args, double);
+			iIntArg = CROSS_FADE_FIXED_ONE * fSpeed;
+			int32_t iTmpScale = CROSS_FADE_FIXED_ONE - iIntArg;
+			
+			if (iIntArg > SCALE_DOWN_CROSSFADE_L)
+				iIntArg -= SCALE_DOWN_CROSSFADE_L;
+			else if (iIntArg > SCALE_DOWN_CROSSFADE_S)
+				iIntArg -= SCALE_DOWN_CROSSFADE_S;
+				
+			if (iTmpScale > SCALE_DOWN_CROSSFADE_L)
+				iTmpScale -= SCALE_DOWN_CROSSFADE_L;
+			else if (iTmpScale > SCALE_DOWN_CROSSFADE_S)
+				iTmpScale -= SCALE_DOWN_CROSSFADE_S;
+				
+			m_apPipeline[1].SetTrackFade(iIntArg);
+			m_apPipeline[0].SetTrackFade(iTmpScale);
+			break;
 		}
 	}
 	else if (cmMsg == MUS_MESSAGE_ATTRIB_GET)
 	{
 
 	}
+	else if (cmMsg == MUS_MESSAGE_SET_NO_NEXT)
+	{
+		int32_t iTrack = va_arg(Args, int32_t);
+
+		m_apPipeline[iTrack].SetNoNext();
+	}
 	else if (cmMsg == MUS_MESSAGE_GET_SONG_CUR)
 	{
-		sprintf(m_pcstrCurTimeCallback, "%u", m_apPipeline[0].GetCurTime());
+		int32_t iTrack = va_arg(Args, int32_t);
+		sprintf(m_pcstrCurTimeCallback, "%u", m_apPipeline[iTrack].GetCurTime());
 		UnlockMusMsgQueue();
+		//ReportError1("Show Cur=%s", m_pcstrCurTimeCallback);
 		return m_pcstrCurTimeCallback;
 	}
 	else if (cmMsg == MUS_MESSAGE_GET_SONG_END)
 	{
-		sprintf(m_pcstrEndTimeCallback, "%u", m_apPipeline[0].GetEndTime());
+		int32_t iTrack = va_arg(Args, int32_t);
+		sprintf(m_pcstrEndTimeCallback, "%u", m_apPipeline[iTrack].GetEndTime());
 		UnlockMusMsgQueue();
+		//ReportError1("Show End=%s", m_pcstrEndTimeCallback);
 		return m_pcstrEndTimeCallback;
+	}
+	else if (cmMsg == MUS_MESSAGE_GET_BPM)
+	{
+		int32_t iTrack = va_arg(Args, int32_t);
+		sprintf(m_pcstrBPM, "%u", m_apPipeline[iTrack].GetBPM());
+		UnlockMusMsgQueue();
+		//ReportError1("Show BPM=%s", m_pcstrBPM);
+		return m_pcstrBPM;
+	}
+	else if (cmMsg == MUS_MESSAGE_GET_FREQ_STR)
+	{
+		int32_t iTrack = va_arg(Args, int32_t);
+		UnlockMusMsgQueue();
+		return m_apPipeline[iTrack].GetFreqMagString();
+	}
+	else if (cmMsg == MUS_MESSAGE_GET_MAG_STR)
+	{
+		int32_t iTrack = va_arg(Args, int32_t);
+		UnlockMusMsgQueue();
+		return m_apPipeline[iTrack].GetAvgMagString();
 	}
 	else
 	{
@@ -492,6 +587,10 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 		{
 			MusicMsg->Msg = MUS_MESSAGE_OPEN_SONG;
 			char *cstrArg = va_arg(Args, char *);
+			MusicMsg->Track = va_arg(Args, int32_t);
+
+			ReportError1("Open iTrack=%i", MusicMsg->Track);
+
 			if (cstrArg)
 			{
 				MusicMsg->StrData = (char *) MALLOC(strlen(cstrArg)+8);
@@ -512,20 +611,24 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 			MusicMsg->StrData = (char *) MALLOC(strlen(cstrArg)+8);
 			strcpy(MusicMsg->StrData, cstrArg);
 			MusicMsg->DoubleData = va_arg(Args, double);
+			MusicMsg->Track = va_arg(Args, int32_t);
 			ReportError1("Created Message to SetNext %s", cstrArg);
 		}
 		else if (cmMsg == MUS_MESSAGE_SEEK)
 		{
 			MusicMsg->Msg = MUS_MESSAGE_SEEK;
 			MusicMsg->DoubleData = va_arg(Args, double);
+			MusicMsg->Track = va_arg(Args, int32_t);
 			ReportError1("Seeking to position %f", MusicMsg->DoubleData);
 		}
 		else if (cmMsg == MUS_MESSAGE_PASS_SONG_INFO)
 		{
-			char *cstrArg = va_arg(Args, char *);
+			MusicMsg->Meta[META_PATH] = va_arg(Args, char *);
+			MusicMsg->Meta[META_TITLE] = va_arg(Args, char *);
+			MusicMsg->Meta[META_ARTIST] = va_arg(Args, char *);
+			MusicMsg->Track = va_arg(Args, int32_t);
 			MusicMsg->Msg = MUS_MESSAGE_PASS_SONG_INFO;
-			MusicMsg->StrData = cstrArg;
-			ReportError1("Created Message to with Song Info: %s", cstrArg);
+			ReportError("Created Message for start song callback");
 		}
 		else
 		{

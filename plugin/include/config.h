@@ -14,7 +14,8 @@
 
 #define SUPPORTED_EXTEN {5863768 /*mp3*/, 193436047/*wma*/, 193485930/*m4a*/, 193486309/*aac*/, \
 						193497511/*flac*/, 193499443/*FLAC*/, 193499444/*ogg*/, 193499445/*ra*/, \
-						193499446/*ram*/, 193499497/*wav*/, 193501378/*mp2*/, 193501753/*mp1*/, 193509907/*als*/}
+						193499446/*ram*/, 193499497/*wav*/, 193501378/*mp2*/, 193501753/*mp1*/, \
+						193509907/*als*/}
 // These are all the hash values of the following (not in the same order) using DJBHash
 //#define SUPPORTED_EXTEN "mp3,wma,m4a,aac,flac,FLAC,ogg,ra,ram,wav,mp2,mp1,als"
 

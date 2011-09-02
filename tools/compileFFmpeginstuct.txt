@@ -1,0 +1,3 @@
+./configure --disable-ffmpeg --disable-ffplay --disable-ffserver --disable-ffprobe --disable-doc  --disable-encoders --enable-decoders --enable-protocols --enable-parsers --enable-demuxers --arch=arm --cpu=cortex-a8 --cross-prefix=arm-none-linux-gnueabi- --target-os=linux --enable-armvfp --enable-neon --disable-debug --enable-hardcoded-tables --extra-cflags="-mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp"
+
+export CYGPATH=cygpath

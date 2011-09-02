@@ -17,6 +17,7 @@
 #include "../Decoders/Decoders.h"
 #include "FFmpegFix.h"
 #include <sdl.h>
+#include "../WormFFT.h"
 
 #define FIXED_POINT_SEC_CONVERT_FACTOR ((1<<26)/(DEST_FREQ))
 #define RESAMPLE_PADDING				8
@@ -34,11 +35,13 @@
 #define END_MAX_GAP		(1 << 18)
 #define END_SCALE_Q			18
 
-#define SUFFICIENT_BUFFER_SIZE	(DEST_FREQ * 8)
+#define SUFFICIENT_BUFFER_SIZE	DEST_FREQ
 #define CBUF_PCKT_SIZE_NEED (MAX_PACKET_SIZE/4 + \
 							 RESAMPLE_PADDING)
 
 #define BUFFER_EMPTY		-1
+
+#define BPM_TICK_HIST 215
 
 struct SoundPacket
 {
@@ -201,7 +204,6 @@ private:
 	size_t			m_puiRealEnd;
 
 	uint32_t		m_uiSampleRate;
-	float			m_fDivSampleRate;
 	int64_t			m_llClock;
 
 public:
@@ -224,7 +226,6 @@ public:
 	{
 		Flush();
 		m_uiSampleRate = uiSampleRate;
-		m_fDivSampleRate = 2/m_uiSampleRate;
 	}
 	
 	void MarkDone()
@@ -263,7 +264,15 @@ public:
 		m_spaAllocator.Flush();
 	}
 	
-	int64_t GetBufferClock() {return m_llClock * m_fDivSampleRate;};
+	void SetBuffClock(double dSetTime)
+	{
+		m_llClock = dSetTime * (int64_t) m_uiSampleRate;
+	}
+
+	int64_t GetBufferClock()
+	{
+		return m_llClock / (int64_t) m_uiSampleRate;
+	};
 	
 	int64_t GetPcktStrtClock() 
 	{
@@ -333,7 +342,6 @@ private:
 	char				*m_cstrCurSongPath;
 	int32_t				m_iCurSongAlloc;
 	
-	char 				*m_cstrMetaJSON;
 	float				m_fSampleRate;
 	double				m_dResampConvFactor;
 
@@ -352,6 +360,12 @@ private:
 	int32_t				m_iCurVol;
 	
 	int32_t				m_bUseResampFilt;
+	
+	BPMDetect			m_BPMDetect;
+	int8_t				m_iTicks[BPM_TICK_HIST];
+	int32_t				m_iCurrentTick;
+
+	int32_t				m_iBPMCnt;
 
 public:
 
@@ -370,6 +384,21 @@ public:
 	MUS_MESSAGE GetOutStatus() {return m_msgPipeOutStatus;};
 
 	const char *GetSongPath() {return m_cstrCurSongPath;};
+
+	int32_t GetBPM()
+	{
+		return m_iBPMCnt;
+	}
+
+	const char *GetFreqMagString()
+	{
+		return (const char *) m_BPMDetect.GetFrqMagArray();
+	}
+
+	const char *GetAvgMagString()
+	{
+		return (const char *) m_BPMDetect.GetAvgMagArray();
+	}
 
 	void SetBass(float f)
 	{
@@ -391,16 +420,29 @@ public:
 	{
 		m_iCurVol = VOL_NORM_LEVEL * f;
 
+		uint32_t uiScale = m_iCurVol;
+
+		if (m_iFadeHelper != 0)
+		{
+			uiScale *= m_iFadeHelper;
+			uiScale >>= END_SCALE_Q;
+		}
+
 		for(int i=0; i<m_iNumChan; i++)
 		{
-			m_btfSongLvlEQ[i].SetVolFix((int16_t) m_iCurVol);
+			m_btfSongLvlEQ[i].SetVolFix((int16_t) uiScale);
 		}
 	}
 	
 	void FadeDown()
 	{
-		uint32_t uiScale = m_iCurVol * m_iFadeHelper;
-		uiScale >>= END_SCALE_Q;
+		uint32_t uiScale = m_iCurVol;
+
+		if (m_iFadeHelper != 0)
+		{
+			uiScale *= m_iFadeHelper;
+			uiScale >>= END_SCALE_Q;
+		}
 
 		for(int i=0; i<m_iNumChan; i++)
 		{
@@ -410,13 +452,13 @@ public:
 
 	void SetFade(int32_t iFadeHelper)
 	{
-		ReportError1("iFadeHelper=%i", iFadeHelper);
+		//ReportError1("iFadeHelper=%i", iFadeHelper);
 
 		if (iFadeHelper <= 0)
 			iFadeHelper = 1;
 		else if (iFadeHelper >= END_MAX_GAP)
 			iFadeHelper = 0;
-		ReportError1("iFadeHelper=%i", iFadeHelper);
+		//ReportError1("iFadeHelper=%i", iFadeHelper);
 		m_iFadeHelper = iFadeHelper;
 	}
 
@@ -450,7 +492,7 @@ public:
 
 	MUS_MESSAGE	Flush();
 	
-	size_t GetCurTime()
+	int64_t GetCurTime()
 	{
 		if ((m_msgPipeOutStatus == MUS_STATUS_WAITING_FOR_SONG) ||
 			(m_msgPipeInStatus == MUS_STATUS_WAITING_FOR_SONG))
@@ -458,6 +500,8 @@ public:
 			return 0;
 		}
 	
+		//ReportError("A problem with CurClock");
+
 		return m_cbBuf.GetCurClock();
 	}
 
@@ -512,19 +556,58 @@ public:
 	
 	uint32_t Seek(double);
 
-	char *GetMeta() 
+	char *GetPath() 
+	{		
+		if (m_cstrCurSongPath[0] == 0)
+		{
+			return NULL; 
+		}
+			
+		char *cstrRetVal = (char *) MALLOC(strlen(m_cstrCurSongPath) + 2);
+		strcpy(cstrRetVal, m_cstrCurSongPath);
+
+		return cstrRetVal;
+	};
+	
+	char *GetArtist() 
 	{
-		char *cstrRetVal = m_cstrMetaJSON;
-		m_cstrMetaJSON = NULL;
+		const char *cstrMeta = m_FFmpegDecoder.GetValue("album_artist");
+		
+		if (!cstrMeta)
+		{
+			cstrMeta = m_FFmpegDecoder.GetValue("artist"); 
+		}
+		
+		if (!cstrMeta)
+			return NULL;
+			
+		char *cstrRetVal = (char *) MALLOC(strlen(cstrMeta) + 2);
+		strcpy(cstrRetVal, cstrMeta);
+
 		return cstrRetVal;
 	};
 
+	char *GetTitle() 
+	{
+		const char *cstrMeta = m_FFmpegDecoder.GetValue("title");
+		
+		if (!cstrMeta)
+			return NULL;
+			
+		char *cstrRetVal = (char *) MALLOC(strlen(cstrMeta) + 2);
+		strcpy(cstrRetVal, cstrMeta);
+
+		return cstrRetVal;
+	};
+	
 };
 
 
 class AudioPipeline
 {
 private:
+
+	int32_t			m_iTrackID;
 
 	int32_t			m_iTrackFade;
 
@@ -551,24 +634,34 @@ private:
 	
 	MsgHandler 		*m_pMsgHandler;
 
+	int32_t			m_bNextNotSet;
+
 	int32_t _GetInactivePipe() {return ((m_iActivePipe) ? 0 : 1);};
 	
-	void _PassSongTransMsgGood(char *Meta)
+	void _PassSongTransMsgGood(int32_t pipeToUse)
 	{
-		m_pMsgHandler->PassMessage(MUS_MESSAGE_PASS_SONG_INFO, Meta);
+		m_pMsgHandler->PassMessage(MUS_MESSAGE_PASS_SONG_INFO,
+								   m_spPipe[pipeToUse].GetPath(),
+								   m_spPipe[pipeToUse].GetArtist(),
+								   m_spPipe[pipeToUse].GetTitle(),
+								   m_iTrackID);
 	}
 
 	void _PassSongTransMsgBad()
 	{
-		char *msg = (char *)MALLOC(50);
-		strcpy(msg, "{\"error\":1}");
-		m_pMsgHandler->PassMessage(MUS_MESSAGE_PASS_SONG_INFO, msg);
+		m_pMsgHandler->PassMessage(MUS_MESSAGE_PASS_SONG_INFO, 
+								   NULL, 
+								   NULL, 
+								   NULL, 
+								   m_iTrackID);
 	}
 
 public:
 	
-	void Init(MsgHandler *pMsgHandler)
+	void Init(MsgHandler *pMsgHandler, int32_t iTrack)
 	{
+		m_iTrackID = iTrack;
+
 		m_pMsgHandler = pMsgHandler;
 		m_fRate = 1.0;
 		m_fVol = 1.0;
@@ -576,6 +669,8 @@ public:
 		m_fTreb = 1.0;
 		m_fBass = 1.0;
 		
+		m_bNextNotSet = 0;
+
 		m_iScaleBy = 0;
 
 		m_iTrackFade = END_MAX_GAP;
@@ -599,6 +694,16 @@ public:
 															LOW_SPEED_RATIO_LIM +
 													   40));
 		}
+	}
+
+	void SetNoNext()
+	{
+		m_bNextNotSet = 1;
+	}
+
+	int32_t GetBPM()
+	{
+		return m_spPipe[m_iActivePipe].GetBPM();
 	}
 
 	void SetTrackFade(int32_t iTrackFade)
@@ -667,7 +772,7 @@ public:
 		if (msg == MUS_STATUS_INITIAL_BUFFERING)
 		{
 			ReportError("Passing Good message");
-			_PassSongTransMsgGood(m_spPipe[iInactive].GetMeta());
+			_PassSongTransMsgGood(iInactive);
 			m_iActivePipe = _GetInactivePipe();
 			return MUS_STATUS_BUFFERING;
 		}
@@ -677,6 +782,16 @@ public:
 			_PassSongTransMsgBad();
 			return MUS_STATUS_ERROR;
 		}
+	}
+
+	const char *GetFreqMagString()
+	{
+		return m_spPipe[m_iActivePipe].GetFreqMagString();
+	}
+
+	const char *GetAvgMagString()
+	{
+		return m_spPipe[m_iActivePipe].GetAvgMagString();
 	}
 
 	int64_t Seek(double dTime)
@@ -706,10 +821,10 @@ public:
 
 	size_t GetCurTime()
 	{
-		return m_spPipe[m_iActivePipe].GetCurTime();
+		return (int32_t) m_spPipe[m_iActivePipe].GetCurTime();
 	}
 
-	void RunDecodeStage();
+	int32_t RunDecodeStage();
 
 	void RunProcessStage(uint32_t **puiBuffToFill, int lRequested);
 };

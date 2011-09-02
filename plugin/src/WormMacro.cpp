@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <cstring>
 #include "Indexer/GeneralHashFunctions.h"
-
+#include <cctype>
 
 const int16_t NUM_EXTEN = 18;
 
@@ -143,7 +143,10 @@ char *SafeStringCopy(const char *cstr)
 				med += 64;
 				result = (char *) REALLOC(result, med);
 			}
-			result[size++] = c;
+			if (isprint(c))
+				result[size++] = c;
+			else
+				result[size++] = ' ';
 		}
 		c = *(cstr++);
 
@@ -221,7 +224,10 @@ char *ReallocSafeStringCopy(char *existingDest,
 				*iCurAllocSize = med;
 				result = (char *) REALLOC(result, med);
 			}
-			result[size++] = c;
+			if (isprint(c))
+				result[size++] = c;
+			else
+				result[size++] = ' ';
 		}
 		c = *(cstr++);
 

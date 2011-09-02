@@ -23,6 +23,8 @@
 #define READ_INDEX_BAD_FILE		1
 #define READ_INDEX_GOOD			0
 
+#define CHECK_FOR_IMG_MAX		512
+
 extern int16_t g_IndexingStatus;
 
 struct FileEntry
@@ -292,23 +294,27 @@ private:
 	char 			*m_cstrHomeDir;
 	FileList 		m_flIndex;
 	FFmpegWrapper 	m_ffmpegObject;
-	int16_t			m_sUseCallback;
 
-	void 			(*m_funcIndexCB)(const char *);
+	int32_t			m_bCurIndexPathSet;
+
+	void 			(*m_funcIndexAdd)(const char *, int32_t);
+	void			(*m_funcFinish)();
 
 public:
+
+	static volatile int32_t READY;
 
 	static void *StartIndexThread(void *);
 
 	WormIndexer()
 	{
 		m_ffmpegObject.Init();
-		m_sUseCallback = 0;
 		m_cstrHomeDir = (char *) MALLOC(strlen(HOME_DIR) + 1);
 		strcpy(m_cstrHomeDir, HOME_DIR);
+		m_bCurIndexPathSet = 0;
 	};
 
-	void BuildIndex(int16_t sUseIndex = 0);
+	void BuildIndex();
 	
 	void ClearIndex();
 
@@ -318,11 +324,18 @@ public:
 
 	char *GetDirFileList(const char *cstrDirName);
 
-	const char *GetMetadata(const char *cstrPath);
+	const char *GetMetadata(const char *cstrTag);
 
-	void SetCallback( void (*funcStart)(const char *))
+	int32_t	CheckForImg(const char *cstrPath,
+						char *retVal);
+
+	void SetMetadataPath(const char *cstrPath);
+
+	void SetCallback(void (*funcFinish)(),
+					 void (*funcIndexAdd)(const char *, int32_t))
 	{
-		m_funcIndexCB = funcStart;
+		m_funcFinish = funcFinish;
+		m_funcIndexAdd = funcIndexAdd;
 	}
 };
 

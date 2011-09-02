@@ -23,6 +23,8 @@
 #define CROSS_FADE_FIXED_ONE	(1<<END_SCALE_Q)
 #define CROSS_FADE_FIXED_HALF	(1<<(END_SCALE_Q-1))
 
+#define MUS_PLAY_CONST 0
+#define MUS_PAUSE_CONST 1
 
 class MusController:public MsgHandler
 {
@@ -49,20 +51,24 @@ private:
 	uint32_t		m_iTrackCrossfadeLeft;
 							
 	int32_t			m_iPlay;
-	void 			(*m_funcCallBack)(const char *);
-	void 			(*m_funcSeekCallBack)(const char *);
+	void 			(*m_funcCallBack)(const char *, const char *, const char *, int32_t);
+	void 			(*m_funcSeekCallBack)(const char *, int32_t);
 	int16_t			m_sAfterSeek;
 
-	uint32_t		**m_puiBuffToFill;
+	uint32_t		**m_puiBuffToFillZero;
+	uint32_t		**m_puiBuffToFillOne;
+	uint32_t		*m_puiStaticZeroBuff;
 	
 	AudioPipeline 	m_apPipeline[NUM_SIM_TRACKS];
 	
 	char			m_pcstrSeekCallback[64];
 	char			m_pcstrCurTimeCallback[64];
 	char			m_pcstrEndTimeCallback[64];
+	char			m_pcstrBPM[64];
 
 	GraphEQ			m_eqGraphEQ;
-	int32_t			m_iUseEQ;
+
+	int32_t			m_bTrackPlaying[NUM_SIM_TRACKS];
 
 public:
 
@@ -76,8 +82,6 @@ public:
 
 	void Tick();
 
-	void UseEQ(int32_t Use) {m_iUseEQ = Use;};
-
 	// Callback functions
 	//	Needed for sdl, to replace default music controller
 	static void audio_callback_sdl(void *MusicController, 
@@ -88,8 +92,8 @@ public:
 	
 
 	int16_t Seek(double, int32_t iTrack);
-	int16_t Init(void (*funcCallBack)(const char *),
-				 void (*funcSeekCallBack)(const char *));
+	int16_t Init(void (*funcCallBack)(const char *, const char *, const char *, int32_t),
+				 void (*funcSeekCallBack)(const char *, int32_t));
 	int16_t Open(const char *cstrFileName, int32_t iTrack);
 	int16_t SetNext(const char *cstrFileName, float fTransition, int32_t iTrack);
 	int16_t Stop();
