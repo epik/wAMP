@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>Music Player</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=320; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;" />
+  	<link href="wamp/dashboard.css" media="screen" rel="stylesheet" type="text/css" />
+	<script language="javascript" type="text/javascript">
+	//var hasTouch = 'ontouchstart' in window;
+	//var START_EV = hasTouch ? 'touchstart' : 'mousedown';
+	
+	var divPlay;
+	var divPause;
+	var divNext;
+	var divPrev;
+	var divArtist;
+	var divTitle;
+	var Source = 0;
+	
+	function Handle(e)
+	{
+		console.log("Should Send Something");
+		if (!Source)
+			return;
+	
+		if (e.target.id == "idDashPlay")
+		{
+			Source.postMessage('play', "*");
+			divPlay.style['display'] = "none";
+			divPause.style['display'] = "block";
+		}
+		else if (e.target.id == "idDashPause")
+		{
+			Source.postMessage('pause', "*");
+			divPlay.style['display'] = "block";
+			divPause.style['display'] = "none";
+		}
+		else if (e.target.id == "idDashNext")
+		{
+			Source.postMessage('next', "*");
+		}
+		else if (e.target.id == "idDashPrev")
+		{
+			Source.postMessage('prev', "*");
+		}
+			
+	}
+	
+	function OnUnload()
+	{
+		divPlay.removeEventListener('click', Handle, false);
+		divPause.removeEventListener('click', Handle, false);
+		divNext.removeEventListener('click', Handle, false);
+		divPrev.removeEventListener('click', Handle, false);
+	}
+	
+	function OnLoad()
+	{
+		divPlay = document.getElementById("idDashPlay");
+		divPause = document.getElementById("idDashPause");
+		divNext = document.getElementById("idDashNext");
+		divPrev = document.getElementById("idDashPrev");
+		divTitle = document.getElementById("idDashTitle");
+		divArtist = document.getElementById("idDashArtist");
+		
+		divPlay.addEventListener('click', Handle, false);
+		divPause.addEventListener('click', Handle, false);
+		divNext.addEventListener('click', Handle, false);
+		divPrev.addEventListener('click', Handle, false);
+		
+		divPlay.style['display'] = "block";
+		divPause.style['display'] = "none";
+		
+		window.addEventListener('message', function(event)
+		{
+			Source = event.source;
+			
+			if (!event.data)
+				return;
+			
+			console.log(event.data);
+			
+			if (event.data == "ping")
+				event.source.postMessage('Ping', "*");
+			else if (event.data.indexOf("artist=") != -1)
+			{
+				var strArtist = event.data.substr(7);
+				divArtist.innerHTML = strArtist;
+			}
+			else if (event.data.indexOf("title=") != -1)
+			{
+				var strTitle = event.data.substr(6);
+				divTitle.innerHTML = strTitle;
+			}
+			else if (event.data.indexOf("Play") == 0)
+			{
+				divPlay.style['display'] = "none";
+				divPause.style['display'] = "block";
+			}
+			else if (event.data.indexOf("Pause") == 0)
+			{
+				divPlay.style['display'] = "block";
+				divPause.style['display'] = "none";
+			}
+			
+		}, false);
+	}
+	
+	</script>
+	
+  </head>
+
+  <body class="classDashBG" onload="OnLoad()" onbeforeunload="OnUnload()">
+	<div id="idDashPlay" class="classDashboardButton"></div>
+	<div id="idDashPause" class="classDashboardButton"></div>
+	<div id="idDashNext" class="classDashboardButton"></div>
+	<div id="idDashPrev" class="classDashboardButton"></div>
+	<div id="idDashTitle">TEST</div>
+	<div id="idDashArtist">TEST</div>
+  </body>
+</html>

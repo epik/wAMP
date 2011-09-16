@@ -411,15 +411,10 @@ void MusController::Tick()
 
 		//ReportError("About to decode");
 
-		for(int i=0; i<NUM_SIM_TRACKS; i++)
-		{
-			m_apPipeline[i].RunDecodeStage();
-		}
-
 		//ReportError("Finished decode stage");
 
 		// Allow another thread the chance to run
-		WormSleep(10);
+		WormSleep(MIN(m_apPipeline[0].RunDecodeStage(), m_apPipeline[0].RunDecodeStage()));
 
 	} // While (1)
 
@@ -588,6 +583,7 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 			MusicMsg->Msg = MUS_MESSAGE_OPEN_SONG;
 			char *cstrArg = va_arg(Args, char *);
 			MusicMsg->Track = va_arg(Args, int32_t);
+			MusicMsg->IntData = va_arg(Args, int32_t);
 
 			ReportError1("Open iTrack=%i", MusicMsg->Track);
 
@@ -595,7 +591,6 @@ const char* MusController::PassMessage(MUS_MESSAGE cmMsg, ...)
 			{
 				MusicMsg->StrData = (char *) MALLOC(strlen(cstrArg)+8);
 				strcpy(MusicMsg->StrData, cstrArg);
-				MusicMsg->DoubleData = va_arg(Args, double);
 			}
 			else
 			{

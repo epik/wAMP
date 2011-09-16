@@ -1,0 +1,102 @@
+.classButUser
+{
+	width: 41px;
+	height: 41px;
+}
+
+#btnshuf
+{
+	z-index:3;
+	background-image: url(../res/buttons/shuffle.png);
+}
+
+#btnnormal
+{
+	z-index:3;
+	background-image: url(../res/buttons/normal.png);
+}
+
+#btnrep
+{
+	z-index:3;
+	background-image: url(../res/buttons/repeat.png);
+}
+
+#idDJsm
+{
+	z-index:3;
+	background-image: url(../res/buttons/djmodesm.png);
+}
+
+#idNormsm
+{
+	z-index:3;
+	background-image: url(../res/buttons/singlemodesm.png);
+}
+
+#idEQsm
+{
+	z-index:3;
+	background-image: url(../res/buttons/eqsm.png);
+}
+
+#idlocksm
+{
+	z-index:3;
+	background-image: url(../res/buttons/unlocksm.png);
+}
+
+#idoptionssm
+{
+	z-index:3;
+	background-image: url(../res/buttons/optionssm.png);
+}
+
+#idUserbuttons div.classButRecL
+{
+	position: absolute;
+	top: 210px;
+	left: 9px;
+}
+
+#idUserbuttons div.classButeqsm
+{
+	position: absolute;
+	top: 350px;
+	left: 459px;
+}
+
+#idUserbuttons div.classButlocksm
+{
+	position: absolute;
+	top: 350px;
+	left: 459px;
+}
+
+#idUserbuttons div.classButDJsm
+{
+	position: absolute;
+	top: 350px;
+	left: 409px;
+}
+
+#idUserbuttons div.classButsinglemodesm
+{
+	position: absolute;
+	top: 350px;
+	left: 409px;
+}
+
+#idUnderRecord.landscape div.classButScrubL
+{
+	position: absolute;
+	left: 70px;
+	top:20px;
+}
+
+#idUnderRecord.portrait div.classButScrubL
+{
+	position: absolute;
+	left: 70px;
+	top:-22px;
+}

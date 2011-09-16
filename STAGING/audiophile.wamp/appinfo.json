@@ -1,0 +1,27 @@
+{
+	"title": "AudiophileHD Pro",
+	"type": "web",
+	"main": "index.html",
+	"id": "com.epikwarlord.audiophilehdpro",
+	"version": "0.1.1",
+	"vendor": "Epik",
+	"uiRevision":2,
+	"icon": "iconsm_pro.png",
+	"splashicon": "icon_pro.png",
+	"plug-ins": true,
+	"universalSearch": 
+	{
+		"dbsearch": 
+		{
+          "displayName":"Audiophile Pro",
+          "url":"com.epikwarlord.audiophilehdpro",
+          "launchParam":"keyword",
+          "launchParamDbField":"_id",
+          "displayFields":["category","keyword","desc"],
+          "dbQuery":{"from":"com.epikwarlord.searchindex:1",
+              "where":[{"prop":"keyword","op":"%","val":""}],
+			  "orderBy":"keyword",
+			  "limit":40}
+		}
+	}
+}

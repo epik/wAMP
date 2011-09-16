@@ -1,0 +1,256 @@
+/**************************
+Racord base images
+**************************/
+#idRecOne
+{
+    position: absolute;
+    z-index:1;
+	height: 511px;
+	width: 518px;
+}
+
+ 
+#idRecPaneOne.portrait
+{
+	display: block;
+    position: absolute;
+    z-index:0;
+    left: 125px;
+    top: 230px;
+	height: 518px;
+	width: 511px;
+}
+
+/*************************
+ * Under the record pane but above controls
+ *************************/
+#idUnderRecord.portrait
+{
+	position: absolute;
+	left: 125px;
+	top: 700px;
+}
+
+/********************
+ * Scrubber Div
+ ********************/
+#idRecPaneOne.landscape
+{
+	display: block;
+    position: absolute;
+    z-index:0;
+    left: 225px;
+    top: 104px;
+	height: 518px;
+	width: 511px;
+}
+
+/*************************
+ * Under the record pane but above controls
+ *************************/
+#idUnderRecord.landscape
+{
+	position: absolute;
+	left: 225px;
+	top: 529px;
+}
+
+#idRecOne.portrait
+{
+	background-repeat:no-repeat;
+	background-image: url(../res/player/baseport.png);
+}
+
+#idRecOne.landscape
+{
+	background-repeat:no-repeat;
+	background-image: url(../res/player/baseland.png);
+}
+
+.classCuePnt
+{
+	position:absolute;
+	top: 0px;
+    width:2px;
+    height:20px;
+    background: #05F;
+	z-index: -1;
+}
+
+.classCueTarget
+{
+	position:absolute;
+	top: 0px;
+    width:20px;
+    height:20px;
+	z-index: 60;
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transform: translate3d(-10px,0,0);
+	/*border: 1px solid #4E5;*/
+}
+   
+#idScrubOne.landscape
+{
+	position:absolute;
+    width:290px;
+    height:20px;
+    left:120px;
+    top:28px;
+	z-index:15;
+	font-size: 14px;
+	font-family:arial;
+	border: 0px solid #888;
+	background-image: url(../res/player/Untitled-4.png);
+} 
+
+#idScrubOne.portrait
+{
+	position:absolute;
+    width:290px;
+    height:20px;
+    left:120px;
+    top:-14px;
+	z-index:15;
+	font-size: 14px;
+	font-family:arial;
+	border: 0px solid #888;
+	background-image: url(../res/player/Untitled-4.png);
+} 
+ 
+#idScrubPrime
+ {
+	position:absolute;
+	left: 2px;
+	top: 2px;
+	right: 2px;
+	bottom: 0px;
+	padding-left:14px; 
+	padding-top:1px; 
+	z-index:-9;
+	background-image: url(../res/player/Untitled-6.png);
+
+}
+
+#idScrubPrimeOp
+{
+	position:absolute;
+	left: 2px;
+	top: 1px;
+	right: 2px;
+	bottom: 2px;
+	z-index: -10;
+	padding-left:14px; 
+	padding-top:1px; 
+	color:#FFF;
+}
+
+ 
+#idRecPaneOne
+{
+	/*-webkit-transition: -webkit-transform .6s ease-in-out;*/
+}
+
+#idRecPaneOneSpin
+{
+    position: absolute;
+    z-index:0;
+	left: 97px;
+	top: 75px;
+	width: 298px;
+	height: 298px;
+	background-position:center;
+	background-repeat:no-repeat;
+    background-image: url(../res/player/spinimg.png);
+}
+
+#idRecOne
+{
+    position: absolute;
+    z-index:1;
+	height: 511px;
+	width: 518px;
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: 0ms;
+}
+
+#idRecTargetOne
+{
+    position: absolute;
+	left: 95px;
+	top: 76px;
+	z-index: 551;
+	/*border: 1px solid #0FF;*/
+	width: 298px;
+	height: 298px;
+}
+
+#idRecArmOne
+{
+    position: absolute;
+    background-image: url(../res/player/arm.png);
+    z-index:2;
+    left: 320px;
+    top: 50px;
+    height: 300px;
+    width: 166px;
+	-webkit-transform-origin: 127px 70px;
+	-webkit-transition: -webkit-transform .2s ease-in-out;
+	/*-webkit-transform:rotate(22deg);*/
+}
+
+.classRecordSpin
+{
+  -webkit-animation-name: rotateThis;
+  -webkit-animation-duration:2s;
+  -webkit-animation-iteration-count:infinite;
+  -webkit-animation-timing-function:linear;
+}
+@-webkit-keyframes rotateThis {
+  from {-webkit-transform: rotate(0deg);}
+  to {-webkit-transform: rotate(360deg);}
+}
+
+
+#idScrubPop1
+{
+	white-space:nowrap;
+	font-family: prelude arial;
+	font-size:4em;
+	text-align:center;
+	vertical-align:middle;
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: 200ms;
+	width: 400px;
+	height: 100px;
+	opacity: 0.50;
+	background-color:#000;
+	color:#FFF;
+	border:1px solid #000; 
+}
+
+
+#idHideScrubPop1
+{
+	overflow: hidden;
+	position:absolute;
+	top: 185px;
+	left: 80px;
+	z-index:50;
+	width: 402px;
+	height: 102px;
+}
+
+.classHideScrubPop
+{
+	-webkit-transform: translate3d(-500px, -500px, 0);
+}
+
+/*************************
+ * Under the record pane but above controls
+ *************************/
+#idUnderRecord
+{
+	height: 100px;
+	width: 518px;
+	/*border: 1px solid #4F2;*/
+}

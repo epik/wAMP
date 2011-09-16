@@ -129,7 +129,8 @@ FMGUI_GetFileInfo(const char *path, FMGUI_FileInfo *i, time_t *ptimeLasMod)
 	i->flags = 0;
 	i->perms = 0;
 
-	*ptimeLasMod = sb.st_mtime;
+	if (ptimeLasMod)
+		*ptimeLasMod = sb.st_mtime;
 
 	if ((sb.st_mode & S_IFDIR)==S_IFDIR) {
 		i->type = FMGUI_FILE_DIRECTORY;

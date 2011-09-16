@@ -15,6 +15,8 @@
 #include "../WormDebug.h"
 #include "../WormThread.h"
 
+#include <EASTL/string.h>
+
 
 #define SONG 	1
 #define DIR 	2
@@ -172,8 +174,6 @@ struct FileEntry
 		return 0;
 	}
 
-
-	char *ToStringMeta();
 	char *ToStringSimple();
 };
 
@@ -236,53 +236,17 @@ public:
 
 	void AddNodeLite(FileEntry *pNode, uint32_t uiHash);
 
-	char *ConvertToPathString();
-	
-	char *ConvertToJSON(int16_t sForce = 0);
-
 	char *ConvertToJSONLite();
 };
 
 
 struct VisitQue
 {
-	char 	 *Dir;
-	int32_t	 Hash;
+	eastl::string Dir;
 	VisitQue *Next;
 
-	VisitQue(const char *cstrDir)
+	VisitQue(const char *cstrDir):Dir(cstrDir),Next(NULL)
 	{
-		Dir = (char *) malloc(strlen(cstrDir) + 2);
-		strcpy(Dir, cstrDir);
-		Hash = SDBMHash(Dir, strlen(Dir));
-		Next = NULL;
-	}
-
-	void AddToQue(VisitQue *NewNode)
-	{
-		VisitQue *iter = this;
-
-		while(iter->Next != NULL)
-			iter = iter->Next;
-
-		iter->Next = NewNode;
-	}
-
-	int16_t CheckIfValInQue(char *cstrDirToSearch)
-	{
-		VisitQue *iter = this;
-
-		int32_t iHash = SDBMHash(cstrDirToSearch, strlen(cstrDirToSearch));
-
-		while ((iHash != iter->Hash) && (strcmp(iter->Dir, cstrDirToSearch) != 0))
-		{
-			if (iter->Next == NULL)
-				return 0;
-
-			iter = iter->Next;
-		}
-
-		return 1;
 	}
 };
 
@@ -291,14 +255,16 @@ class WormIndexer
 private:
 
 	char 			*m_cstrIndexJSON;
-	char 			*m_cstrHomeDir;
+	eastl::string	m_strHomeDir;
 	FileList 		m_flIndex;
 	FFmpegWrapper 	m_ffmpegObject;
 
 	int32_t			m_bCurIndexPathSet;
 
-	void 			(*m_funcIndexAdd)(const char *, int32_t);
+	void 			(*m_funcIndexAdd)(const char *, bool);
 	void			(*m_funcFinish)();
+
+	time_t			m_timeLastBuild;
 
 public:
 
@@ -306,21 +272,17 @@ public:
 
 	static void *StartIndexThread(void *);
 
-	WormIndexer()
+	WormIndexer():m_strHomeDir(HOME_DIR)
 	{
 		m_ffmpegObject.Init();
-		m_cstrHomeDir = (char *) MALLOC(strlen(HOME_DIR) + 1);
-		strcpy(m_cstrHomeDir, HOME_DIR);
 		m_bCurIndexPathSet = 0;
 	};
 
-	void BuildIndex();
-	
-	void ClearIndex();
+	void BuildIndex(int32_t, const char*);
 
 	void RunIndexer();
 
-	char *GetIndexer();
+	bool CheckForDirMusic(bool bCreate = false);
 
 	char *GetDirFileList(const char *cstrDirName);
 
@@ -332,7 +294,7 @@ public:
 	void SetMetadataPath(const char *cstrPath);
 
 	void SetCallback(void (*funcFinish)(),
-					 void (*funcIndexAdd)(const char *, int32_t))
+					 void (*funcIndexAdd)(const char *, bool))
 	{
 		m_funcFinish = funcFinish;
 		m_funcIndexAdd = funcIndexAdd;

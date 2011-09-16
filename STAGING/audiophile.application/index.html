@@ -33,18 +33,52 @@ var arraySkins = ["skinDefault",
 	<script type="text/javascript" src="scripts/scene.js"></script>
 
 	<script language="javascript" type="text/javascript">
+		function CreatePluginHook()
+		{
+			var pluginObj = window.document.createElement("object");
+
+			pluginObj.id = "wAMPPlugin";
+			pluginObj.type = "application/x-palm-remote";
+			pluginObj.setAttribute("height", "1px");
+			pluginObj.setAttribute("width",	"1px");
+			pluginObj.setAttribute('x-palm-pass-event', true);
+
+			var param1 = window.document.createElement("param");
+			param1.name = "appid";
+			param1.value = "com.epikmayo.audiophile";
+
+			var param2 = window.document.createElement("param");
+			param2.name = "exe";
+			param2.value = "wAMP_plugin";
+
+			pluginObj.appendChild(param1);
+			pluginObj.appendChild(param2);
+
+			var df = window.document.createDocumentFragment();
+			df.appendChild(pluginObj);
+
+			return df;
+		}
+		
+		var domobjPlugin = CreatePluginHook();
+	
+		objwAMP.SetCurrentPath("/media/internal");
+		
 		$('document').ready(function() 
 		{
 			
-			objwAMP.CreatePluginHook();
-			objwAMP.setCurrentPath("/media/internal");
+			document.getElementsByTagName('body')[0].appendChild(domobjPlugin);
 		
 			if (window.PalmSystem) 
 			{
 			   window.PalmSystem.stageReady();
 			   
+			   objwAMP.CheckOS(document.getElementById('wAMPPlugin'));
+			   
 			   objSongIndex.CheckPermission();
 			}
+			else
+				objwAMP.CheckOS(new Object());
 			
 			console.log("App Version: " + navigator.appVersion);
 			
@@ -67,8 +101,6 @@ var arraySkins = ["skinDefault",
 					objOptions.Draw();
 				}
 			});
-			
-			objwAMP.CheckOS();
 			
 			$('#idPlayer').bind('pageshow',function(event, ui)
 			{  
@@ -161,7 +193,7 @@ var arraySkins = ["skinDefault",
 		
     </script>
 </head> 
-<body> 
+<body class="classVeer"> 
 
 	<div id="idSplash" class="classPage classShowPage">	
 		<div id="idSplashPill">

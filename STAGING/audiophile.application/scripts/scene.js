@@ -1373,6 +1373,8 @@ var sceneSplash = {
 		
 		objwAMP.CheckIndex(function(iIndexStatus) {sceneSplash.FinishIndex(iIndexStatus);});
 		
+		objwAMP.StartIndex();
+		
 		this.FailSafe();
 	}		
 }

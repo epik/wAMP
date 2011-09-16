@@ -1,0 +1,114 @@
+#idPlayer.landscape div.classButPlPsOnePosSz
+{
+	position: absolute;
+	width: 84px;
+	height: 89px;
+	bottom: 31px;
+	left: 10px;
+}
+
+#idPlayer.landscape div .classButPrevOnePos
+{
+	position: absolute;
+	bottom: 41px;
+	left: 95px;
+} 
+
+#idPlayer.landscape div .classButNxtOnePos
+{
+	position: absolute;
+	bottom: 41px;
+	left: 178px;
+}
+
+ #idPlayer.portrait div.classButPlPsOnePosSz
+{
+	position: absolute;
+	width: 84px;
+	height: 89px;
+	bottom: 36px;
+	left: 10px;
+}
+
+#idPlayer.portrait div .classButPrevOnePos
+{
+	position: absolute;
+	bottom: 46px;
+	left: 95px;
+} 
+
+#idPlayer.portrait div .classButNxtOnePos
+{
+	position: absolute;
+	bottom: 46px;
+	left: 178px;
+}
+
+#idPlayer.landscape div #btncue
+{
+	bottom: 43px;
+	left: 264px;
+
+}
+
+#idPlayer.portrait div #btncue
+{
+	bottom: 48px;
+	left: 264px;
+}
+
+.classButCue
+{
+	position: absolute;
+	width: 60px;
+	height: 42px;
+	padding-top: 23px;
+	color: #333;
+	font-weight: bold;
+	border:2px solid #999;
+	-webkit-border-radius:3px; 
+	background-color: #e6e6e6;
+	text-align:center;
+}
+
+.classButPreNxtSz
+{
+	width: 83px;
+	height: 71px;
+}
+
+#btnplay
+{
+	z-index:0;
+	background-image: url(../res/playcontrols/playsm.png);
+}
+
+#btnpause
+{
+	z-index:1;
+	background-image: url(../res/playcontrols/pausesm.png);
+}
+
+#btnprev
+{
+	z-index:0;
+	background-image: url(../res/playcontrols/prevsongrightsm.png);
+}
+
+#btnnext
+{
+	z-index:0;
+	background-image: url(../res/playcontrols/nextsongleftsm.png);
+}
+
+
+
+
+
+
+
+
+
+
+
+

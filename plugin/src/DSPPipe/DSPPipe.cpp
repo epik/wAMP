@@ -178,11 +178,15 @@ MUS_MESSAGE CircularBuffer::AddStereoPacket(SoundPacket *pspNextPacket,
 	
 	m_piDataNumUsed += iSize;
 
+	// check if this packet will push us over the
+	//	the buffer boundry
 	if ((m_puiDataEnd < MUS_BUFFER_SIZE) && (iTemp > MUS_BUFFER_SIZE))
 		iTrigger = 1;
 
+	// Advance the end marker of the circ buffer
 	m_puiDataEnd = iTemp;
 
+	// write the pixels
 	while (iSize--)
 	{
 		*(puiPointer0++) = *(pcData++);
@@ -191,6 +195,7 @@ MUS_MESSAGE CircularBuffer::AddStereoPacket(SoundPacket *pspNextPacket,
 		*(puiPointer1++) = *(pcData++);
 	}
 
+	// Copy back the front of the buffer to past the end of the circular buffer
 	if ((iTrigger) && ((m_puiDataCur + MUS_BUFFER_SIZE) < m_uiBufferSize))
 	{
 		for (int i=0; i<NUM_CHANNELS; i++)
@@ -207,6 +212,7 @@ MUS_MESSAGE CircularBuffer::AddStereoPacket(SoundPacket *pspNextPacket,
 	}
 	else if ((m_puiDataEnd>m_uiBufferSize))
 	{	
+		// copy the end of the buffer to the area right before the front
 		m_puiDataEnd = m_puiDataEnd - m_uiBufferSize;
 
 		for (int i=0; i<NUM_CHANNELS; i++)
@@ -348,8 +354,6 @@ MUS_MESSAGE SoundPipe::PipeOut(uint32_t **puiBuffToFill,
 	//ReportError("Writing actual music bytes");
 
 	uint32_t *puiWriteBuf;
-	
-	size_t uiTargetAmt = m_rfResample.AdvanceByAmount(uiFetchAmt);
 
 	uint32_t uiCheckEnd = m_cbBuf.GetBuffSamps();
 	
@@ -382,11 +386,6 @@ MUS_MESSAGE SoundPipe::PipeOut(uint32_t **puiBuffToFill,
 				*(iter++) = 0;
 		}
 	}
-	
-	/*ReportError3("About to read bytes uiTargetAmt=%i, uiCheckEnd=%i, uiTmpFetch=%i",
-				 uiTargetAmt,
-				 uiCheckEnd,
-				 uiTmpFetch);*/
 
 	size_t uiNumRead;// = uiFetchAmt;
 	

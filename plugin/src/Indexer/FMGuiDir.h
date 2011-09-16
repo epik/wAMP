@@ -127,7 +127,7 @@ extern int	   		FMGUI_GetCWD(char *, size_t);
 
 extern int 			FMGUI_GetFileInfo(const char *, 
 									  FMGUI_FileInfo *, 
-									  time_t *);
+									  time_t *t = 0);
 extern int 			FMGUI_GetSystemTempDir(char *, size_t);
 extern int 			FMGUI_FileExists(const char *);
 extern int 			FMGUI_FileDelete(const char *);

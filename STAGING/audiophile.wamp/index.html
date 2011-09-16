@@ -1,0 +1,1050 @@
+<!DOCTYPE html> 
+<html> 
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<link rel="stylesheet" href="wamp/audiophile.css" />
+	<link rel="stylesheet" href="wamp/playcontrol.css" />
+	<link rel="stylesheet" href="wamp/scrub.css" />
+	<link rel="stylesheet" href="wamp/listindex.css" />
+	<link rel="stylesheet" href="wamp/eq.css" />
+	<link rel="stylesheet" href="wamp/djmode.css" />
+	<link rel="stylesheet" href="wamp/userbtns.css" />
+	<link rel="stylesheet" href="wamp/ytube.css" />
+	<meta name="viewport" content="width=device-width, minimum-scale=1, maximum-scale=1"> 
+	<title>Audiophile</title> 	
+	<script type="text/javascript" src="jquery/jquery-1.6.js"></script>	
+	<script type="text/javascript" src="jquery/iscroll-lite.js"></script>
+	<script type="text/javascript" src="wamp/mode.js"></script>
+	<script type="text/javascript">
+var arraySkins = [{'background':"", 'title':"", 'artist':""}, 
+			  {'background':"#A2A2A2", 'title':"#DDDDDD", 'artist':"#BBBBBB"},
+			  {'background':"#777777", 'title':"#222222", 'artist':"#444444"},
+			  {'background':"#5D5145", 'title':"#222222", 'artist':"#444444"},
+			  {'background':"#3B4A77", 'title':"#DDDDDD", 'artist':"#BBBBBB"},
+			  {'background':"#253737", 'title':"#DDDDDD", 'artist':"#BBBBBB"},
+			  {'background':"#3E5D3E", 'title':"#222222", 'artist':"#444444"},
+			  {'background':"#6F6F59", 'title':"#DDDDDD", 'artist':"#BBBBBB"},
+			  {'background':"#5C255C", 'title':"#888888", 'artist':"#666666"},
+			  {'background':"#4A354A", 'title':"#DDDDDD", 'artist':"#BBBBBB"},
+			  {'background':"#661400", 'title':"#888888", 'artist':"#666666"},
+			  {'background':"#121612", 'title':"#ffffff", 'artist':"#999999"},
+			  {'background':"##393447", 'title':"#888888", 'artist':"#666666"}];
+			  
+var win;
+	</script>
+	<script language="javascript" type="text/javascript" src="wamp/wAMP.js"></script>
+	<script type="text/javascript" src="scripts/widgets.js"></script>
+	<script type="text/javascript" src="scripts/scene.js"></script>
+    <script language="javascript" type="text/javascript">
+
+	var domobjPlugin = CreatePluginHook();
+	
+	objwAMP.SetCurrentPath("/media/internal");
+	
+	var winYouTube;
+	var strYouTubeCall;
+	
+	var strSaveOrientation = 0;
+	
+	var FirstResize = function() 
+	{
+		strSaveOrientation = objOptions.GetOrientation();
+	
+		document.getElementById('idDialog').className = strSaveOrientation;
+		document.getElementById('idSplash').className = 
+							"classPage classShowPage " + strSaveOrientation;
+		document.getElementById('idSplashPill').className = strSaveOrientation;
+		document.getElementById('canvasVis').className = strSaveOrientation;
+		document.getElementById('idYouTube').className = strSaveOrientation;
+		document.getElementById('idIndexFldSel').className = strSaveOrientation;
+	}
+	
+	var SecondResize = function() 
+	{
+		var strOrientation = objOptions.GetOrientation();
+	
+		if (strSaveOrientation != strOrientation)
+		{
+			scenePlayer.ChangeOrientation(strOrientation);
+			objOptions.BGSetProper(strOrientation);
+			document.getElementById('idYouTube').className = strOrientation;
+		
+			document.getElementById('canvasVis').className = strOrientation;
+		}
+		
+		strSaveOrientation = strOrientation;
+	}
+	
+    </script>
+	<script language="javascript" type="text/javascript">	
+		function YouTubeVideo(entry)
+		{
+			var id = entry.id.$t;
+			// set values
+			this.videoId = id.substring(id.lastIndexOf('/')+1, id.length);
+			this.title = entry.title.$t;
+			try{ this.thumbs = entry.media$group.media$thumbnail; }catch(e){ unavail.push("thumbs"); }
+			try{ this.duration = entry.media$group.yt$duration.seconds; }catch(e){ unavail.push("duration"); }
+			try
+			{ 
+				if (entry.app$control &&
+					entry.app$control.yt$state &&
+					entry.app$control.yt$state.name == "restricted")
+				{
+					this.restricted = true;
+				}
+				else
+					this.restricted = false;
+				
+			} catch(e) { this.restricted = false; }
+		};
+
+		function TubeUtilSearch(input)
+		{	
+			var script = document.createElement('script');
+			script.setAttribute('id', 'jsonScript');
+			script.setAttribute('type', 'text/javascript');  
+			script.setAttribute('src', "http://gdata.youtube.com/feeds/videos?q=" + encodeURIComponent(input) + "&orderby=viewCount&time=all_time&max-results=48&key=AI39si73J88KqOpnS0qufASk1veyM38Bx1c2n4FNr--LoSh3hQrNI6BT9PsWblRvP_gbX2sQ651gR0ThY1lCABwSL5aFedgPqQ&format:5&alt=json&callback=YouTubeResponseFunction");
+			
+			document.documentElement.firstChild.appendChild(script);
+		};
+		
+		function YouTubeResponseFunction(xhr)
+		{
+			var response = {};
+			
+			if((typeof(xhr) == "undefined")
+							||(xhr == null)) return;
+			var videos = [];
+			if(xhr.feed)
+			{
+				for(var entry in xhr.feed.entry)
+					videos.push(new YouTubeVideo(xhr.feed.entry[entry]));
+			} 
+			else 
+			{ 
+				videos.push(new YouTubeVideo(xhr.entry));
+			}
+			response.videos = videos;
+			
+			if (response.videos.length)
+			{
+				var html = '';
+				bAlreadyRestricted = 0;
+				for (v in response.videos) 
+				{
+					var	video = response.videos[v],
+						minutes = parseInt(video.duration / 60),
+						seconds = video.duration % 60;
+					
+					if (video.restricted)
+					{
+						if (!bAlreadyRestricted)
+						{
+							document.getElementById('idPickerPaneInstructions').innerHTML = '<P style="margin:0px 0px 0px 14px">*Please Note: Some items have been excluded from the search because of U.S. Copyright restrictions.</p>';
+							bAlreadyRestricted == 1;
+						}
+						continue;
+					}
+					
+					var ID = "'" + video.videoId + "'";
+					html += '<li class="classYTubeLi">';
+					html += '<p class="classYTubeImg">';
+					html += '<a onclick="ShowVidInframe(' + ID + ')">';
+					html += '<img src="' + 
+							video.thumbs[1].url + 
+							'" alt="' + 
+							video.title + 
+							'" title="' + 
+							video.title + '" />';
+					html += '</a>';
+					html += '</p>';
+					html += '<p class="classYTubeEntry">';
+					
+					html += '<a onclick="ShowVidInframe(' + 
+								ID + 
+								')">' + 
+								video.title + 
+								'</a>';
+					html += '<small class="classYTubeSm">' + 
+							minutes + ':' + 
+							(seconds < 10 ? '0'+seconds : seconds) + 
+							'</small>';
+					html += '</p>';
+					html += '</li>';
+				}
+				
+				document.getElementById('idYTubeUL').innerHTML = html;
+				paneSongList.YTubeScrollBox.RecalcBottom();
+				paneSongList.YTubeScrollBox.YScrollTo(0);
+			}
+			else
+			{
+				ShowVidInframe('vkt6N1WJTdY');
+			}			
+			
+		}
+		
+		function YouTubeBackground(strSearch)
+		{
+			if (!strSearch)
+				ShowVidInframe('vkt6N1WJTdY');
+			else
+			{
+				paneSongList.Empty();
+				document.getElementById('idYTubeWrapper').className +=
+										'classShowPickedCat classTopLevelPickedCat';
+		
+				panePlaylist.bPLDragOut = 0;
+				paneSongList.Show(YTUBE_SB);
+			
+				document.getElementById('idYTubeUL').innerHTML = 
+							'<p class="classShowBig">Loading...Please Wait</p>';
+			
+				TubeUtilSearch(strSearch);
+			}			
+		}
+		
+		function NoYouTube()
+		{
+			if (window.PalmSystem)
+			{
+				winYouTube.openURL("http://www.youtube.com/");
+			}
+			else
+			{
+				document.getElementById(winYouTube).style.display = "none";
+			}
+		}
+		
+		var canvas;
+		var ctx;
+		
+		var cnt = 0;
+		
+		var iColor = 0;
+		
+		var visPlayMode = [0, 0];
+		var mid;
+		var tmoutKill = 0;
+		
+		var bUseEven = 1;
+		
+		function RenderVis(iTrack)
+		{	
+			if (!iTrack)
+				iTrack = 0;
+			else if (iTrack == 1)
+				return;
+		
+			if (visPlayMode[iTrack] == 1)
+			{
+				if (objOptions.bYTubeActive)
+				{
+					tmoutKill = setTimeout(RenderVis, 2000);
+					return;
+				}
+			
+				var strFreq = objwAMP.plugIn.GetFreqString(iTrack);
+			
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+				for (var i = 0; i<128; i++)
+				{
+					var magnitude = Math.pow(strFreq.charCodeAt(i), 2) * .005;
+					// Draw rectangle bars for each frequency bin
+					ctx.fillRect(i * 6, mid-magnitude, 3, 2*magnitude);
+					//ctx.fillRect(i * 6, mid, 3, -magnitude);
+				}
+
+				var strMag = objwAMP.plugIn.GetAvgMagString(iTrack);
+
+				ctx.lineWidth = 1;
+	
+				ctx.beginPath();
+		
+				for (var i = 0; i<256; i++)
+				{
+					var magnitude = Math.pow(strMag.charCodeAt(i), 2) * .005;
+					// Draw rectangle bars for each frequency bin
+					var j = i*3+5;
+					ctx.moveTo(j, mid-magnitude);
+					ctx.lineTo(j, mid+magnitude);
+				}
+				ctx.stroke();
+				ctx.closePath();
+				
+				tmoutKill = setTimeout(RenderVis, 250);
+			}
+			
+		}
+		
+		function SlowDraw(iTrack)
+		{
+			if (!iTrack)
+				iTrack = 0;
+				
+			clearTimeout(tmoutKill);
+		}
+		
+		function FastDraw(iTrack)
+		{
+			if (!iTrack)
+				iTrack = 0;
+				
+			clearTimeout(tmoutKill);
+			tmoutKill = setTimeout(RenderVis, 500);
+		}
+		
+		function ShowVidInframe(videoID) 
+		{		
+			//console.log("open video");
+
+			objOptions.SetYouTubeBG();
+			
+			var strParams = "?tubeid=" + videoID +
+								"&height=" + 
+								(document.getElementById('idPlayer').offsetHeight + 8) + 
+								"&width=" +
+								(document.getElementById('idPlayer').offsetWidth + 8);
+			
+			console.log(strParams);
+			
+			if (window.PalmSystem)
+			{
+				var path = document.baseURI.match(new RegExp(".*:\/\/[^#]*\/"));
+			
+				strYouTubeCall = path + "/youtubebg.html" + strParams;
+			
+				winYouTube.openURL(strYouTubeCall + '#mute');
+				
+				document.getElementById('idTitleOne').focus();
+			}
+			else
+			{
+				strYouTubeCall = "youtubebg.html?tubeid=vkt6N1WJTdY&height=300&width=300";
+				
+				winYouTube.src = strYouTubeCall + '#mute';
+								   
+				document.getElementById('idTitleOne').focus();
+			}
+			
+			paneSongList.Close();
+		}
+		
+		function YTubeUnMute()
+		{
+			if (window.PalmSystem)
+			{
+				winYouTube.openURL(strYouTubeCall + '#unmute');
+				document.getElementById('btnYTubeUnMute').className = "classYTubeUnmute";
+			}
+			else
+			{
+				winYouTube.src = strYouTubeCall + '#unmute';
+			}
+		}
+		
+		function YTubeMute()
+		{
+			if (window.PalmSystem)
+			{
+				winYouTube.openURL(strYouTubeCall + '#mute');
+				document.getElementById('btnYTubeUnMute').className = "";
+			}
+			else
+			{
+				winYouTube.src = strYouTubeCall + '#mute';
+			}	
+		}
+		
+		var CanvasClick = function()
+		{
+			if (visPlayMode[0])
+			{
+				visPlayMode[0] = 0;
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+			}
+			else if (paneControls.iPausePlayState == PLAYER_PLAY_STATE)
+			{
+				visPlayMode[0] = 1;
+				RenderVis(0);
+			}
+			else
+			{
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+			}
+		}
+		
+		function OnLoad()
+		{
+			document.getElementsByTagName('body')[0].appendChild(domobjPlugin);
+			
+			if (window.PalmSystem) 
+			{			
+				window.PalmSystem.stageReady();	
+				
+				console.log("STARTING!!!!!!!!!!!!!!!!!!!!!!!");
+				
+				window.PalmSystem.setManualKeyboardEnabled(true);
+				
+				winYouTube = document.getElementById('objWinYT');
+				document.getElementById('npobjWinYT')
+									.style.display = "none";
+			
+				objwAMP.CheckOS(document.getElementById('wAMPPlugin'));
+				objwAMP.KeepAlive();
+				
+			   	window.Mojo.screenOrientationChanged = function() {};
+				
+				if (window.PalmSystem.launchParams)
+					objwAMP.objParam = JSON.parse(window.PalmSystem.launchParams).keyword;
+				
+			}
+			else
+			{
+				objwAMP.CheckOS(new Object());
+				winYouTube = document.getElementById('npobjWinYT');
+				document.getElementById('objWinYT').style.display = "none";
+			}
+			
+			try
+			{
+				win = window.open('dashboard.html', 
+									  "_blank", 
+									  "attributes={\"window\":\"dashboard\"}");
+
+				if (win.PalmSystem)
+				{
+					win.PalmSystem.stageReady();
+					
+				}
+				
+				window.addEventListener("message", function(e)
+				{
+					//console.log(e.data);
+					
+					if (e.data == "play")
+					{
+						paneControls.PlayPauseChange(PLAYER_PLAY_STATE);
+					}
+					else if (e.data == "pause")
+					{
+						paneControls.PlayPauseChange(PLAYER_PAUSED_STATE);
+					}
+					else if (e.data == "next")
+					{
+						objwAMP.OpenNextSong();
+					}
+					else if (e.data == "prev")
+					{
+						objwAMP.OpenPrevSong();
+					}
+					
+				}, false);
+			}
+			catch(e)
+			{
+				console.log(e);
+			}
+			
+			//console.log("again");
+			
+			window.addEventListener("resize", FirstResize, false);
+			FirstResize();
+		
+			//console.log("again");
+			document.getElementById('idSplash').className += ' classShowPage';
+			
+			//console.log("Here again");
+			
+			objOptions.Init();
+			StatusPill.Init();
+			
+			//console.log("again");
+			
+			sceneSplash.tmoutJailFail = setTimeout(function()
+			{
+				if (!objwAMP.checkIfPluginInit())
+				{
+					var strError = "There was an error in the jailer that allows AudiophileHD to use music plug-in to play music.  You should try uninstalling AudiophileHD, rebooting your TouchPad, and reinstalling it. If this happens repeatedly, please email blaclynx@yahoo.com for assistance.";
+					
+					document.getElementById('idTellUser').innerHTML = strError;
+					document.getElementById('idButtonGoesHere').style.display = "none";
+					document.getElementById('idDialog').style.display = "block";
+					objOptions.UpdateOption(OPT_ID_NO_LOAD, "1");
+				}
+			}, 30000);
+			
+			document.getElementById('idYouTube').style.display = '';
+			
+			objOptions.LoadDatabase();
+			
+			canvas = document.getElementById('canvasVis');
+			ctx = canvas.getContext('2d');
+			ctx.strokeStyle = "rgb(20, 20, 100)";
+			mid = canvas.height/2;
+			
+			sceneDialog.InitMyDiv();
+			
+			canvas.addEventListener(START_EV, CanvasClick, false);
+		};
+		
+		function OnUnload() 
+		{
+			console.log("Closing !!!!!!!!!!!!!!!!!!");
+			win.close();
+			if (window.PalmSystem)
+				winYouTube.disconnectBrowserServer();
+			canvas.removeEventListener(START_EV, CanvasClick, false);
+			sceneDialog.CleanUp();
+			scenePlayer.CleanUp();
+			sceneDJ.CleanUp();
+		};
+		
+    </script>
+    
+</head> 
+<body onload="OnLoad()" OnUnload="OnUnload()"> 
+
+	<div id="blockInput">
+	</div>
+	
+	<div id="idLoadIndicator">
+	</div>
+
+	<div id="idYouTube" style="display:none;">
+		<object id="objWinYT" x-palm-pass-event="true" type="application/x-palm-browser" style="height:100%; width:100%; z-index:-10">
+		</object>
+		<iframe id="npobjWinYT" style="height:100%; width:100%;z-index:-10"></iframe>
+	</div>
+	
+	<div id="idSplash" class="classPage">
+		<div id="idSplashPill">
+		</div>
+	</div><!-- /page -->
+	
+	<div id="idShowImgBG">
+	<img id="idShowImgBGImg" height="1024" width="1365"></img>
+	</div>
+	
+	<div id="idDJAd">Please Donate<br>AudiophileHD Pro</div>
+	
+	<div id="idLastFMShow" class="classHideLastFM">
+	Login to  last.fm<p align="left">User Name: <br><INPUT type="text" STYLE="color: #FFFFFF; font-family: Verdana; font-weight: bold; font-size: 12px; background-color: #666;" size="20" maxlength="30"><p align="left">Password: <br><INPUT type="text" STYLE="color: #FFFFFF; font-family: Verdana; font-weight: bold; font-size: 12px; background-color: #666;" size="20" maxlength="30">
+ <br><p align="left"><input type="Submit" value="Submit" />
+	</div>
+	
+	<div id="idEQPane">
+		<div id="idEQPop"></div>
+		<div id="idFreq0Targ" class="classEQTarget"><div id="idFreqK_0" class="classEQKnob"></div>
+		</div>
+		<div id="idFreq1Targ" class="classEQTarget"><div id="idFreqK_1" class="classEQKnob"></div>
+		</div>
+		<div id="idFreq2Targ" class="classEQTarget"><div id="idFreqK_2" class="classEQKnob"></div>
+		</div>
+		<div id="idFreq3Targ" class="classEQTarget"><div id="idFreqK_3" class="classEQKnob"></div>
+		</div>
+		<div id="idFreq4Targ" class="classEQTarget"><div id="idFreqK_4" class="classEQKnob"></div>
+		</div>
+		<div id="idFreq5Targ" class="classEQTarget"><div id="idFreqK_5" class="classEQKnob"></div>
+		</div>		
+	</div>
+	
+	<div id="idDJPlayer" class="classPage">
+		<div id="idDJPaneOne">
+			<div id="idDJOneTitArtInf" class="classDJTitArtInf">Click Here</div>
+			
+			<div id="idDJOnePickSong" class="classDJPickSongPane">
+				<div id="idDJOneClosePick" class="classDJClosePick"></div>
+				<div id="idDJPLOneCover" class="classDJPLCover"></div>
+				<div id="idDJOnePLWrapper" class="classWrapper classDJPickWrapper">
+					<ul id="idDJOnePLScroller" class="classScroller classDJPickScroller">
+					</ul>
+				</div>
+			</div>
+			
+			<div id="idDJOnePopHide">
+				<div id="idDJOnePop" class="classHideScrubPop"></div>
+			</div>
+			<div id="idDJRecOne" class="classDJRec">
+			</div>
+			<div id="idDJRecArmOne" class="classDJArm">
+			</div>
+
+			<div id="idDJRecTargetOne" class="classRecTarget classDJRecTarget"></div>
+			<div id="idDJRecPaneOneSpin" class="classSpinner classDJSpinner">
+			</div>
+			<div id="idDJOneSliders" class="classDJSliderBox">
+				<div id="idDJOneSpeedKnob" class="TopDJKnob">
+				</div>
+				<div id="idDJOneVolKnob" class="BotDJKnob">
+				</div>
+			</div>
+		</div>
+
+		<div id="idDJPaneTwo">
+			<div id="idDJTwoTitArtInf" class="classDJTitArtInf">Click Here</div>
+			
+			<div id="idDJTwoPickSong" class="classDJPickSongPane">
+				<div id="idDJTwoClosePick" class="classDJClosePick"></div>
+				<div id="idDJPLTwoCover" class="classDJPLCover"></div>
+				<div id="idDJTwoPLWrapper" class="classWrapper classDJPickWrapper">
+					<ul id="idDJTwoPLScroller" class="classScroller classDJPickScroller">
+					</ul>
+				</div>
+			</div>
+			
+			<div id="idDJTwoPop" class="classHideScrubPop"></div>
+			<div id="idDJRecTwo" class="classDJRec">
+			</div>
+			<div id="idDJRecArmTwo" class="classDJArm">
+			</div>
+
+			<div id="idDJUserbuttons">
+				<div id="idNormsm" class="classButUser classButDJsm"></div>
+			</div>
+			
+			<div id="idDJRecTargetTwo" class="classRecTarget classDJRecTarget"></div>
+			<div id="idDJRecPaneTwoSpin" class="classSpinner classDJSpinner">
+			</div>
+			<div id="idDJTwoSliders" class="classDJSliderBox">
+				<div id="idDJTwoSpeedKnob" class="TopDJKnob">
+				</div>
+				<div id="idDJTwoVolKnob" class="BotDJKnob">
+				</div>
+			</div>
+		</div>
+		
+		<div id="idUnderDJOne" class="djScrub">
+			<div id="idDJScrubOne" class="djscrubwrap">
+				<div id="idDJOneScrubScrubPrime" class="classScrub">
+				</div>
+				<div id="idDJOneScrubPrimeOp" class="classScrubOp">
+				</div>
+			</div>
+		</div>
+		
+		
+		<div id="idUnderDJTwo" class="djScrub">
+			<div id="idDJScrubTwo" class="djscrubwrap">
+				<div id="idDJTwoScrubPrime" class="classScrub">
+				</div>
+				<div id="idDJTwoScrubPrimeOp" class="classScrubOp">
+				</div>
+			</div>
+		</div>
+		
+		<div id="idCrossOverSwitch"><div id="idCrossOverKnob"></div>
+		</div>
+		
+		<div id="idDJOneContBut">
+			<div id="btnDJOneplay" class="classDJPlay"></div>
+			<div id="btnDJOnepause" class="classDJPause"></div>
+			<div id="btnDJOneprev" class="classDJPrev"></div>
+			<div id="btnDJOnenext" class="classDJNext"></div>
+		</div>
+		
+		<div id="idDJTwoContBut">
+			<div id="btnDJTwoplay" class="classDJPlay"></div>
+			<div id="btnDJTwopause" class="classDJPause"></div>
+			<div id="btnDJTwoprev" class="classDJPrev"></div>
+			<div id="btnDJTwonext" class="classDJNext"></div>
+		</div>
+		
+		<div id="idDJCueDiv">
+			<div id="btnDJOnecue" class="classButCue classDJCueBut">Cue</div>
+			<div id="btnDJTwocue" class="classButCue classDJCueBut">Cue</div>
+		</div>
+		
+	</div>
+	
+	<div id="idPlayer" class="classPage">
+		
+		<canvas id="canvasVis" height="100" width="760"></canvas>
+
+		<div id="btnYTubeUnMute"></div>
+		
+		<div id="idBannerGetDetail">
+			<div id="idBannerImg"></div>
+		</div>
+		<div id="idBannerHider">
+			<div id="idBannerDetailPane" class="classHideUp">
+				<div id="btnCloseBanner" class="bntCloseClass"></div>
+				<div id="idBanArtDet" class="classOpBut classBannerButTop">Artist</div>
+				<div id="idBanAlbDet" class="classOpBut">Album</div>
+				<div id="idBanGenDet" class="classOpBut">Genre</div>
+				<div id="idForYTubeSearch">
+					<div id="idYTubeNeedForLine">
+						<form id="idForYTubeSearchForm">
+							<input type="search" name="ytube" id="idYTubeQ" value=""  />
+						</form>
+					</div>
+				</div>
+				<div id="idBanYTbDet" class="classOpBut">YouTube It</div>
+				<div id="idBanSavDet" class="classOpBut">Save WebOS</div>
+				<div id="idBanNoInfo">Unable To Locate Song Info</div>
+				<div id="idBanHidePlayer" class="classOpBut">Hide Player</div>
+			</div>
+		</div>
+		
+		<div id="idPLOptHider">
+			<div id="idPLOptDetailPane" class="classHidePLOpt">
+				<div id="btnClosePLOpt" class="bntCloseClass"></div>
+				<div id="idPLOptClear" class="classOpBut classBannerButTop">Clear Playlist</div>
+				<div id="idPLOptRec" class="classOpBut">Show Recently Played</div>
+				<div id="idPLOptFreq" class="classOpBut">Show Most Frequent</div>
+				<div id="idPLInternet" class="classOpBut">Internet</div>
+			</div>
+		</div>
+		
+		<div id="idTextBannerOne">
+			<div id="idTitleOne" class="classBannerTitle"></div>
+			<div id="idArtistOne" class="classBannerArtist"></div>
+		</div>
+		
+		<div id="idPlayContr">
+			<div id="btnplay" class="classButPlPsOnePosSz"></div>
+			<div id="btnpause" class="classButPlPsOnePosSz"></div>
+			<div id="btnprev" class="classButPreNxtSz classButPrevOnePos"></div>
+			<div id="btnnext" class="classButPreNxtSz classButNxtOnePos"></div>
+			<div id="btncue" class="classButCue">Cue</div>
+		</div>
+		
+		
+		<div id="idFiltHere">
+			<div id="idBassCntl"></div>
+			<div id="idTrebCntl"></div>
+			<div id="idVolKnob"></div>
+		</div>
+		
+		<div id="idUnderRecord">
+			<div id="btnshuf" class="classButScrubL classButUser"></div>
+			<div id="btnrep" class="classButScrubL classButUser"></div>
+			<div id="btnnormal" class="classButScrubL classButUser"></div>
+			<div id="idScrubOne" class="scrubwrap">
+				<div id="idScrubPrime" class="classScrub">
+				</div>
+				<div id="idScrubPrimeOp" class="classScrubOp">
+				</div>
+			</div>
+		</div>
+		
+		<div id="idRecPaneOne" class="classRecordPane">
+			<div id="idRecOne" class="classRecord">
+			</div>
+			<div id="idRecArmOne" class="classArm">
+			</div>
+
+			<div id="idRecTargetOne" class="classRecTarget"></div>
+			<div id="idHideScrubPop1">
+				<div id="idScrubPop1" class="classHideScrubPop"></div>
+			</div>
+			<div id="idRecPaneOneSpin" class="classSpinner">
+			</div>
+			<div id="idUserbuttons">
+				<div id="idDJsm" class="classButUser classButDJsm"></div>
+				<div id="idEQsm" class="classButUser classButlocksm"></div>
+				<div id="idoptionssm" class="classButUser classButRecL"></div>
+			</div>
+			<div id="idSliders">
+				<div id="idSpeedSlider" class="classSliderClass">
+					<div id="idSpeedKnob">
+					</div>
+				</div>
+				<div id="idTransSlider" class="classSliderClass">
+					<div id="idTransKnob">
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<div id="idIndex">
+			<div id="idPlayAll" class="classIndexBtns"></div>
+			<div id="idSearch" class="classIndexBtns"></div>
+			<div id="idAlbum" class="classIndexBtns"></div>
+			<div id="idArtist" class="classIndexBtns"></div>
+			<div id="idGenre" class="classIndexBtns"></div>
+			<div id="idTitle" class="classIndexBtns"></div>
+			<div id="idFolder" class="classIndexBtns"></div>
+		</div>
+
+		<div id="idDeletePLItem" class="classHideTrash"></div>
+		
+		<div id="idPLPane">
+			<div id="idPLHead" class="classIndexBtns"></div>
+			<div id="idPLPaneFix">
+				<div id="idPLCoverPane">
+				</div>
+				<div id="idPlaylistWrapper" class="classWrapper">
+					<ul id="idPlaylistScroller" class="classScroller">
+
+					</ul>
+				</div>
+			</div>
+		</div>
+		
+		<div id="idPLDropPane">
+			<div id="idPLDropTop"><P style="margin:18px 0px 0px 18px">
+			Long Press and Drag to Add to Top of Playlist</p>
+			</div>
+			<div id="idPLDropBot"><P style="margin:18px 0px 0px 8px">Long Press and Drag to Add to Bottom of Playlist</p>
+			</div>
+		</div>
+		
+		<div id="idPLDragPane">
+			<div id="idPLDragCover">
+			</div>
+			<div id="idPLDragWrap" class="classWrapper">
+				<ul id="idPLDragScroller" class="classScroller">
+				</ul>
+			</div>
+			<div id="idClearPL">Clear Playlist</div>
+		</div>
+		
+		<div id="idPickerPaneInstructions"><P style="margin:0px 0px 0px 14px">Long Press Icon to Add to Playlist/Long Press Playlist Item to Reorder Playlist (will work with normal playlist view)</p>
+		</div>
+		
+		<div id="idTheIndexerHasFinished">The Indexer has finished.<br>You should now be able<br> to view all files.</div>
+		
+		<div id="idPickerPane" class="classPickerHide">
+			<div id="idFastScrollL"></div>
+			<div id="idFastScrollR"></div>
+			
+			<div id="idPickerJumpTop"></div>
+			
+			<div id="idPickerCloseBtn"></div>
+			
+			<div id="idbtnbuttonbg"></div>
+			
+			<div id="idbtnalbum"></div>
+			<div id="idbtngenre"></div>
+			<div id="idbtnartist"></div>
+			<div id="idbtnfolder"></div>
+			<div id="idbtntitle"></div>
+		
+			<div id="idbtnbuttonSecbg"></div>
+			<div id="idbtnfavfilt"></div>
+		
+			<div id="idPickerNotReady">The Indexer has not finished loading, please wait.<br>  You can still use Folder view while you wait.<p>Click Here For Folder View</p></div>
+			
+			
+			<div id="idPickerWrapper">
+				<div id="idGenreWrapper" class="classWrapper classPickerCat">
+					<div id="idGenreScroller" class="classScroller">
+						<ul id="idGenreUL" class="classPickerSub">
+						</ul>
+					</div>
+					<div id="idGenreStickyCont" class="classStickyCont">
+						<div id="idGenreStickyHead" class="classStickyHeader">
+						</div>
+					</div>
+				</div>
+				
+				<div id="idArtistWrapper" class="classWrapper classPickerCat">
+					<div id="idArtistScroller" class="classScroller">
+						<ul id="idArtistUL" class="classPickerSub">
+						</ul>
+					</div>
+					<div id="idArtistStickyCont" class="classStickyCont">
+						<div id="idArtistStickyHead" class="classStickyHeader">
+						</div>
+					</div>
+				</div>
+				
+				<div id="idAlbumWrapper" class="classWrapper classPickerCat">
+					<div id="idAlbumScroller" class="classScroller">
+						<div id="idAlbumPicker" class="classPickerSub">
+						</div>
+					</div>
+					<div id="idAlbumStickyCont" class="classStickyCont">
+						<div id="idAlbumStickyHead" class="classStickyHeader">
+						</div>
+					</div>
+				</div>
+	
+				<div id="idTitleCont" class="classPickerCat">
+					<div id="idFilterTitles" class="classSearchInput">
+						<form id="idAnotherFormForSearch">
+							<input type="search" name="name" id="idTitleFilter" value=""  />
+						</form>
+					</div>
+					<div class="classStickyCont">
+						<div id="idTitleStickyHead" class="classStickyHeader">
+						</div>
+					</div>
+					<div id="idTitleWrapper" class="classWrapper">
+						<div id="idTitleScroller" class="classScroller">
+						</div>
+					</div>
+				</div>
+	
+				<div id="idAlbViewWrapper" class="classPickerCat">
+					<div id="idAlbViewText">
+					</div>
+					<div id="idAlbVWrapper" class="classWrapper">
+						<div id="idAlbViewScroller" class="classScroller">
+						</div>
+					</div>
+				</div>
+				
+				<div id="idFolderWrapper" class="classWrapper classPickerCat">
+					<div id="idFolderScroller" class="classScroller">
+						<div id="idFolderUL" class="classPickerSub">
+						</div>
+					</div>
+					<div id="idPlayDirBtn" class="classFilterBtn">Play Directory</div>
+				</div>
+				
+				<div id="idSearchFull" class="classPickerCat">
+					<div id="idSearchInput" class="classSearchInput">
+						<form id="idNeedFormForSearch">
+							<input type="search" name="name" id="idListFilter" value=""  />
+						</form>
+					</div>
+					<div class="classStickyCont">
+						<div id="idSearchStickyHead" class="classStickyHeader">
+						</div>
+					</div>
+					<div id="idSearchWrapper" class="classWrapper">
+						<div id="idSearchScroller" class="classScroller">
+						</div>
+					</div>
+				</div>
+				
+				<div id="idYTubeWrapper" class="classWrapper classPickerCat">
+					<div id="idYTubeScroller" class="classScroller">
+						<ul id="idYTubeUL" class="classPickerSub">
+						</ul>
+					</div>
+				</div>
+				
+				<div id="idListWrapper" class="classWrapper classPickerCat">
+					<div id="idListScroller" class="classScroller">
+						<ul id="idListUL" class="classPickerSub">
+						</ul>
+					</div>
+				</div>
+				
+				<div id="idInternet" class="classPickerCat">
+					<div id="idURLInput" class="classSearchInput">
+						<div id="idInternetBack" class="classURLBut"><</div>
+						<div id="idInternetForward" class="classURLBut">></div>
+						<form id="idNeedFormForInternet">
+							<input type="search" name="name" id="idURLFilter" value="http://dl.dropbox.com/u/12521579/playlist.xml"  />
+						</form>
+						<div id="idInternetGo" class="classURLBut">Go</div>
+					</div>
+					<div id="idInternetWrapper" class="classWrapper">
+						<div id="idInternetScroller" class="classScroller">
+							<ul id="idInternetUL" class="classPickerSub">
+							</ul>
+						</div>
+					</div>
+				</div>
+				
+			</div>
+				
+			
+			<div id="idPickerButDiv">
+				<div id="idAddToPLBtn" class="classFilterBtn">Add To Playlist</div>
+				<div id="idPlayAllBtn" class="classFilterBtn">Play All</div>
+			</div>
+		</div>
+		
+		<div id="idEq">
+			<div class="classEqbackimg">
+			<div class="classEqslider">
+				<div class="classEqtopimg">
+				</div>
+			</div>
+			</div>
+		</div>
+		
+	</div>
+	
+	<div id="idOptions" class="classOptions">
+		<div id="idMainBack" class="classOptionsGoHere">
+			<div id="btnCloseOptions">
+			</div>
+			<div id="btnSwitchColor" class="classOpBut">
+				Switch Color
+			</div>
+			<div id="btnUseBG" class="classOpBut">
+				Use Background Image
+			</div>
+			<div id="btnPauseOnHPOut" class="classOpBut">
+				Headphone Out Pause: On
+			</div>
+			<div id="btnPlayOnHPIn" class="classOpBut">
+				Headphone In Play: Off
+			</div>
+			<div id="btnRestoreDefaults" class="classOpBut">
+				Restore Default Values
+			</div>
+			<div id="btnSearchDirFA" class="classOpBut">
+				Search Dir For Artwork: On
+			</div>
+			<div id="btnAlbumOrder" class="classOpBut">
+				Keep Album Order: On
+			</div>
+			<div id="btnLastFM" class="classOpBut">
+				Sign-In to Last.fm
+			</div>
+			<div id="btnSetIndexDir" class="bntChangeDir">
+				Change Index Dir:
+			</div>
+			<div id="textFolder">/media/intneral</div>
+		</div>
+	</div>
+	
+	<div id="idDialog">
+		<div class="innerDialogBG">
+			<p id="idTellUser"></p>
+			<div id="idButtonGoesHere"></div>
+			<div id="idYesButton">Yes</div>
+			<div id="idNoButton">No</div>
+		</div>
+	</div>
+	
+	<div id="idIndexFldSel">
+		<div id="idIndexFldClose" class="bntCloseClass"></div>
+		<div id="idTopUseInstructions">
+			<p id="idUseBtnInst" class="classUseInstr">
+				Please Select How You Want Audiophile To Detect Your Music Files
+			</p>
+			<p id="idUsePickInst" class="classUseInstr">
+				Tap a folder to open it. Long press a folder to select it.
+			</p>
+		</div>		
+		<div id="idUseWhichMode">
+			<div id="idUseMusic" class="classIndexUseChoice">
+				Have Audiophile Only Search In The Directory "music" (Recommended)
+			</div>
+			<div id="idUseAll" class="classIndexUseChoice">
+				Have Audiophile Search All Folders On Your TouchPad (Slowest)
+			</div>
+			<div id="idUseCustom" class="classIndexUseChoice">
+				Pick Your Own Directory To Search (Advanced)
+			</div>
+			<div id="idUseWebOS" class="classIndexUseChoice">
+				Do Not Use Audiophile's Custom Indexer (Not Recommended)
+			</div>
+		</div>
+		<div id="idUseWrapper" class="classWrapper">
+			<div id="idUseScroller" class="classScroller">
+				<div id="idUseUL">
+				</div>
+			</div>
+			<div id="idUseWrapBack">&lt;&lt; BACK</div>
+			<div id="idUseContinueBtn" class="classFilterBtn">Continue</div>
+		</div>
+		<div id="idBotUseInstructions">
+			<p id="idUseCurSelected" class="classUseInstr">
+				<b>Currently Selected:</b>
+			</p>
+		</div>		
+	</div>
+	
+</body>
+</html>

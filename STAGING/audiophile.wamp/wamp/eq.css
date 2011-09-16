@@ -1,0 +1,231 @@
+/**********************
+* eq screen css
+**********************/
+
+/*----------------
+  This is for the knob
+  ----------------*/
+
+#idEQPane
+{
+	-webkit-transition-property: -webkit-transform; 
+	-webkit-transition-duration: .6s;
+	-webkit-transform: translate3d(0px, -800px, 0px);
+	z-index: 900;
+	display: none;
+}
+
+.classEQTarget
+{
+	position: absolute;
+	height: 248px;
+	width: 30px;
+}
+
+.classEQKnob
+{
+	position: absolute;
+	height: 28px;
+	width: 56px;
+	top: 0px;
+	left: -12px;
+	background: url(../res/knob/proslideeq.png);
+}
+
+#idFreq0Targ
+{
+	top: 41px;
+	left: 86px;
+	border: 0px solid #00F;
+}
+
+#idFreq1Targ
+{
+	top: 41px;
+	left: 151px;
+	border: 0px solid #03F;
+}
+
+#idFreq2Targ
+{
+	top: 41px;
+	left: 216px;
+	border: 0px solid #05F;
+}
+
+#idFreq3Targ
+{
+	top: 41px;
+	left: 281px;
+	border: 0px solid #09F;
+}
+
+#idFreq4Targ
+{
+	top: 41px;
+	left: 346px;
+	border: 0px solid #0BF;
+}
+
+#idFreq5Targ
+{
+	top: 41px;
+	left: 411px;
+	border: 0px solid #0FF;
+}
+  
+#idEQPane.portrait
+{
+	position: absolute;
+	top: 290px;
+	left: 110px;
+	height:329px;
+	width: 550px;
+	background: url(../res/knob/proeq.png);
+	display: block;
+}
+
+#idEQPane.landscape
+{
+	position: absolute;
+	top: 164px;
+	left: 210px;
+	height: 329px;
+	width: 550px;
+	background: url(../res/knob/proeq.png);
+	display: block;
+}
+  
+#idFiltHere.portrait
+{
+	position: absolute;
+	top: 837px;
+	left: 330px;
+}
+
+#idFiltHere.landscape
+{
+	position: absolute;
+	top: 583px;
+	left: 570px;
+}
+  
+#idBassCntl
+{
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+#idTrebCntl
+{
+	position: absolute;
+	top: 0px;
+	left: 140px;
+}
+
+#idVolKnob
+{
+	position: absolute;
+	top: 0px;
+	left: 280px;
+}
+  
+  
+.rotateablefront
+{
+	position:absolute;
+	z-index:40;
+	-webkit-transition-property: -webkit-transform; 
+	-webkit-transition-duration: 0s;
+}
+
+.rotateabledisplay
+{
+	position:absolute;
+	/*left: 2px;
+	top: 2px;*/
+	z-index:35;
+	overflow:hidden;
+	-webkit-transition-property: -webkit-transform; 
+	-webkit-transition-duration: 0s;
+}
+
+.rotateableparent
+{
+	position:absolute;
+	z-index:22;
+	overflow:hidden;
+	-webkit-transition-property: -webkit-transform; 
+	-webkit-transition-duration: 0s;
+}
+
+.rotateablelbl
+{
+	position:absolute;
+	z-index: 40;
+	top: 125px;
+	width: 100%;
+	font-size: 9px;
+	color: #333;
+	text-align: center;
+}
+
+/*******************
+ * For Palm Knob Control
+ *******************/
+.rotateabletarget
+{
+	position: absolute;
+	left: 20%;
+	right: 20%;
+	top: 20%;
+	bottom: 20%;
+	z-index: 80;
+	/*border: 1px solid #0FF;*/
+}
+
+
+/********************
+ * Slider Ckntrols
+ ********************/
+#idSpeedKnob
+{
+	position: absolute;
+	left: 0px;
+	bottom: 0px;
+	width: 43px;
+	height: 43px;
+	background-image: url(../res/knob/gslide.png);
+}
+
+#idSpeedSlider
+{
+	position: absolute;
+	top: 19px;
+	left: 9px;
+	width: 150px;
+	height: 150px;
+	z-index: 552;
+	/*border: 1px solid #0FF;*/
+}
+
+#idTransKnob
+{
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 43px;
+	height: 43px;
+	background-image: url(../res/knob/yslide.png);
+}
+
+#idTransSlider
+{
+	position: absolute;
+	top: 286px;
+	left: 9px;
+	width: 150px;
+	height: 150px;
+	z-index: 552;
+}

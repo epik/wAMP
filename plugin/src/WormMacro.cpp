@@ -12,13 +12,11 @@
 
 const int16_t NUM_EXTEN = 18;
 
-uint32_t g_puiExtenHashVals[] = {5863768, 193436047, 193485930, 193486309, 193497511, 193499443, 193499444,
-						193499445,  193499497, 193501378, 193501753, 193504453, 193509907,
-						193510282, 2089074171, 2090260091};
 // These are all the hash values of the following using DJBHash
-const char *g_pcExten[] = {"ra", "3gp", "aac", "als", "m4a", "mp1", "mp2",
-					 "mp3", "mpg", "ogg", "ors", "ram", "wav",
-					 "wma", "FLAC", "flac"};
+const char *g_pcExten[] = {"ra", "3gp", "aac", "als",
+						"m4a", "mp1", "mp2", "mp3",
+						"mpg", "ogg", "ors", "ram",
+						"wav", "wma", "flac"};
 
 
 
@@ -38,19 +36,25 @@ int QuickExtCheck(const char *filename)
         if ((sLen > 4) || (sLen < 2))
         	return 0;
 
-        uint32_t iHash = DJBHash(ext, sLen);
+        char lcStr[5];
 
-        for(int i=0; i<18; i++)
+        lcStr[sLen] = '\0';
+
+        switch (sLen)
         {
-            if (iHash < g_puiExtenHashVals[i])
-            	return 0;
-            else if (iHash == g_puiExtenHashVals[i])
-            {
-            	if (strcmp(ext, g_pcExten[i]) == 0)
-            		return 1;
-            	else
-            		return 0;
-            }
+        case 4:
+        	lcStr[3] = tolower(*(ext+3));
+        case 3:
+        	lcStr[2] = tolower(*(ext+2));
+        case 2:
+        	lcStr[1] = tolower(*(ext+1));
+        	lcStr[0] = tolower(*ext);
+        }
+
+        for (int32_t i = 0; i<15; i++)
+        {
+        	if (strcmp(lcStr, g_pcExten[i]) == 0)
+            	return 1;
         }
     }
     return 0;

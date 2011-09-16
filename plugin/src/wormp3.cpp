@@ -7,21 +7,39 @@
 
 #include "config.h"
 #include <iostream>
+#include <string.h>
 
 #include "WormDebug.h"
 #include "WormThread.h"
 #include "MusController.h"
 #include "SDL.h"
 #include "Indexer/Indexer.h"
+
+#include "taglib/toolkit/tbytevector.h"
+
+
+#include "taglib/fileref.h"
+#include "taglib/tag.h"
+#include "taglib/mp4/mp4tag.h"
+#include "taglib/mp4/mp4file.h"
+#include "taglib/toolkit/tbytevector.h"
+#include "taglib/mpeg/mpegfile.h"
+#include "taglib/mpeg/id3v2/id3v2tag.h"
+#include "taglib/mpeg/id3v2/id3v2frame.h"
+#include "taglib/mpeg/id3v2/id3v2header.h"
+#include "taglib/flac/flacfile.h"
+#include "taglib/ogg/xiphcomment.h"
+#include "taglib/asf/asffile.h"
+#include "taglib/asf/asftag.h"
+#include "taglib/mpeg/id3v1/id3v1tag.h"
+#include "taglib/ape/apetag.h"
+
 #if USE_PDL
 #include "PDL.h"
 #define REGISTER_WITH_DEVICE Register()
 #else
 #define REGISTER_WITH_DEVICE 0
 #endif
-
-#include <fileref.h>
-#include <tag.h>
 
 MusController g_MusController;
 
@@ -65,7 +83,7 @@ void StartSong(const char *cstrPath,
 	}
 
 #endif
-	ReportError4("*****Callback Val: %s, %s, %s, %s", params[0], 
+	ReportError4("*****Callback Val: %s, %s, %s, %s", params[0],
 													  params[1],
 													  params[2],
 													  params[3]);
@@ -78,7 +96,6 @@ void FinishIndex()
 #if USE_PDL
 
 	const char *params[1];
-	params[0] = 0;
 
 	PDL_Err mjErr = PDL_CallJS("FinishIndex", params, 0);
 	if ( mjErr != PDL_NOERROR )
@@ -90,22 +107,31 @@ void FinishIndex()
 
 }
 
-void AddToIndex(const char *path, int32_t iLastMod)
+#define EnsureZero(x, y) (y = (x.isEmpty()) ? "0" : x.toCString())
+
+
+void AddToIndex(const char *path, bool dirty)
 {
 	const char *params[2];
-	params[0] = path;
 
-	char cstrIndex[15];
-	sprintf(cstrIndex,"%i",iLastMod);
-	params[1] = cstrIndex;
+	params[0] = path;
+	if (!dirty)
+		params[1] = "clean";
+	else
+		params[1] = "dirty";
+
 #if USE_PDL
+
 	PDL_Err mjErr = PDL_CallJS("AddToIndex", params, 2);
 	if ( mjErr != PDL_NOERROR )
 	{
 		ReportError1("error: %s\n", PDL_GetError());
 	}
+
 #endif
-	ReportError2("Callback Val: %s : %s", params[0], params[1]);
+
+	/*ReportError7("Callback Val: %s : %s\n", params[0],
+										params[1])*/;
 
 }
 
@@ -168,25 +194,68 @@ PDL_bool SetMetadataPath(PDL_JSParameters *parms)
 
 	ptagFile = new TagLib::FileRef(cstrPath);
 
-	ReportError1("Setting meta path %s", cstrPath);
+	//ReportError1("Setting meta path %s", cstrPath);
 
 	return PDL_TRUE;
 }
 
 PDL_bool GetMetadata(PDL_JSParameters *parms)
 {
-	const char *cstrItem = PDL_GetJSParamString(parms, 0);
+	PDL_JSReply(parms, "0");
 
-	ReportError1("Getting meta for tag %s", cstrItem);
-	const char *cstrRet = g_Indexer.GetMetadata(cstrItem);
+	TagLib::Tag *t;
 
-	PDL_Err err = PDL_JSReply(parms, cstrRet);
+	//ReportError("Starting a get Metadata");
 
-	if (err != PDL_NOERROR)
+	if ((ptagFile->isNull()) ||
+		!(t = ptagFile->tag()))
 	{
-		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
-		return PDL_FALSE;
+		PDL_JSReply(parms, "0");
+		return PDL_TRUE;
 	}
+
+	if (t->isEmpty())
+	{
+		PDL_JSReply(parms, "0");
+		return PDL_TRUE;
+	}
+
+	//ReportError("The file and tag tested OK, getting param");
+
+	int iItem = PDL_GetJSParamInt(parms, 0);
+
+	//ReportError1("Getting meta #%i", iItem);
+	TagLib::String s;
+
+	switch (iItem)
+	{
+	case 0:
+		s = t->genre();
+		break;
+	case 1:
+		s = t->artist();
+		break;
+	case 2:
+		s = t->album();
+		break;
+	case 3:
+		s = t->title();
+		break;
+	case 4:
+		char cstrTrack[25];
+		sprintf(cstrTrack, "%i", t->track());
+		PDL_JSReply(parms, cstrTrack);
+		return PDL_TRUE;
+	case 5:
+		s = t->albumArtist();
+	}
+
+	//ReportError1("Got param: %s", s.toCString());
+
+	if (!s.isEmpty())
+		PDL_JSReply(parms, s.toCString());
+	else
+		PDL_JSReply(parms, "0");
 
 	return PDL_TRUE;
 }
@@ -207,7 +276,7 @@ PDL_bool Open(PDL_JSParameters *parms)
 	int32_t iTrack = PDL_GetJSParamInt(parms, 1);
 
 	ReportError2("Open Message being created for %s, for track %i", cstrPath, iTrack);
-	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, cstrPath, iTrack);
+	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, cstrPath, iTrack, 0);
 
 	return PDL_TRUE;
 }
@@ -320,6 +389,7 @@ PDL_bool SetNoNext(PDL_JSParameters *parms)
 
 PDL_bool PluginQuit(PDL_JSParameters *parms)
 {
+	FMGUI_ChDir("/media/internal");
 	g_iContinue = 0;
 
 	return PDL_TRUE;
@@ -524,7 +594,63 @@ PDL_bool CheckPathForImg(PDL_JSParameters *parms)
 
 PDL_bool StartIndex(PDL_JSParameters *parms)
 {
-	g_Indexer.BuildIndex();
+	int32_t iTime = PDL_GetJSParamInt(parms, 0);
+	const char *cstrPath = PDL_GetJSParamString(parms, 1);
+
+	ReportError1("Start Index with %s", cstrPath);
+
+	if (iTime < 0)
+		iTime = 0;
+	else if (iTime > time (NULL))
+	{
+		ReportError("Time mismatch error");
+		iTime = 0;
+	}
+
+	ReportError("Made if past time");
+
+	g_Indexer.BuildIndex(iTime, cstrPath);
+
+	return PDL_TRUE;
+}
+
+PDL_bool CheckMusicDir(PDL_JSParameters *parms)
+{
+	int32_t iForce = PDL_GetJSParamInt(parms, 0);
+
+	PDL_Err err;
+
+	bool retVal;
+
+	if (iForce)
+		retVal = g_Indexer.CheckForDirMusic(true);
+	else
+		retVal = g_Indexer.CheckForDirMusic();
+
+	ReportError("Back From retval");
+
+	if (retVal)
+	{
+		err = PDL_JSReply(parms, "1");
+
+		if (err != PDL_NOERROR)
+		{
+			ReportError1("PDL_Init failed, err = %s", PDL_GetError());
+			return PDL_FALSE;
+		}
+	}
+	else
+	{
+		err = PDL_JSReply(parms, "0");
+
+		if (err != PDL_NOERROR)
+		{
+			ReportError1("PDL_Init failed, err = %s", PDL_GetError());
+			return PDL_FALSE;
+		}
+	}
+
+	ReportError("Problem is probably in start indexing");
 
 	return PDL_TRUE;
 }
@@ -582,8 +708,9 @@ int Register()
 	err = PDL_RegisterJSHandler("GetFreqString", GetFreqString);
 	err = PDL_RegisterJSHandler("GetAvgMagString", GetAvgMagString);
 	err = PDL_RegisterJSHandler("CheckPathForImg", CheckPathForImg);
+	err = PDL_RegisterJSHandler("CheckMusicDir", CheckMusicDir);
 
-		err = PDL_JSRegistrationComplete();
+	err = PDL_JSRegistrationComplete();
 	if (err != PDL_NOERROR)
 	{
 		ReportError1("PDL_Init failed, err = %s", PDL_GetError());
@@ -639,13 +766,13 @@ void Quit()
 
 int main(int argc,char *argv[])
 {
-	/*g_Indexer.BuildIndex();
+	/*g_Indexer.SetCallback(FinishIndex, AddToIndex);
 
-	g_Indexer.SetCallback(FinishIndex);
+	g_Indexer.BuildIndex();
 
 	while (1)
 	{
-		WormSleep(300);
+		WormSleep(10000);
 	}*/
 
 	if (Init()) return 0;
@@ -676,27 +803,46 @@ int main(int argc,char *argv[])
 								MUS_PLAY_CONST,
 								0);
 
-	ReportError("Made it past open");
 
-	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/aobdt.mp3", 0);
+	//g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "http://dl.dropbox.com/u/8094086/ICD.mp3", 0, 0);
 
-	TagLib::FileRef *f =
-					new TagLib::FileRef("c:/Users/Katiebird/amazing_grace.ogg");
+	//AddToIndex("c:/aobdt.mp3");
 
-	fprintf(stderr, "Please Work!!!!! - %s\n", f->tag()->artist().toCString());
-	fprintf(stderr, "Please Work!!!!! - %s\n", f->tag()->album().toCString());
-	fprintf(stderr, "Please Work!!!!! - %s\n", f->tag()->title().toCString());
-	fprintf(stderr, "Please Work!!!!! - %u\n", f->tag()->year());
-	fprintf(stderr, "Please Work!!!!! - %s\n", f->tag()->comment().toCString());
-	fprintf(stderr, "Please Work!!!!! - %u\n", f->tag()->track());
-	fprintf(stderr, "Please Work!!!!! - %s\n", f->tag()->genre().toCString());
+	//TagLib::FileRef f("c:/aobdt.mp3");
 
-	delete f;
+	//TagLib::Tag *t = f.tag();
 
-	//g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/amazing_grace.ogg", 0);
+	/*TagLib::ASF::AttributeListMap::ConstIterator iter = t->attributeListMap().begin();
+
+	    for(; iter != t->attributeListMap().end(); iter++)
+		{
+			fprintf(stderr, "Please Work!!!!!  %s- %s\n",
+					(*iter).first.toCString(),
+					(*iter).second.front().toString().toCString());
+		}*/
+
+	//t->setAlbumArtist("Test it");
+
+	//f->save();
+
+	//delete f;
+	//xcom->addField("ALBUMARTIST", "The Killers");
+	//t->setAlbum("test");
+
+
+	//fprintf(stderr, "What is our outpput: %s\n", t->title().toCString());
+
+
+
+	//fprintf(stderr, "Album Artist: %s", (*tag).albumArtist().toCString());
+	//delete f;
+
+	g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/amazing_grace.ogg", 0);
+	g_MusController.PassMessage(MUS_MESSAGE_SET_NO_NEXT,
+										0);
 	//g_MusController.PassMessage(MUS_MESSAGE_OPEN_SONG, "c:/test1.mp3", 0);
 
-	g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/amazing_grace.ogg", -10.0, 0);
+	/*g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/amazing_grace.ogg", -10.0, 0);
 
 	//g_MusController.PassMessage(MUS_MESSAGE_SET_NEXT, "c:/test2.mp3", -10.0, 0);
 
@@ -734,9 +880,9 @@ int main(int argc,char *argv[])
 	}
 
 #else
-	while (1)
+	while (g_iContinue)
 	{
-		WormSleep(10000);
+		WormSleep(1000);
 	}
 #endif
 

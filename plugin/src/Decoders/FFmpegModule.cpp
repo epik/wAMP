@@ -12,12 +12,20 @@ extern "C" {
 #include "libavformat/metadata.h"
 }
 
+void MyAvLogger(void *v, int i, const char *c, va_list va)
+{
+	ReportError("FFmpeg Output:");
+	VReportError(c, va);
+}
+
 MusMessage FFmpegWrapper::Init()
 {
-	ReportError("Starting FFmpeg Init");
+	//ReportError("Starting FFmpeg Init");
 
 	/* initialize libavcodec, and register all codecs and formats */
     av_register_all();
+
+    av_log_set_callback(MyAvLogger);
 
     m_psTmpBufferBase = (uint16_t *) av_malloc(AVCODEC_MAX_AUDIO_FRAME_SIZE +
     									   	   FF_INPUT_BUFFER_PADDING_SIZE + 
@@ -59,7 +67,7 @@ int16_t FFmpegWrapper::PrepareMetadata(const char *cstrFileName)
 	m_pFormatCtx = NULL;
 
 	// Open audio file
-	int err = av_open_input_file(&m_pFormatCtx, cstrFileName, NULL, 0, NULL);
+	int err = avformat_open_input(&m_pFormatCtx, cstrFileName, NULL, NULL);
 
 	if(err != 0)
 	{
@@ -76,7 +84,7 @@ MusMessage FFmpegWrapper::FindDecoder(const char *cstrFileName)
 	ReportError1("Open FindDecoder FFmpeg File=%s", cstrFileName);
 
     // Open audio file
-	int err = av_open_input_file(&m_pFormatCtx, cstrFileName, NULL, 0, NULL);
+	int err = avformat_open_input(&m_pFormatCtx, cstrFileName, NULL, NULL);
 
     if(err != 0)
     {

@@ -1,0 +1,1469 @@
+/**********************
+ * Indexer and List pane
+ **********************/
+#idPLPane.portrait
+{
+	top: 250px;
+	left: 770px;
+}
+
+#idDeletePLItem.portrait
+{
+	top: 250px;
+	left: 20px;
+}
+
+#idIndex.portrait
+{
+	position: absolute;
+	top: 250px;
+	left: -230px;
+}
+
+#idPickerPane.portrait
+{
+	left: 10px;
+	top: 200px;
+}
+
+/**********************
+ * Indexer and List pane
+ **********************/
+#idIndex.landscape
+{
+	position: absolute;
+	top: 140px;
+	left: 10px;
+} 
+ 
+#idPLPane.landscape
+{
+	top: 140px;
+	left: 770px;
+}
+
+#idDeletePLItem.landscape
+{
+	top: 140px;
+	left: 350px;
+}
+
+#idPickerPane.landscape
+{
+	left: 5px;
+	top: 70px;
+}
+
+
+/**********************
+ * Indexer and List pane
+ **********************/
+#idIndex
+{
+	position: relative;
+	width:	182px;
+	height: 343px;
+	background-image: url(../res/index/indexbg.png);
+	z-index:1;
+	padding: 30px 0px 30px 10px;
+	border-right: 0px solid #333;
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: 0ms;
+}
+
+.classIndexBtns
+{
+	width: 191px;
+	height: 41px;
+	margin: 7px 12px;
+	z-index: 2;
+}
+
+.classwAMPIndexBtn
+{
+	left: 0px;
+	right: 0px;
+	top: 0px;
+	bottom: 0px;
+	opacity: 0.5;
+	z-index: 3;
+	background-color: #FFF;
+}
+
+#idPLPane
+{
+	position: absolute;
+	left: 5px;
+	width:	241px;
+	height: 403px;
+	/*border: 0px solid #0FF;*/
+	background-image: url(../res/index/indexbgland.png);
+	z-index:2;
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: 0ms;
+}
+
+#idPLPaneFix
+{
+	position: absolute;
+	z-index: 90;
+	top: 50px;
+	bottom: 0px;
+	left: 0px;
+	right: 0px;
+}
+
+#idFastScrollL
+{
+	display: block;
+	height: 580px;
+	position: absolute;
+	top: 2px;
+	left: -9px;
+	width: 18px;
+	text-align: center;
+	background-color: #333;
+	color: #DDD;
+	font-size: 10px;
+	padding: 4px 0px;
+	opacity: 0.8;
+}
+
+#idFastScrollR
+{
+	display: block;
+	height: 580px;
+	position: absolute;
+	top: 2px;
+	left: 735px;
+	width: 20px;
+	text-align: center;
+	background-color: #333;
+	color: #DDD;
+	font-size: 10px;
+	padding: 4px 0px;
+	opacity: 0.8;
+}
+
+#idPickerPane
+{
+	position: absolute;
+	left: 194px;
+	top: 100px;
+	width:	740px;
+	height: 600px;
+	background-image: url(../res/index/indexbglandpickerpane.png);
+	background-position: 0px -5px;
+	z-index:10;
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: 800ms;
+	padding: 0px;
+	margin: 0px;
+	z-index:100;
+}
+
+.classPickerHide
+{
+	-webkit-transform: translate3d(-800px, 0, 0);
+}
+
+div.classIndivAlb.classMarkAsFav > .classImgHolder
+{
+background: url(../res/index/jewelcasefav.png) no-repeat;
+background-position: 9px 0px;
+z-index: 9999;
+}
+
+.classImgHolder
+{
+background: url(../res/index/jewelcase.png) no-repeat;
+background-position: 9px 0px;
+z-index: 9999;
+}
+
+.classPickerCat
+{
+	position: absolute;
+	display: none;
+	padding: 0px;
+	margin: 0px;
+}
+
+.classShowPickedCat
+{
+	display: block;
+}
+
+.classCatSideView
+{
+	position: absolute;
+	left: 16px;
+	top: 9px;
+	width:	0px;
+	height: 574px;
+	padding: 0px;
+	margin: 0px;
+}
+
+.classTopLevelPickedCat
+{
+	position: absolute;
+	left: 16px;
+	top: 9px;
+	width:	709px;
+	height: 574px;
+	padding: 0px;
+	margin: 0px;
+}
+
+#idSearchWrapper.classTopLevelPickedCat, 
+#idTitleWrapper.classTopLevelPickedCat,
+#idInternetWrapper.classTopLevelPickedCat
+{
+	position: absolute;
+	left: 16px;
+	top: 49px;
+	width:	709px;
+	height: 534px;
+	padding: 0px;
+	margin: 0px;
+}
+
+#idTheIndexerHasFinished
+{
+	position: absolute;
+	display: none;
+	left:300px;
+	right: 300px;
+	top: 200px;
+	background-color: #222;
+	color: #EEF;
+	height: 125px;
+	text-align: center;
+	font-size: 30px;
+	opacity: 0.8;
+	z-index: 9999;
+}
+
+#idPickerNotReady
+{
+	position: absolute;
+	display: none;
+	left: 16px;
+	top: 49px;
+	width:	709px;
+	height: 534px;
+	padding: 0px;
+	margin: 0px;
+	color: #DDD;
+	text-align: center;
+	font-size: 25px;
+}
+
+.classSecLevelPickedCat
+{
+	border-left: 2px solid #CCC;
+	left: 180px;
+	top: 9px;
+	width: 540px;
+	height: 575px;
+	z-index: 20;
+}
+
+.classPickerSub
+{
+	margin: 0px;
+	padding: 0px 0px;
+}
+
+#idAlbumPicker > div
+{
+	position: relative;
+	overflow: auto;
+	width: 100%;
+	background-image: none;
+	padding-top: 30px;
+}
+
+div.classIndivAlb
+{
+	list-style:none;
+	float: left;
+	width: 160px;
+	height: 150px;
+	margin: 10px 0px 20px 0px;
+	text-align: center;
+	font-size: 14px;
+	font-family: arial;
+	color: #FFF;
+	/*border: 1px solid #0F4;*/
+	/*background: url(../res/index/alb-shadow-tile.png) -2px 12px no-repeat;*/
+}
+
+#idGenreWrapper.classCatSideView  div.listItemHeader,
+#idArtistWrapper.classCatSideView div.listItemHeader,
+#idAlbumWrapper.classCatSideView  div.listItemHeader
+{
+	color:#CCC;
+	background-color: #333;
+}
+
+#idGenreWrapper.classSecLevelPickedCat  div.listItemHeader,
+#idArtistWrapper.classSecLevelPickedCat div.listItemHeader,
+#idAlbumWrapper.classSecLevelPickedCat  div.listItemHeader
+{
+	width: 470px;
+	margin-left: 5px;
+}
+
+
+div.listItemHeader
+{
+	position: absolute;
+	top: 0px;
+	padding: 1px 0px 2px 10px;
+	height: 20px;
+	max-height: 22px;
+	text-align:left;
+	-webkit-transition-duration: 0ms;
+	margin-top: 0px;
+	margin-left: 2px;
+	background-color:#CCC;
+	color: #333;
+	white-space: nowrap;
+	font-size: 18px;
+	z-index: 13;
+	float: none;
+	display: block;
+	width: 90%
+}
+
+#idGenreUL > ul > li, #idArtistUL > ul > li
+{
+	display: inline;
+	float: left;
+	width: 160px;
+	height: 150px;
+	margin: 0px 0px 10px 0px;
+	text-align: center;
+	font-size: 14px;
+	font-family: arial;
+	color: #FFF;
+	/*border: 1px solid #0F4;*/
+}
+
+#idGenreUL > ul, #idArtistUL > ul 
+{	
+	position: relative;
+	overflow: auto;
+	width: 100%;
+	background-image: none;
+	padding-top: 30px;
+}
+
+#idFolderUL li
+{
+	list-style:none;
+	float: left;
+	width: 160px;
+	height: 140px;
+	margin: 5px 0px 19px 0px;
+	text-align: center;
+	font-size: 14px;
+	font-family: arial;
+	color: #FFF;
+	/*border: 1px solid #0F4;*/
+}
+
+.classPickDragRec
+{
+	display: block;
+	padding-top: 120px;
+	position: absolute;
+	width: 160px;
+	height: 30px;
+	text-align: center;
+	font-size: 12px;
+	font-family: arial;
+	font-weight:bold;
+	color: #000;
+	z-index: 9970;
+	border: 2px solid #222;
+	background-color: #FFF;
+	background-image: url(../res/index/Folderviewimg.png);
+	background-repeat: no-repeat;
+	background-position: center 4px;
+}
+
+.classPickDragSong
+{
+	display: block;
+	padding-top: 120px;
+	vertical-align: bottom;
+	position: absolute;
+	width: 160px;
+	height: 30px;
+	font-weight:bold;
+	text-align: center;
+	font-size: 12px;
+	font-family: arial;
+	color: #000;
+	z-index: 9970;
+	border: 2px solid #222;
+	background-color: #FFF;
+	background-image: url(../res/index/Folderviewmusicimg.png) ;
+	background-repeat: no-repeat;
+	background-position: center 4px;
+}
+
+#idFolderUL li.classFolderVDir div.classCatImgBox
+{
+	background: url(../res/index/Folderviewimg.png);
+	background-repeat: no-repeat;
+	background-position: center 4px;
+	height: 117px;
+}
+
+#idFolderUL li.classFolderVPlayable div.classCatImgBox
+{
+	background: url(../res/index/Folderviewmusicimg.png);
+	background-repeat: no-repeat;
+	background-position: center 4px;
+	height: 117px;
+}
+
+#idbtnfavfilt 
+{
+	position: absolute;
+	background: url(../res/index/favoff.png);
+	border: 0px solid #000;
+	width: 30px;
+	height: 30px;
+	right: 36px;
+	top: 270px;	
+	z-index: 502;
+}
+
+#idbtnfavfilt.classBtnFavIsClicked
+{
+	position: absolute;
+	background: url(../res/index/favon.png);
+	border: 0px solid #4E7;
+	width: 30px;
+	height: 30px;
+	right: 36px;
+	top: 270px;	
+	z-index: 503;
+}
+
+#idTitleScroller, #idSearchScroller, #idListScroller, #idInternetScroller
+{
+	position: relative;
+	margin: 0;
+	list-style:none;
+	width: 100%;
+	text-align: left;
+	font-size: 16px;
+	color: #000;
+	overflow: hidden;
+	z-index: 0;
+	white-space:nowrap;
+	border-bottom: 1px solid #000;
+}
+
+#idSearchScroller > li, .hideFilteredTitle
+{
+	display: none;
+}
+
+li.classtitlePL.classPickDrag,
+li.xmltarget.classPickDrag,
+li.classtitle-li.classPickDrag,
+li.classUniSubPan.classPickDrag,
+li.HclassTitleSubPaneHide.classPickDrag,
+div.classIndivAlb.classPickDrag
+{
+	color: #000;
+	background-color: #FFF;
+	width: 300px;
+	height: 30px;
+	opacity: 0.8;
+	text-align: left;
+	font-size: 16px;
+	display: block !important;
+}
+
+li.classtitle-li
+{
+	padding: 10px 0px 10px 40px !important; 
+	background-image: url(../res/index/favgo.png);
+	background-repeat: no-repeat;
+	background-position: 5px 5px;
+}
+
+li.classtitle-li.classMarkAsFav
+{
+	background-image: url(../res/index/favno.png);
+}
+
+
+.classtitlePL,
+.xmltarget
+{
+	padding: 10px 0px 10px 40px;
+	height: 20px;
+}
+
+.classAlbUlScroller
+{
+	display: none;
+}
+
+.classAlbumText p
+{
+	display: none;
+}
+
+#idAlbViewText
+{
+	margin-left: 70px;
+	margin-top: 40px;
+	width: 385px;
+	padding-left: 15px;
+	padding-top: 5px;
+	background-color: #AAA;
+	-webkit-border-top-right-radius: 9px 9px;
+	-webkit-border-top-left-radius: 9px 9px;
+	/*-webkit-box-shadow:inset 0 0 10px #000000;*/
+	height: 50px;
+	z-index: 1000;
+}
+
+
+#idAlbViewWrapper.classTopLevelPickedCat  #idAlbViewText
+{
+	margin-left: 150px;
+	margin-top: 40px;
+	width: 385px;
+	padding-left: 15px;
+	padding-top: 5px;
+	background-color: #AAA;
+	-webkit-border-top-right-radius: 9px 9px;
+	-webkit-border-top-left-radius: 9px 9px;
+	/*-webkit-box-shadow:inset 0 0 10px #000000;*/
+	height: 50px;
+	z-index: 1000;
+}
+
+#idAlbViewText div.classAlbumText
+{
+	font-size: 20px;
+	font-family: arial;
+	color: #111;
+	padding-bottom: 0px;
+	margin-bottom: 0px;
+}
+
+#idAlbViewText div.classAlbumText p
+{
+	display: block;
+	font-size: 14px;
+	font-family: arial;
+	color: #444;
+	padding-top: 2px;
+	margin-top: 0px;
+}
+
+#idAlbVWrapper
+{
+	width: 400px;
+	height: 350px;
+	top: 100px;
+	position: absolute;
+	z-index: 10;
+	margin-left: 70px;
+	border: 1px solid #000;
+	background: url(../res/index/back.png);
+}
+
+#idAlbViewWrapper.classTopLevelPickedCat #idAlbVWrapper
+{
+	width: 400px;
+	height: 350px;
+	top: 100px;
+	position: absolute;
+	z-index: 10;
+	margin-left: 150px;
+	border: 1px solid #000;
+	background: url(../res/index/back.png);
+}
+
+#idAlbViewScroller ul
+{
+	margin: 0px;
+	padding: 0px;
+	width: 400px;
+	font-size: 14px;
+}
+
+#idAlbViewScroller ul li:nth-child(even)
+{
+	list-style:none;
+	padding: 15px 0px 15px 20px;
+	color: #313131;
+	background-color: #BFBFBF;
+	border-bottom: 1px solid #444;
+}
+
+#idAlbViewScroller ul li:nth-child(odd)
+{
+	list-style:none;
+	padding: 15px 0px 15px 20px;
+	color: #313131;
+	background-color: #CECECE;
+	border-bottom: 1px solid #444;
+}
+
+span.classTrackNumSpan
+{
+	margin: 0px 6px;
+	margin-right: 12px;
+}
+
+.classTrackNumSpan
+{
+	width: 20px;
+	float: left;
+}
+
+.classCatImgBox
+{
+	position: relative;
+	margin: 0px 9px 0px 9px;
+	border: 0px solid #333;
+	width: 135px;
+	height: 127px;
+	background: url(../res/index/no-album-art.png);
+}
+
+li.classMarkAsFav > div.classCatImgBox
+{
+	background: url(../res/index/no-album-art_fav.png);
+}
+
+#idAlbumWrapper img.classCatImgBox
+{
+	position: relative;
+	margin: 4px 0px 10px 3px;
+	border: 0px solid #333;
+	z-index: -1;
+	width: 99px;
+	height: 99px;
+	background: url(../res/index/no-album-art.png);
+}
+  
+#idPickerWrapper div.classCatImgBox div
+{
+	position: absolute;
+	float: left;
+	width: 32px;
+	height: 32px;
+}
+  
+.classWrapper 
+{
+	-webkit-transition-duration: 0ms;
+	overflow: hidden;
+}
+
+.classScroller 
+{
+	position:absolute; 
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transform-origin: 0px 0px;
+	-webkit-transition-duration: 0ms;
+	width:100%;
+	z-index: 10;
+	padding: 0px;
+}
+
+.listItemHeader
+{
+	position: relative;
+	padding: 9px 0px;
+	height: 22px;
+	vertical-align:middle;
+	padding-left: 3px;
+	-webkit-transition-duration: 0ms;
+	margin: 0px;
+	background-color:#333;
+	color: #CCC;
+	white-space: nowrap;
+	font-size: 18px;
+	z-index: 13;
+	float: none;
+}
+
+
+.classListItemHeader-Out
+{
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	display: block;
+	width: 100%;
+	z-index: 30;
+	list-style:none;
+	padding: 10px 0px;
+	padding-left: 3px;
+	-webkit-transition-duration: 0ms;
+	-webkit-transition-property: -webkit-transform;
+	margin: 0px;
+	background-color:#333;
+	color: #CCC;
+	white-space: nowrap;
+	font-size: 18px;
+}
+
+
+#idSearchInput, #idFilterTitles
+{
+	position: absolute;
+	top: 9px;
+	left: 16px;
+	background: #FFF;
+	background-position: 8px 50%;
+	background-repeat: no-repeat;
+	background-image: url(../res/icon-search-black.png);
+	background-size: 16px 16px;
+	width:620px;
+	padding-left: 30px;
+}
+
+#idNeedFormForSearch, #idAnotherFormForSearch
+{
+	position: relative;
+	left: 3px;
+	width: 600px;
+	max-height: 40px;
+} 
+
+#idURLInput
+{
+	position: absolute;
+	width: 700px;
+	height: 40px;
+	left: 15px;
+	top: 9px;
+	background-size: 16px 16px;
+}
+
+.classURLBut
+{
+	position: relative;
+	display: inline;
+	float: left;
+	width: 36px;
+	height: 36px;
+	background-color: #456;
+	border: 1px solid #999;
+	margin: 0px 0px 3px 1px;
+	text-align: center;
+}
+
+#idNeedFormForInternet
+{
+	position: relative;
+	display: inline;
+	float: left;	
+	width: 510px;
+	height: 38px;
+	margin: 0px 1px;
+	background-color: #FFF;
+	background-position: 484px 8px;
+	background-repeat: no-repeat;
+	background-image: url(../res/icon-refresh-black.png);
+} 
+
+#idURLFilter
+{
+	position: absolute;
+	top: 0px;
+	left: 1px;
+	border: 0;
+	background:none;
+	-webkit-appearance: none;
+	outline: 0;
+	width:480px;
+	height: 38px;
+	font-size: 18px;
+}
+
+#idListFilter, #idTitleFilter
+{
+	border: 0;
+	background:none;
+	-webkit-appearance: none;
+	outline: 0;
+	width: 98%;
+	height: 38px;
+	font-size: 18px;
+}
+
+/*************************
+ * Buttons
+ *************************/
+#idAddToPLBtn
+{
+	left: 256px;
+	top: 500px;
+	background-image: url(../res/index/buttonimg.png);
+    color:#000;
+	z-index: 502;
+}
+
+#idPlayAllBtn
+{
+	left: 500px;
+	top: 500px;
+	background-image: url(../res/index/buttonimg.png);
+    color:#000;
+	z-index: 502;
+}
+
+#idFolderWrapper.classTopLevelPickedCat #idPlayDirBtn
+{
+	display: block;
+}
+
+#idPlayDirBtn
+{
+	left: 0px;
+	display: none;
+	top: 0px;
+	background-image: url(../res/index/buttonimg.png);
+    color:#000;
+	z-index: 502;
+}
+
+#idPickerCloseBtn
+{
+	position: absolute;
+	right: 27px;
+	top: 8px;
+	width: 41px;
+	height: 41px;
+	background-image: url(../res/index/closebtn.png);
+	z-index: 503;
+}
+
+#idPickerButDiv
+{
+	display: none;
+	z-index: 501;
+	
+}
+
+/*************************
+ * Buttons for Pickerpane
+ *************************/
+ #idbtnbuttonbg
+ {
+ 	position: absolute;
+	background-image: url(../res/index/buttonbg.png);
+	width: 46px;
+	height: 242px;
+	right: 25px;
+	top: 8px;	
+	z-index: 502;
+}
+
+ #idbtnbuttonSecbg
+ {
+ 	position: absolute;
+	background: url(../res/index/buttonbg2.png) no-repeat;
+	width: 41px;
+	height: 50px;
+	right: 25px;
+	top: 260px;	
+	z-index: 502;
+	padding-top: 10px;
+	padding-left: 5px;
+}
+ 
+#idbtnalbum
+{
+	position: absolute;
+	background-image: url(../res/index/albumbtn.png);
+	width: 41px;
+	height: 41px;
+	right: 27px;
+	top: 48px;	
+	z-index: 502;	
+}
+
+#idbtngenre
+{
+	position: absolute;
+	background-image: url(../res/index/genrebtn.png);
+	width: 41px;
+	height: 41px;
+	right: 27px;
+	top: 130px;	
+	z-index: 502;
+}
+
+#idbtnartist
+{
+	position: absolute;
+	background-image: url(../res/index/artistbtn.png);
+	width: 41px;
+	height: 41px;
+	right: 27px;
+	top: 89px;	
+	z-index: 502;	
+}
+
+#idbtntitle
+{
+	position: absolute;
+	background-image: url(../res/index/titlebtn.png);
+	width: 41px;
+	height: 41px;
+	right: 28px;
+	top: 171px;	
+	z-index: 502;
+}
+
+#idbtnfolder
+{
+	position: absolute;
+	background-image: url(../res/index/Folderbtn.png);
+	width: 41px;
+	height: 41px;
+	right: 28px;
+	top: 212px;	
+	z-index: 502;
+}
+
+
+/*************************
+ * Playlist CSS
+ *************************/
+
+#idPLOptHider
+{
+	overflow: hidden;
+	height: 450px;
+	width: 240px;
+	position: absolute;
+}
+
+#idPLOptHider.portrait
+{
+	top: 250px;
+	left: 530px;
+}
+
+#idPLOptHider.landscape	
+{
+	top: 140px;
+	left: 530px;
+}
+
+#idPLOptDetailPane
+{
+	position: absolute;
+	z-index: 999;
+	top: 0px;
+	left: 0px;
+	height: 218px;
+	width: 240px;
+	-webkit-border-radius: 1em;
+	background-color: #888;
+	padding-top:16px;
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: 400ms;
+}
+
+.classHidePLOpt
+{
+	-webkit-transform: translate3d(0, -500px, 0);
+}
+ 
+#idPlaylistWrapper
+{
+	position: absolute;
+	left: 10px;
+	top: 2px;
+	width: 221px;
+	height:344px; 
+	overflow:hidden;
+	z-index: -5;
+	border-top: 1px solid #BBB;
+} 
+
+#idPLHead
+{
+	/*background-image: url(../res/index/playlistimg.png);*/
+}
+
+#idPLCoverPane
+{
+	width: 235px;
+	height:350px; 
+	/*background-color: #444;*/
+	z-index: 9;
+}
+
+#idDeletePLItem
+{
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: 800ms;
+	position:absolute;
+	width:	233px;
+	height: 403px;
+	background-image: url(../res/index/trashbg.png);
+	z-index:9970;
+	-webkit-border-radius: 3px;
+}  
+
+.classHideTrash
+{
+	-webkit-transform: translate3d(-1200px, 0, 0);
+}
+
+#idPlaylistScroller
+{
+	padding: 0px;
+	padding-left: 2px;
+	margin: 0px;
+	/*border: 1px solid #F08;*/
+	z-index: 2;
+	background-image:url(../res/PLbg.png);
+}
+
+.classPLLiItem
+{
+	position: relative;
+	width: 177px;
+	height: 40px;
+	margin: 0;
+	text-align: left;
+	list-style: none;
+	padding-bottom: 6px;
+	padding-top: 6px;
+	padding-right: 36px;
+	padding-left: 5px;
+	white-space:nowrap;
+	z-index: 3;
+	font-size:14px;
+	font-weight: bold;
+	color: #DDD;
+	/*border-bottom: 1px  solid #CCC;*/
+}
+
+.classPLLiItemDrag
+{
+	position: relative;
+	width: 177px;
+	height: 40px;
+	margin: 0;
+	text-align: left;
+	list-style: none;
+	padding-bottom: 6px;
+	padding-top: 6px;
+	padding-right: 36px;
+	padding-left: 5px;
+	white-space:nowrap;
+	z-index: 3;
+	font-size:14px;
+	font-weight: bold;
+	color: #DDD;
+	background: #888;
+	/*border-bottom: 1px  solid #CCC;*/
+}
+
+.classPLArtistTxt
+{
+	font-size: 12px;
+	color: #AAA;
+	padding-left: 10px;
+	width: 80%;
+}
+
+.nowplaying
+{
+	background-color: #FFF !important;
+	color: #222 !important;
+	font-weight: bold !important;
+	width: 277px !important;
+	left: -2px;
+}
+
+.playlistSideImg
+{
+	position:absolute;
+	right: 0px;
+	background-position:center;
+	background-repeat:no-repeat;
+	top:0px;
+	width:50px;
+	height:100%;
+	z-index: 5001;
+}
+
+.classDragging
+{
+	position:absolute;
+	width: 218px;
+	height: 34px;
+	text-align: left;
+	list-style: none;
+	padding: 6px 6px;
+	z-index: 9980;
+	opacity:.75;
+	background-color: #777;
+	border-color: #8BB;
+	color: #114;
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: 0ms;
+}
+
+#idPickerJumpTop
+{
+	position: absolute;
+	left: 0px;
+	top: -30px;
+	height: 30px;
+	width:	740px;
+}
+
+#idPLDragPane
+{
+	display: block;
+	position: absolute;
+	left: 1064px;
+	top: 70px;
+	width:	300px;
+	height: 592px;
+	background-image: url(../res/index/indexbglandpickerpane.png);
+	background-position: 0px -5px;
+	z-index:10;
+	padding-top: 8px;
+	padding-left: 13px;
+	margin: 0px;
+	z-index:100;
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: .7s;
+}
+
+#idPLDragCover
+{
+	position: absolute;
+	width:	300px;
+	height: 546px;
+	z-index: 100;
+}
+
+#idPLDragWrap
+{
+	position: absolute;
+	width:	300px;
+	height: 546px;
+}
+
+#idPLDragScroller
+{
+	padding: 0px;
+	padding-left: 2px;
+	margin: 0px;
+	background-image:url(../res/PLbg.png);
+	/*border: 1px solid #F08;*/
+	z-index: 2;
+}
+
+#idPLDragPane.landscape.show
+{
+	-webkit-transform: translate3d(-300px, 0px, 0px);
+}
+
+#idPickerPaneInstructions, 
+#idPickerPaneInstructions.portrait
+{
+	position: absolute;
+	display: none;
+	top: -200px;
+}
+
+#idPickerPaneInstructions.landscape
+{
+	position: absolute;
+	top: 664px;
+	left: 50px;
+	width: 600px;
+	height: 40px;
+	color: white;
+	border: 2px solid #fff;
+	background: url(../res/buttons/text-background.png);
+	z-index: 999;
+	-webkit-border-radius:6px; 
+}
+
+#idPLDropTop
+{
+	position: absolute;
+	top: -170px;
+	left: 220px;
+	width: 320px;
+	height: 60px;
+	color: white;
+	border: 2px solid #fff;
+	background: url(../res/buttons/text-background.png);
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: .7s;
+	-webkit-border-radius:6px; 
+}
+
+#idPLDropBot
+{
+	position: absolute;
+	bottom: -166px;
+	left: 220px;
+	width: 320px;
+	height: 60px;
+	z-index: 99;
+	color: white;
+	border: 2px solid #fff;
+	background: url(../res/buttons/text-background.png);
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: .7s;
+	-webkit-border-radius:6px; 
+}
+
+#idPLDropPane.portrait.show > #idPLDropTop
+{
+	-webkit-transform: translate3d(0px, 300px, 0px);
+}
+
+#idPLDropPane.portrait.show > #idPLDropBot
+{
+	-webkit-transform: translate3d(0px, -300px, 0px);
+}
+
+.classDropTargGlow
+{
+	background: #2EE !important;
+}
+
+.classDragIndicator
+{
+	position: relative;
+	width: 250px;
+	height: 15px;
+	margin: 0;
+	text-align: left;
+	list-style: none;
+	z-index: 4;
+	background-color: #888;
+	/*border-bottom: 1px  solid #CCC;*/
+}
+
+#idClearPL
+{
+	position: absolute;
+	width:	300px;
+	height: 30px;
+	border-top: 1px solid #BBF;
+	left: 15px;
+	bottom: 16px;
+	background-image: url(../res/index/buttonimgrep.png);
+	color: #003;
+	font-size: 22px;
+	padding-left: 20px;
+	z-index: 5;
+}
+
+ul.classUniSubPan, #idListUL, #idInternetUL
+{
+	list-style: none;
+	padding: 0px;
+	margin: 0px;
+	background: url(../res/TTLbg.png);
+}
+
+
+ul.HclassTitleSubPaneHide, div.HclassTitleSubPaneHide
+{
+	list-style: none;
+	padding: 0px;
+	margin: 0px;
+	display: none;
+}
+
+li.HclassTitleSubPaneHide
+{
+	display: none !important;
+	padding: 10px 0px 10px 40px;
+	height: 20px;
+}
+
+li.classUniSubPan
+{
+	padding: 10px 0px 10px 40px;
+	height: 20px;
+}
+
+#idArtistStickyHead, #idGenreStickyHead, #idAlbumStickyHead
+{
+	position: absolute;
+	left:0;
+	top:0;
+	top: 0px;
+	padding: 1px 0px 2px 10px;
+	height: 20px;
+	max-height: 22px;
+	text-align:left;
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: 0ms;
+	margin-top: 0px;
+	margin-left: 2px;
+	background-color:#CCC;
+	color: #333;
+	white-space: nowrap;
+	font-size: 18px;
+	z-index: 13;
+	float: none;
+	display: list-style;
+	width: 90%
+}
+
+#idGenreWrapper.classCatSideView  > div > #idGenreStickyHead,
+#idArtistWrapper.classCatSideView  > div > #idArtistStickyHead,
+#idAlbumWrapper.classCatSideView  > div > #idAlbumStickyHead
+{
+	width: 148px;
+	color:#CCC;
+	background-color: #333;
+}
+
+#idGenreWrapper.classSecLevelPickedCat > div > #idGenreStickyHead.classStickyHeader,
+#idArtistWrapper.classSecLevelPickedCat > div > #idArtistStickyHead.classStickyHeader,
+#idAlbumWrapper.classSecLevelPickedCat  #idAlbumStickyHead.classStickyHeader
+{
+	width: 470px !important;
+	margin-left: 5px !important;
+}
+
+#idAlbumStickyCont, #idGenreStickyCont, #idArtistStickyCont
+{
+	position: absolute;
+	left:0px;
+	top:0px;
+	height: 30px;
+	width: 709px;
+	overflow: hidden;
+}
+
+.classStickyHeader
+{
+	position: absolute;
+	left:0;
+	top:0;
+	padding: 9px 0px;
+	height: 22px;
+	width: 709px;
+	vertical-align:middle;
+	padding-left: 3px;
+	-webkit-transition-property: -webkit-transform;
+	-webkit-transition-duration: 0ms;
+	margin: 0px;
+	background-color:#333;
+	color: #CCC;
+	white-space: nowrap;
+	font-size: 18px;
+	z-index: 14;
+}
+
+.classStickyCont
+{
+	position: absolute;
+	left:16px;
+	top:49px;
+	height: 40px;
+	width: 709px;
+	overflow: hidden;
+}
+
+.classFavoriteMark
+{
+	position: relative;
+	left: 10px;
+	top: 10px;
+	height: 30px;
+	width: 30px;
+	background-color: #888;
+	background-image: url(../res/index/favgo.png);
+	
+}
+
+.classFavoriteMark.classChecked
+{
+	position: relative;
+	left: 10px;
+	top: 10px;
+	height: 30px;
+	width: 30px;
+	background-color: #88C;
+	background-image: url(../res/index/favno.png);
+}
+
+
+#idGenreUL.classShowFavOnly > ul, 
+#idArtistUL.classShowFavOnly > ul,
+#idAlbumPicker.classShowFavOnly > div,
+#idTitleScroller.classShowFavOnly > ul
+{
+	display: none !important; 
+}
+    	
+		
+#idGenreUL.classShowFavOnly > ul.classMarkAsFav, 
+#idArtistUL.classShowFavOnly > ul.classMarkAsFav,		
+#idAlbumPicker.classShowFavOnly > div.classMarkAsFav,
+#idTitleScroller.classShowFavOnly > ul.classMarkAsFav
+{
+    display: block !important; 
+}
+
+#idGenreUL.classShowFavOnly > ul > li,
+#idArtistUL.classShowFavOnly > ul > li,
+#idAlbumPicker.classShowFavOnly > div > div, 
+#idTitleScroller.classShowFavOnly > ul > li
+{
+    display: none !important; 
+}
+
+
+#idAlbumPicker.classShowFavOnly > div.classMarkAsFav > div.classMarkAsFav,
+#idAlbumPicker.classShowFavOnly > div.classMarkAsFav > div.listItemHeader
+{
+    display: block !important; 
+}
+
+#idGenreUL.classShowFavOnly > ul.classMarkAsFav > li.classMarkAsFav,
+#idArtistUL.classShowFavOnly > ul.classMarkAsFav > li.classMarkAsFav,
+#idTitleScroller.classShowFavOnly > ul.classMarkAsFav > li.classMarkAsFav
+{
+    display: list-item !important; 
+}
+
+.classShowBig
+{
+	padding: 100px 10px 0px 0px;
+	color: #C0C0CF;
+	font-size: 30px;
+	text-align: center;
+}
+
+/****************** Network URL stuff *************/

@@ -1,0 +1,79 @@
+/* Copyright 2009 Palm, Inc.  All rights reserved. */
+#yembed
+{
+	position: absolute;
+	left: -8px;
+	top: -8px;
+}
+
+#btnYTubeUnMute
+{
+	position: absolute;
+	right: 10px;
+	top: 10px;
+	width: 80px;
+	height: 80px;
+	z-index: 978;
+	background: url(../res/buttons/youtubemute.png);
+	display: none;
+}
+
+#btnYTubeUnMute.classYTubeUnmute
+{
+	background: url(../res/buttons/youtubesound.png);
+}
+
+.classYTubeLi
+{
+	float:left; 
+	width:300px; 
+	padding:5px; 
+	margin:0 3px 3px 0;
+	list-style: none;
+}
+
+.classYTubeImg
+{
+	margin:0; 
+	float:left; 
+	width:120px; 
+	height:90px; 
+	font-size:10px; 
+	line-height:0; 
+	padding:5px; 
+	background:#000; 
+	border:2px solid #666; 
+	border-radius:4px; 
+	overflow:hidden;
+}
+
+.classYTubeEntry
+{
+	float:right; 
+	width:163px; 
+	font-weight:bold;
+	font-size:14px;
+	color:#DCDCDC;	
+}
+
+.classYTubeSm
+{
+	display:block; 
+	font-weight:normal; 
+	font-size:10px; 
+	color:#ACACAC;
+}
+
+#idPlayer.classHideForYouTube > #idRecPaneOne,
+#idPlayer.classHideForYouTube > #idPLPane,
+#idPlayer.classHideForYouTube > #idIndex
+{
+	display: none;
+}
+
+a
+{
+	text-decoration:none; 
+	color:inherit;
+	border:none;
+}

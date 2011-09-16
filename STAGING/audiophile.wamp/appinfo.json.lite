@@ -1,0 +1,27 @@
+{
+	"title": "AudiophileHD",
+	"type": "web",
+	"main": "index.html",
+	"id": "com.epik.audiophilehd",
+	"version": "0.1.9",
+	"vendor": "Epik",
+	"uiRevision":2,
+	"icon": "iconsm.png",
+	"splashicon": "icon.png",
+	"plug-ins": true,
+	"universalSearch": 
+	{
+		"dbsearch": 
+		{
+          "displayName":"Audiophile",
+          "url":"com.epik.audiophilehd",
+          "launchParam":"keyword",
+          "launchParamDbField":"_id",
+          "displayFields":["category","keyword","desc"],
+          "dbQuery":{"from":"com.epik.searchindex:1",
+              "where":[{"prop":"keyword","op":"?","val":""}],
+			  "orderBy":"keyword",
+			  "limit":40}
+		}
+	}
+}

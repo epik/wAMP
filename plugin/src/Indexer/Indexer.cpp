@@ -4,11 +4,12 @@
 #include "GeneralHashFunctions.h"
 #include "../WormMacro.h"
 #include <cstring>
-#include <vector>
 #include "../Decoders/Decoders.h"
 #include <pthread.h>
 #include "../WormThread.h"
 #include <stdio.h>
+#include <EASTL/set.h>
+# include <sys/stat.h>
 
 //#define SPEC_BUILD
 
@@ -41,70 +42,41 @@ void FileList::AddNodeLite(FileEntry *pNode, uint32_t uiHash)
 	m_pRoot = pNode;
 }
 
-/*Path;
-	char		*Name;*/
 
-char *FileList::ConvertToPathString()
+bool WormIndexer::CheckForDirMusic(bool bCreate)
 {
-	char	*cstrRet = (char *) MALLOC(2048);
-	char	*cstrTemp = (char *) MALLOC(2048);
-	
-	int32_t iTmpSiz = 2048;
+	ReportError("In Check Dir For Music");
 
-	int32_t med = 2048;
-	int32_t size = 0;
-	
-	*cstrRet = 0;
-
-	FileEntry *pIter = m_pRoot;
-	
-	while(pIter != NULL)
+	if (bCreate)
 	{
-
-		int32_t iStrLen = strlen(pIter->Path) + strlen(pIter->Name) + 30;
-		
-		if (iStrLen > iTmpSiz)
-		{
-			iTmpSiz += 1024 + iStrLen;
-			cstrTemp = (char *) REALLOC(cstrTemp, med);
-		}
-
-		sprintf(cstrTemp, "%s\\\\%u-%u-%s",
-							pIter->Path,
-							pIter->LastMod,
-							pIter->Hash,
-							pIter->Name);
-		
-		//ReportError1("cstrTemp: %s", cstrTemp);
-
-		iStrLen = strlen(cstrTemp);
-
-		if (size + iStrLen + 2 >= med)
-		{
-			med += 1024 + iStrLen;
-			cstrRet = (char *) REALLOC(cstrRet, med);
-		}
-
-		strcat(cstrRet + size, cstrTemp);
-		size += iStrLen;
-
-		strcat(cstrRet + size, "\\\\");
-
-		size += 2;
-
-		pIter = pIter->Next;
+		if (!FMGUI_MkDir(HOME_DIR "/music"))
+			return true;
+		else
+			return false;
 	}
-	
-	
-	free(cstrTemp);
-	
-	cstrRet[size] = '\0';
-	
-	return cstrRet;
+	else
+	{
+		ReportError("About to run stat");
+		struct stat sb;
+
+		if (stat(HOME_DIR "/music", &sb) == -1)
+			return false;
+
+		ReportError("Got a stat result");
+
+		if ((sb.st_mode & S_IFDIR)==S_IFDIR)
+			return true;
+		else
+			return false;
+	}
 }
 
-void WormIndexer::BuildIndex()
+void WormIndexer::BuildIndex(int32_t lastBuild, const char *path)
 {
+
+	m_strHomeDir = path;
+
+	m_timeLastBuild = lastBuild;
 
 	// Don't need to save this, Thread should be self sufficient
 	pthread_t Thread;
@@ -114,60 +86,35 @@ void WormIndexer::BuildIndex()
 }
 
 
-void WormIndexer::ClearIndex()
-{
-	FMGUI_FileDelete(HOME_DIR INDEX_STUF);
-}
-
-
-char *WormIndexer::GetIndexer()
-{
-	return m_flIndex.ConvertToJSON();
-}
-
 
 void WormIndexer::RunIndexer()
 {
 
-	VisitQue *DirsToVisit = new VisitQue(HOME_DIR);
-	VisitQue *DirsVisited = NULL;
+	// Lets profile for faster start up
+	//WormMarkStartTime();
+
+	eastl::set<eastl::string> DirsVisited;
+
+	VisitQue *DirsToVisit = new VisitQue(m_strHomeDir.c_str());
+	//VisitQue *DirsVisited = NULL;
 
 	FMGUI_FileInfo 	Info;
 	FMGUI_Dir 		*pDir;
+	bool			bFirst = true;
 	time_t			Time;
-
 	
 	while (DirsToVisit != NULL)
 	{
-		// pop the next dir to search
-		char *cstrDirName = DirsToVisit->Dir;
 		VisitQue *Cur = DirsToVisit;
 		DirsToVisit = DirsToVisit->Next;
-		delete Cur;
 
-		//ReportError1("About to visit %s", cstrDirName);
 
-		int16_t bVisited;
+		//ReportError1("About to visit %s", Cur->Dir.c_str());
 
-		if (DirsVisited == NULL)
-			bVisited = 0;
-		else
-			bVisited = DirsVisited->CheckIfValInQue(cstrDirName);
-
-		if (bVisited)
+		if (DirsVisited.insert(Cur->Dir).second)
 		{
-			FREE(cstrDirName);
-		}
-		else
-		{
-			if (DirsVisited == NULL)
-				DirsVisited = new VisitQue(cstrDirName);
-			else
-				DirsVisited->AddToQue(new VisitQue(cstrDirName));
 
-			m_flIndex.SetCurrentSearchDir(cstrDirName);
-
-			pDir = FMGUI_OpenDir(cstrDirName);
+			pDir = FMGUI_OpenDir(Cur->Dir.c_str());
 
 			if (pDir == NULL)
 				continue;
@@ -178,13 +125,18 @@ void WormIndexer::RunIndexer()
 
 				if (pDir->ents[i][0] == '.')
 					continue;
-				if (strcmp(pDir->ents[i], "palmos") == 0)
-					continue;
 
-				char *strFileFullPath = (char *) MALLOC(strlen(cstrDirName) +
+				if (bFirst)
+				{
+					if ((strcmp(pDir->ents[i], "palmos") == 0) ||
+						(strcmp(pDir->ents[i], "ringtones") == 0))
+						continue;
+				}
+
+				char *strFileFullPath = (char *) MALLOC(strlen(Cur->Dir.c_str()) +
 														64 +
 														strlen(pDir->ents[i]));
-				strcpy(strFileFullPath, cstrDirName);
+				strcpy(strFileFullPath, Cur->Dir.c_str());
 				strcat(strFileFullPath, FMGUI_PATHSEP);
 				strcat(strFileFullPath, pDir->ents[i]);
 
@@ -195,9 +147,8 @@ void WormIndexer::RunIndexer()
 					continue;
 				}
 
-				if ((Info.flags & FMGUI_FILE_HIDDEN) ||
-					(Info.flags & FMGUI_FILE_SYSTEM) ||
-					(Info.flags & FMGUI_FILE_TEMPORARY))
+				if (Info.flags &
+							(FMGUI_FILE_HIDDEN | FMGUI_FILE_SYSTEM | FMGUI_FILE_TEMPORARY))
 				{
 					FREE(strFileFullPath);
 					continue;
@@ -206,12 +157,6 @@ void WormIndexer::RunIndexer()
 
 				if (Info.type == FMGUI_FILE_DIRECTORY)
 				{
-					if (strcmp(strFileFullPath, "/media/internal/ringtones") == 0)
-					{
-						FREE(strFileFullPath);
-						continue;
-					}
-
 					//ReportError("It was a dir");
 					VisitQue *ArrangeAsStack = new VisitQue(strFileFullPath);
 					ArrangeAsStack->Next = DirsToVisit;
@@ -220,31 +165,37 @@ void WormIndexer::RunIndexer()
 				}
 				else
 				{
-					//ReportError("About to see if item has our exten");
+					ReportError("About to see if item has our exten");
 					if(QuickExtCheck(pDir->ents[i]) != 0)
 					{
 						//ReportError1("Found Song: %s", pDir->ents[i]);
-						m_funcIndexAdd(strFileFullPath, Time);
+						/*ReportError3("Song Time: %li > %li %s", Time, m_timeLastBuild,
+												((Time > m_timeLastBuild) ?
+														"dirty" : "clean"));*/
+						m_funcIndexAdd(strFileFullPath, (Time > m_timeLastBuild));
 					}
 
 					FREE(strFileFullPath);
 
 				} // else if (Info.type == FMGUI_FILE_DIRECTORY)
 
-				//ReportError("Finished whatever it was that we were doing to the file");
-
 			} //for (size_t i = 0; i < pDir->nents; i++)
 
-			//ReportError("****Closing the dir we just searched");
+			bFirst = false;
+
+			ReportError("****Closing the dir we just searched");
 			FMGUI_CloseDir(pDir);
 
-			FREE(cstrDirName);
+			delete Cur;
 
 		} //if (!bVisited)
 
 	} //while (!vstrDirsToVisit.empty())
 
-	ReportError("Finished building dir list");
+	ReportError("Finish");
+
+	//ReportError1("***********Finish Time %i********************",
+	//		WormCheckTimeSinceMark());
 	
 	m_funcFinish();
 }
@@ -393,91 +344,6 @@ char *FileList::ConvertToJSONLite()
 	return cstrRet;
 }
 
-char *FileList::ConvertToJSON(int16_t sForce)
-{
-
-	char		*cstrRet;
-	char		*cstrTemp;
-	int32_t		size, med, iStrLen;
-
-
-	cstrRet = (char *) MALLOC(25);
-	strcpy(cstrRet, "{\"arrayFileList\":[");
-
-	size =  strlen(cstrRet) + 1;
-	med = size;
-
-	FileEntry *pIter = m_pRoot;
-
-	while(pIter)
-	{
-		cstrTemp = pIter->ToStringMeta();
-		iStrLen = strlen(cstrTemp);
-		if (size + iStrLen >= med)
-		{
-			med += 512 + iStrLen;
-			cstrRet = (char *) REALLOC(cstrRet, med);
-		}
-		strcat(cstrRet+(size-2), cstrTemp);
-		size += iStrLen;
-
-		FREE(cstrTemp);
-
-		pIter = pIter->Next;
-		if (pIter)
-		{
-			if(size+2 >= med)
-			{
-				med += 512;
-				cstrRet = (char *) REALLOC(cstrRet, med);
-			}
-			strcat(cstrRet+(size-2), ",");
-			size++;
-		}
-	}
-
-	if(size+3 >= med)
-	{
-		med = size+5;
-		cstrRet = (char *) REALLOC(cstrRet, med);
-	}
-	strcat(cstrRet+(size-2), "]}");
-
-	return cstrRet;
-}
-
-
-char *FileEntry::ToStringMeta()
-{
-	// first calculate the size of this metadata item
-	//	remember to add a buffer to account for the quote marks
-	//	and colon used for the JSON item (count is 83 + null +
-	//	five for safety).
-
-	size_t	tmpSize = SafeStringLen(Path);
-	tmpSize += SafeStringLen(Name);
-	tmpSize += SafeStringLen(Artist);
-	tmpSize += SafeStringLen(Album);
-	tmpSize += SafeStringLen(Genre);
-	tmpSize += SafeStringLen(Title) + 90;
-
-	// allocate a new temp string to place the metadata pair into
-	char *cstrTmp = (char *) MALLOC(tmpSize);
-
-	sprintf(cstrTmp,
-			"{\"name\":\"%s\", \"path\":\"%s\", \"artist\":\"%s\", "
-				"\"album\":\"%s\", \"genre\":\"%s\", \"title\":\"%s\", "
-				"\"isdir\":%s}",
-			Name,
-			Path,
-			Artist,
-			Album,
-			Genre,
-			Title,
-			((Type == DIR)?"true":"false"));
-
-	return cstrTmp;
-}
 
 char *FileEntry::ToStringSimple()
 {
@@ -545,8 +411,6 @@ const char *WormIndexer::GetMetadata(const char *cstrTag)
 int32_t	WormIndexer::CheckForImg(const char *cstrPath,
 								char *cstrRetVal)
 {
-	ReportError1("At least we are here: %s", cstrPath);
-
 	FMGUI_Dir 	*pDir = FMGUI_OpenDir(cstrPath);
 
 	if (pDir == NULL)
@@ -557,14 +421,14 @@ int32_t	WormIndexer::CheckForImg(const char *cstrPath,
 
 	for (size_t i = 0; i < (size_t) pDir->nents; i++)
 	{
-		ReportError1("File We Are On: %s", pDir->ents[i]);
+		//ReportError1("File We Are On: %s", pDir->ents[i]);
 
 		if (strlen(pDir->ents[i]) > CHECK_FOR_IMG_MAX)
 			continue;
 
 		const char *ext = strrchr(pDir->ents[i], '.');
 
-		ReportError1("After strrchr: %s", ext);
+		//ReportError1("After strrchr: %s", ext);
 
 	    if (ext)
 	    {

@@ -1,0 +1,406 @@
+#idDJAd
+{
+	display: none;
+	position: absolute;
+	background-color: #888;
+	background-image: url(../res/djtea.png);
+	background-position: center;
+	background-repeat:no-repeat;
+	text-align: center;
+	top: 200px;
+	left: 100px;
+	right: 100px;
+	padding: 25px 25px;
+	height: 355px;
+	color: red;
+	font-size: 40px;
+	line-height: 200%;
+	font-weight: bold;
+	z-index: 900;
+	border: 1px solid #000;
+}
+
+.classDJSliderBox
+{
+    position: absolute;
+	left: 29px;
+	top: 24px;
+	width: 360px;
+	height: 360px;
+	/*border: 1px solid #088;*/
+}
+
+.TopDJKnob
+{
+	position: absolute;
+	height: 51px;
+	width: 51px;
+	background-image: url(../res/knob/proslideblue.png);
+	top: 100px;
+	left: 0px;
+	z-index: 660;
+	background-position: 5px 5px;
+	background-repeat:no-repeat;
+}
+
+.BotDJKnob
+{
+	position: absolute;
+	height: 41px;
+	width: 41px;
+	background-image: url(../res/knob/proslidered.png);
+	top: 200px;
+	left: 0px;
+	z-index: 660;
+	background-position: 5px 5px;
+	background-repeat:no-repeat;
+}
+
+#idDJPaneTwo
+{
+    position: absolute;
+    z-index:0;
+    left: 513px;
+    top: 106px;
+	height: 518px;
+	width: 511px;
+}
+
+#idDJPaneOne
+{
+    position: absolute;
+    z-index:0;
+    left: 7px;
+    top: 106px;
+	height: 518px;
+	width: 511px;
+}
+
+.djscrubwrap
+{
+	position:absolute;
+    width:290px;
+    height:20px;
+    left:20px;
+    top:28px;
+	z-index:15;
+	font-size: 14px;
+	font-family:arial;
+	border: 0px solid #888;
+	background-repeat:no-repeat;
+	background-image: url(../res/player/Untitled-4.png);
+}
+
+.classScrub
+{
+	position:absolute;
+	left: 2px;
+	top: 2px;
+	right: 2px;
+	bottom: 0px;
+	padding-left:14px; 
+	padding-top:1px; 
+	z-index:-9;
+	background-image: url(../res/player/Untitled-6.png); 
+}
+
+.classScrubOp
+{
+	position:absolute;
+	left: 2px;
+	top: 1px;
+	right: 2px;
+	bottom: 2px;
+	z-index: -10;
+	padding-left:14px; 
+	padding-top:1px; 
+	color:#FFF;
+}
+
+
+#idUnderDJOne
+{
+    left: 7px;
+    top: 530px;
+}
+
+#idUnderDJTwo
+{
+    left: 513px;
+    top: 530px;
+}
+
+.classDJRec
+{
+    position: absolute;
+    z-index:1;
+	height: 511px;
+	width: 500px;
+	background: url(../res/djmode/base.png) no-repeat no-repeat;
+}
+
+.classDJRecTarget
+{
+    position: absolute;
+	left: 84px;
+	top: 73px;
+	z-index: 551;
+	width: 298px;
+	height: 298px;
+	/*border: 1px solid #088;*/
+}
+
+#idDJOnePop
+{
+	position: absolute;
+	top: 180px;
+	left: 90px;
+	white-space:nowrap;
+	font-family: prelude arial;
+	font-size:3em;
+	text-align:center;
+	vertical-align:middle;
+	position:absolute;
+	z-index:550;
+	width: 300px;
+	height: 75px;
+	opacity: 0.50;
+	background-color:#000;
+	color:#FFF;
+	border:1px solid #000; 
+}
+
+
+#idDJTwoPop
+{
+	position: absolute;
+	top: 180px;
+	left: 90px;
+	white-space:nowrap;
+	font-family: prelude arial;
+	font-size:3em;
+	text-align:center;
+	vertical-align:middle;
+	position:absolute;
+	z-index:550;
+	width: 300px;
+	height: 75px;
+	opacity: 0.50;
+	background-color:#000;
+	color:#FFF;
+	border:1px solid #000; 
+}
+
+.classDJSpinner
+{
+    position: absolute;
+    z-index:0;
+	left: 87px;
+	top: 70px;
+	width: 298px;
+	height: 298px;
+	background-position:center;
+	background-repeat:no-repeat;
+    background-image: url(../res/player/spinimg.png);
+}
+
+.classDJArm
+{
+    position: absolute;
+    background-image: url(../res/player/arm.png);
+    z-index:2;
+    left: 306px;
+    top: 45px;
+    height: 300px;
+    width: 166px;
+	-webkit-transform-origin: 127px 70px;
+	-webkit-transition: -webkit-transform .2s ease-in-out;
+	/*-webkit-transform:rotate(22deg);*/
+}
+
+.djScrub
+{
+	position: absolute;
+	height: 100px;
+	width: 500px;
+}
+
+#idCrossOverSwitch
+{
+	position: absolute;
+	height: 34px;
+	width: 183px;
+	top: 610px;
+	left: 420px;
+	background-image: url(../res/knob/crossoverbg.png);
+}
+
+#idDJOneContBut
+{
+	position: absolute;
+	padding-left: 10px;
+	left: 165px;
+	bottom: 36px;
+}
+
+#idDJCueDiv
+{
+	position: absolute;
+	padding-left: 10px;
+	left: 420px;
+	bottom: 15px;
+	width: 140px;
+	height: 80px;
+	color: white;
+	border: 0px solid #F3F;
+}
+
+#btnDJOnecue
+{
+	left: 10px;
+	top: 8px;
+}
+
+#btnDJTwocue
+{
+	right: -24px;
+	top: 8px;
+}
+
+#idDJTwoContBut
+{
+	position: absolute;
+	padding-left: 10px;
+	left: 610px;
+	bottom: 36px;
+}
+
+#idDJUserbuttons div.classButDJsm
+{
+	position: absolute;
+	top: 350px;
+	left: 409px;
+}
+
+.classDJPlay
+{
+	position: absolute;
+	z-index:0;
+	width: 82px;
+	left: 0px;
+	bottom: 0px;
+	height: 89px;
+	background-image: url(../res/playcontrols/playsm.png);
+}
+
+.classDJPause
+{
+	position: absolute;
+	z-index:1;
+	width: 82px;
+	height: 89px;
+	left: 0px;
+	bottom: 0px;
+	background-image: url(../res/playcontrols/pausesm.png);
+}
+
+.classDJPrev
+{
+	position: absolute;
+	z-index:0;
+	width: 84px;
+	height: 72px;
+	bottom: 10px;
+	left: 82px;
+	background-image: url(../res/playcontrols/prevsongrightsm.png);
+}
+
+.classDJNext
+{
+	position: absolute;
+	z-index:0;
+	width: 84px;
+	height: 72px;
+	bottom: 10px;
+	left: 165px;
+	background-image: url(../res/playcontrols/nextsongleftsm.png);
+}
+
+#idCrossOverKnob
+{
+	position: absolute;
+	width: 28px;
+	height: 56px;
+	top: -11px;
+	background-image: url(../res/knob/proslide.png);
+}
+
+.classDJTitArtInf
+{
+	position: absolute;
+	top: 5px;
+	left: 260px;
+	width: 232px;
+	height: 23px;
+	color: #DDD;
+	z-index: 650;
+	font-size: 20px;
+	white-space:nowrap;
+	overflow: hidden;
+	text-align: center;
+}
+
+.classDJPickSongPane
+{
+	position: absolute;
+	display: none;
+	top: 5px;
+	left: 260px;
+	width: 232px;
+	height: 360px;
+	z-index: 651;
+	border: 1px solid #AAA;
+	background-color: #333;
+}
+
+.classDJClosePick
+{
+	position: absolute;
+	right: 5px;
+	top: 5px;
+	width: 41px;
+	height: 41px;
+	background-image: url(../res/index/closebtn.png);
+	z-index: 13;
+}
+
+.classDJPickScroller
+{
+	background-image:url(../res/PLbg.png);
+	width: 220px;
+	padding: 0px;
+	padding-left: 2px;
+	margin: 0px;
+	/*border: 1px solid #F08;*/
+	z-index: 2;
+}
+
+.classDJPLCover
+{
+	position: absolute;
+	top: 0px;
+	left: 5px;
+	width: 232px;
+	height: 360px;
+	z-index: 9;
+}
+
+.classDJPickWrapper
+{
+	position: absolute;
+	top: 0px;
+	left: 5px;
+	width: 232px;
+	height: 360px;
+	z-index: 1;
+}

@@ -536,7 +536,7 @@ int32_t BPMDetect::DetectBeat(fixed *real)
 	}
 
 	m_pcAvgMag[m_pcCurMagWPos] = iAvgLoud >> FFT_DECOMP_N;
-	ReportError2("[%i] = %i", m_pcCurMagWPos, m_pcAvgMag[m_pcCurMagWPos]);
+	//ReportError2("[%i] = %i", m_pcCurMagWPos, m_pcAvgMag[m_pcCurMagWPos]);
 
 
 	m_pcCurMagWPos++;

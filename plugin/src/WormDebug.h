@@ -68,7 +68,7 @@ extern int16_t SafeStrcpy(char *cstrDest, const char *cstrSrc, int x);
 #define ReportError14(s, a, b, c, d, e, f, g, h, i, j, k, l, m, n) fprintf(ERROUT, "[" __FILE__ ":%i] ReportError: " s "\n", __LINE__, a, b, c, d, e, f, g, h, i, j, k, l, m, n)
 #define ReportError15(s, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) fprintf(ERROUT, "[" __FILE__ ":%i] ReportError: " s "\n", __LINE__, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)
 
-
+#define VReportError(s, v) vfprintf(ERROUT, s, v)
 
 #else
 
@@ -94,6 +94,7 @@ extern int16_t SafeStrcpy(char *cstrDest, const char *cstrSrc, int x);
 
 #define Worm_OpenLog(a,b,c) openlog(a, b, c);
 
+#define VReportError(s, v) vsyslog(LOG_WARNING, s, v)
 
 #endif // #if DEBUG
 
@@ -120,6 +121,8 @@ extern int16_t SafeStrcpy(char *cstrDest, const char *cstrSrc, int x);
 #define ReportError15(s, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)
 
 #define Worm_OpenLog(a,b,c)
+
+#define VReportError(s, v)
 
 #ifndef NDEBUG
 #define NDEBUG

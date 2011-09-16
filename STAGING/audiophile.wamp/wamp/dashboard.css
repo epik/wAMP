@@ -1,0 +1,69 @@
+/* Copyright 2009 Palm, Inc.  All rights reserved. */
+.classDashBG
+{
+	background-image: url(../res/dashboard/bg.png);
+	color: white;
+}
+
+.classDashboardButton
+{ 
+	position: absolute;
+	width: 48px;
+	height: 48px;
+	background-position: center;
+	background-repeat:no-repeat;
+	border: 1px solid #AAA;
+	background-color: #444;
+}
+
+#idDashPlay
+{
+	top: 0px;
+	left: 52px;
+	background-image: url(../res/dashboard/play.png);
+}
+
+#idDashTitle
+{
+	position: absolute;
+	width: 300px;
+	height: 25px;
+	left: 175px;
+	top: 0px;
+	font-size: 20px;
+	white-space:nowrap;
+	overflow: hidden;
+}
+
+#idDashArtist
+{
+	position: absolute;
+	width: 300px;
+	height: 25px;
+	left: 175px;
+	top: 30px;
+	white-space:nowrap;
+	overflow: hidden;
+}
+
+#idDashPause
+{
+	top: 0px;
+	left: 52px;
+	background-image: url(../res/dashboard/pause.png);
+}
+
+#idDashNext
+{
+	top: 0px;
+	left: 104px;
+	background-image: url(../res/dashboard/next.png);
+}
+
+#idDashPrev
+{
+	top: 0px;
+	left: 0px;
+	background-image: url(../res/dashboard/prev.png);
+}
+

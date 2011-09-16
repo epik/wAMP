@@ -1,0 +1,89 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>Music Player</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  	<link href="wamp/ytube.css" media="screen" rel="stylesheet" type="text/css" />
+	<script language="javascript" type="text/javascript">
+		
+		var domYouTube = 0;
+		var ytubeId = 0;
+		
+		function getParamValue(param) 
+		{
+			var loc = location.search.substring(1, location.search.length);
+			var paramValue;
+			var params = loc.split('&')
+			for (i = 0; i < params.length; i++) 
+			{
+				var iIndex = params[i].indexOf('=');
+				paramName = params[i].substring(0, iIndex++);
+				if (paramName == param) 
+				{
+					paramValue = params[i].substring(iIndex);
+				}
+			}
+			return paramValue;
+		}
+		
+		function onYouTubePlayerReady(playerId) 
+		{		
+			if (domYouTube) 
+				domYouTube.mute();
+			
+			setTimeout(function()
+			{
+				localStorage["epik.ytube.cur.pos"] = domYouTube.getCurrentTime();
+			}, 3000);
+		}
+		
+		function SetEmbed(strID, iHeight, iWidth)
+		{
+			if (typeof(strID) == 'undefined')
+				strID = 'vkt6N1WJTdY';
+			
+			localStorage["epik.ytube.cur.vid"] = strID;
+			localStorage["epik.ytube.cur.height"] = iHeight;
+			localStorage["epik.ytube.cur.width"] = iWidth;
+			
+			ytubeId = strID;
+			
+			domYouTube.style.height = iHeight + "px";
+			domYouTube.style.width = iWidth + "px";
+			
+			var strPath = 'http://www.youtube.com/apiplayer?video_id=' + strID +
+								"&playlist=" + strID +
+				'&enablejsapi=1&version=3&autoplay=1&rel=0&loop=1&playerapiid=badwebkit';
+			domYouTube.data = strPath;
+		}
+		
+		function UseHashToUnMute()
+		{			
+			if (domYouTube)
+			{
+				if (location.hash == "#unmute")
+					domYouTube.unMute();
+				else
+					domYouTube.mute();
+			}
+		}
+		
+		function OnLoad()
+		{
+			domYouTube = document.getElementById('yembed');
+			SetEmbed(getParamValue("tubeid"), getParamValue("height"), getParamValue("width"));
+		};
+		
+		
+	</script>
+	
+  </head>
+
+  <body onload="OnLoad()" onhashchange="UseHashToUnMute()">
+	<object type="application/x-shockwave-flash" id="yembed" style="height: 740px; width: 1024px; ">
+		<param name="allowScriptAccess" value="always">
+	</object>
+  
+   </body>
+</html>

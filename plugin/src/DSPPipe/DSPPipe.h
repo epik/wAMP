@@ -32,6 +32,8 @@
 #define END_GAP_TRIGGER		(1 << 29)
 #define END_STEP_MASK		((1 << 19) - 1)
 
+#define FAST_BACK_LIM		DEST_FREQ * 5
+
 #define END_MAX_GAP		(1 << 18)
 #define END_SCALE_Q			18
 
@@ -95,7 +97,7 @@ public:
 	void Init()
 	{
 		m_uiNumAllocated = 8192;
-		ReportError1("Size of SoundPacket=%i", sizeof(SoundPacket));
+		//ReportError1("Size of SoundPacket=%i", sizeof(SoundPacket));
 		assert(sizeof(SoundPacket) % 32 == 0);
 		m_pspPacketArray = (SoundPacket *) MALLOC(sizeof(SoundPacket) * (m_uiNumAllocated + 2));
 
@@ -201,6 +203,8 @@ private:
 	volatile size_t		m_puiDataEnd;
 	volatile int32_t	m_piDataNumUsed;
 	
+	size_t			m_uiFastBackSize;
+	
 	size_t			m_puiRealEnd;
 
 	uint32_t		m_uiSampleRate;
@@ -247,6 +251,7 @@ public:
 		m_puiDataEnd = 0;
 		m_puiDataCur = 0;
 		m_piDataNumUsed = 0;
+		m_uiFastBackSize = 0;
 		
 		m_puiRealEnd = m_uiBufferSize + 2;
 
@@ -753,9 +758,10 @@ public:
 		m_iFixedResampFilt = (1<<10) * f;
 	}
 	
-	int16_t Open(const char *cstrFileName)
+	int16_t Open(const char *cstrFileName, bool bypassCheck = false)
 	{
-		if(QuickExtCheck(cstrFileName) == 0)
+		if((QuickExtCheck(cstrFileName) == 0) &&
+			!bypassCheck)
 		{
 			_PassSongTransMsgBad();
 			return MUS_STATUS_ERROR;

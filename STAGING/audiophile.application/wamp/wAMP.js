@@ -25,20 +25,238 @@ var PLAY_MODE_SHUFFLE 	= 2;
 var PLAYLIST_POS_END 	= -1;
 var PLAYLIST_POS_NEXT 	= -2;
 
+// Create Global "extend" method
+function Extend(obj, extObj) 
+{
+    if (arguments.length > 2) 
+	{
+        for (var a = 1; a < arguments.length; a++) 
+		{
+			for (var i in arguments[a]) 
+			{
+				obj[i] = arguments[a][i];
+			}
+        }
+    } 
+	else 
+	{
+        for (var i in extObj) 
+		{
+            obj[i] = extObj[i];
+        }
+    }
+    return obj;
+};
+
+function GetTransformPoint(el) 
+{
+    // get the computed style object for the element
+    var style = window.getComputedStyle(domElement);
+    // this string will be in the form 'matrix(a, b, c, d, tx, ty)'
+    var transformString = style['-webkit-transform']
+                       || style['-moz-transform']
+                       || style['transform'] ;
+    if (!transformString || transformString == 'none')
+        return 0;
+    var splits = transformString.split(',');
+	return {"top": splits[5],
+			"left": splits[4]};
+}
+
+function GetTransformLeft(el) 
+{
+    // get the computed style object for the element
+    var style = window.getComputedStyle(domElement);
+    // this string will be in the form 'matrix(a, b, c, d, tx, ty)'
+    var transformString = style['-webkit-transform']
+                       || style['-moz-transform']
+                       || style['transform'] ;
+    if (!transformString || transformString == 'none')
+        return 0;
+    var splits = transformString.split(',');
+	return splits[4];
+}
+
+function GetTransformTop(el)
+{
+    // get the computed style object for the element
+    var style = window.getComputedStyle(domElement);
+    // this string will be in the form 'matrix(a, b, c, d, tx, ty)'
+    var transformString = style['-webkit-transform']
+                       || style['-moz-transform']
+                       || style['transform'] ;
+    if (!transformString || transformString == 'none')
+        return 0;
+    var splits = transformString.split(',');
+	return splits[5];
+} 
+
+function DomOffsetCalc(el, iAdjLeft, iAdjTop) 
+{
+	var left = el.offsetLeft,
+		top = el.offsetTop;
+		
+	while (el = el.offsetParent) {
+		left += el.offsetLeft;
+		top += el.offsetTop;
+	} 
+
+	if (iAdjLeft)
+		left = left + iAdjLeft 
+	
+	if (iAdjTop)
+		top = top + iAdjTop;
+	
+	return { left: left, top: top };
+}
+	
+function DomOffsetTopCalc(el, iAdjTop) {
+	var top = el.offsetTop;
+		
+	while (el = el.offsetParent) {
+		top += el.offsetTop;
+	} 
+
+	if (iAdjTop)
+		top = top + iAdjTop;
+	
+	return top;
+}
+
+function DomOffsetLeftCalc(el, iAdjLeft) 
+{
+	var left = el.offsetLeft;
+		
+	while (el = el.offsetParent) {
+		left += el.offsetLeft;
+	} 
+
+	if (iAdjLeft)
+		left = left + iAdjLeft
+	
+	return left;
+}
+
+
+function Filter(array, fun)
+{
+    var t = Object(array);
+    var len = t.length >>> 0;
+
+    var res = [];
+    for (var i = 0; i < len; i++)
+    {
+      if (i in t)
+      {
+        if (fun(t[i]))
+          res.push(t[i]);
+      }
+    }
+
+    return res;
+};
+
+
+
+// Production steps of ECMA-262, Edition 5, 15.4.4.19
+// Reference: http://es5.github.com/#x15.4.4.19
+if (!Array.prototype.map) {
+  Array.prototype.map = function(callback, thisArg) {
+
+    var T, A, k;
+
+    if (this == null) {
+      throw new TypeError(" this is null or not defined");
+    }
+
+    // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
+    var O = Object(this);
+
+    // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
+    // 3. Let len be ToUint32(lenValue).
+    var len = O.length >>> 0;
+
+    // 4. If IsCallable(callback) is false, throw a TypeError exception.
+    // See: http://es5.github.com/#x9.11
+    if ({}.toString.call(callback) != "[object Function]") {
+      throw new TypeError(callback + " is not a function");
+    }
+
+    // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+    if (thisArg) {
+      T = thisArg;
+    }
+
+    // 6. Let A be a new array created as if by the expression new Array(len) where Array is
+    // the standard built-in constructor with that name and len is the value of len.
+    A = new Array(len);
+
+    // 7. Let k be 0
+    k = 0;
+
+    // 8. Repeat, while k < len
+    while(k < len) {
+
+      var kValue, mappedValue;
+
+      // a. Let Pk be ToString(k).
+      //   This is implicit for LHS operands of the in operator
+      // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
+      //   This step can be combined with c
+      // c. If kPresent is true, then
+      if (k in O) {
+
+        // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
+        kValue = O[ k ];
+
+        // ii. Let mappedValue be the result of calling the Call internal method of callback
+        // with T as the this value and argument list containing kValue, k, and O.
+        mappedValue = callback.call(T, kValue, k, O);
+
+        // iii. Call the DefineOwnProperty internal method of A with arguments
+        // Pk, Property Descriptor {Value: mappedValue, Writable: true, Enumerable: true, Configurable: true},
+        // and false.
+
+        // In browsers that support Object.defineProperty, use the following:
+        // Object.defineProperty(A, Pk, { value: mappedValue, writable: true, enumerable: true, configurable: true });
+
+        // For best browser support, use the following:
+        A[ k ] = mappedValue;
+      }
+      // d. Increase k by 1.
+      k++;
+    }
+
+    // 9. return A
+    return A;
+  };      
+}
 
 // Fast implementation for array unique
 //	modified to select for the particular song property
-uniqueArray = function(array, strProp) 
+UniqueArray = function(array, strProp) 
 {
 	if (strProp)
 	{
 		r = new Array();
 		var o = {}, i, l = array.length;
-        for(i=0; i<l;i+=1) o[array[i][strProp]] = array[i][strProp];
+        for(i=0; i<l;i+=1)
+		{
+		
+			try
+			{
+				o[array[i][strProp].toLowerCase()] = array[i];
+			} catch(e) 
+			{
+				console.log("What is killing us: " + array[i][strProp]);
+				console.log("Issue with unique: " + strProp);
+				console.log("Let's just check: " + array[i].path);
+			}
+		}
         for(i in o)
 		{	
 			var obj = new Object();
-			obj[strProp] = o[i];
+			obj = o[i];
 			r.push(obj);
 		}
         return r;
@@ -47,7 +265,13 @@ uniqueArray = function(array, strProp)
 	{
 		r = new Array();
 		var o = {}, i, l = array.length;
-        for(i=0; i<l;i+=1) o[array[i]] = array[i];
+        for(i=0; i<l;i+=1)
+		{
+			try
+			{
+				o[array[i].toLowerCase()] = array[i];
+			} catch (e) {}
+		}
         for(i in o)
 		{
 			var obj = new Object();
@@ -62,6 +286,277 @@ isArray = function(obj)
 {
 	return obj.constructor == Array;
 };
+
+
+/*******************************
+ * Sort the song list by the specified property
+ *******************************/
+SortArray = function(arraySongs)
+{
+	var newArray = arraySongs.slice(0);
+
+	newArray.sort(function(a, b)
+					{
+						var strA;
+						var strB;
+						
+						try
+						{
+							strA=a.toLowerCase();
+						} catch(e) {return 1;};
+						
+						try
+						{
+							strB=b.toLowerCase();
+						} catch(e) {return -1;};
+						
+						// Make sure the Unknown Tag is last
+						if (strA == '[unknown]')
+							return 1;
+						if (strB == '[unknown]')
+							return -1;
+						
+						if (strA < strB) //sort string ascending
+							return -1;
+						if (strA > strB)
+							return 1;
+						return 0; //default return value (no sorting)
+					});
+	
+	return newArray;
+};
+
+SortArrayInvF = function(arraySongs)
+{
+	var newArray = arraySongs.slice(0);
+
+	newArray.sort(function(a, b)
+					{
+						if ((!a) || (a == '[Unknown]'))
+							return -1;
+						if ((!b) || (b == '[Unknown]'))
+							return 1;
+
+						return b.toLowerCase().localeCompare(a.toLowerCase());
+					});
+	
+	return newArray;
+};
+
+SortArrayByParam = function(arraySongs, strParam, bCaseSensative)
+{
+	var newArray = arraySongs.slice(0);
+
+	newArray.sort(function(a, b)
+					{
+						var strA;
+						var strB;
+						
+						if (!a)
+							return 1;
+						if (!b)
+							return -1;
+						
+						if (bCaseSensative)
+						{
+							strA=a[strParam]; 
+							strB=b[strParam];
+						}
+						else
+						{
+							try
+							{
+								strA=a[strParam].toLowerCase();
+							} catch(e) {return 1;};
+							
+							try
+							{
+								strB=b[strParam].toLowerCase();
+							} catch(e) {return -1;};
+						}
+						
+						// Make sure the Unknown Tag is last
+						if (strA == '[unknown]')
+							return 1;
+						if (strB == '[unknown]')
+							return -1;
+						
+						if (strA < strB) //sort string ascending
+							return -1;
+						if (strA > strB)
+							return 1;
+						return 0; //default return value (no sorting)
+					});
+	
+	return newArray;
+};
+
+/*******************************
+ * This returns a filtered list based on the
+ *	the property we are filtering, and the filter string
+ *******************************/
+filterSongs = function(arraySongs, strProp, strValue)
+ {
+
+	var funcFilter = function (x)
+	{
+		return (x[strProp] == strValue);
+	};
+	
+	return arraySongs.filter(funcFilter);
+ }
+
+String.prototype.capitalize = function() 
+{
+    return this.charAt(0).toUpperCase() + this.slice(1);
+}
+
+String.prototype.getFirstLetter = function()
+{
+	return this.charAt(0).toUpperCase();
+}
+
+String.prototype.getSecondLetter = function()
+{
+	return this.charAt(1).toUpperCase();
+}
+
+String.prototype.ReplaceAll = function(replace, with_this) 
+{
+	var str;
+	
+	try
+	{
+		str = this.replace(new RegExp(replace, 'g'),with_this);
+	}
+	catch (e)
+	{
+		str = this;
+		
+		// reg expression failed, so have to do it the slow way
+		while (str.indexOf(replace) != -1)
+		{
+			str = str.replace(replace, with_this);
+		}
+	}
+		
+	return str;
+}
+
+var arrayKeepAlive = new Array();
+
+/***************************
+ * Call a Palm Service
+ ***************************/
+
+ 
+ 
+ function CallPalmService(strService, 
+						 objParam, 
+						 subscribe, 
+						 funcCallback, 
+						 funcError,
+						 funcFakeIt)
+{
+	if (window.PalmSystem) 
+	{
+		//console.log("Calling System Service: " + strService);
+	
+		var reqObject = new PalmServiceBridge();
+		
+		arrayKeepAlive.push(reqObject);
+		
+		reqObject.tempCircRef = (Math.random()*9999) | 0;
+		
+		//console.log("Service:" + strService + " has num:" + reqObject.tempCircRef);
+		
+		if (subscribe)
+		{
+			objParam.subscribe = true;
+		}
+		else
+		{
+			if (objParam.subscribe)
+			{
+				objParam.subscribe = null;
+				delete objParam.subscribe;
+			}
+		}
+		
+		objParam.$activity = {
+			activityId: window.PalmSystem.activityId
+		};
+
+		objParam = JSON.stringify(objParam);
+		reqObject.funcError = funcError;
+		reqObject.funcCallback = funcCallback;
+		reqObject.onservicecallback = function(status) 
+		{
+			//console.log("Service callback:" + reqObject.tempCircRef);
+		
+			try
+			{
+				status = JSON.parse(status);
+				//console.log(JSON.stringify(status));
+			}
+			catch(e) 
+			{
+				if (reqObject.funcError)
+					reqObject.funcError(e);
+				else
+					console.log(e);
+				return;
+			};
+			
+			if (reqObject.funcError)
+			{
+				if (status.errorCode || status.returnValue == false)
+				{
+					reqObject.funcError(status);
+					return;
+				}
+			}
+			
+			if (reqObject.funcCallback)
+				reqObject.funcCallback(status);
+		};
+		try
+		{
+			reqObject.call(strService, objParam);
+		} catch(e) 
+		{
+			console.log("Call Serv Err:" + e);
+		}
+	}
+	else
+	{
+		if (funcFakeIt)
+			setTimeout(funcFakeIt(), 500);
+	}
+}
+
+var timeTmp = 0;
+var curMethod = 0;
+function ProfilerStart(str)
+{
+	console.log("--S-Profiler for[" + str + "]");
+	curMethod = str;
+	timeTmp = (new Date()).getTime();
+}
+
+function ProfilerTick()
+{
+	console.log((new Date()).getTime() - timeTmp);
+}
+
+function ProfilerTickAndRestart(str)
+{
+	var tmp = (new Date()).getTime();
+	console.log("**E*(" + curMethod + "):" + (tmp - timeTmp));
+	curMethod = str;
+	console.log("--S-[" + str + "]");
+	timeTmp = (new Date()).getTime();
+}
 
 /*******************************
  * Sort the song list by the specified property
@@ -688,12 +1183,19 @@ function SongIndex()
 	// create a hash for genre
 	this.htGenreHash = new CategoryHash("genre", "gen_");
 
-	this.addArray = function (arraySongs)
+	this.Init = function (funcGood)
 	{
-		this.arrayIndex = arraySongs;
+		this.arrayIndex = [];
 	
-		for (var i = 0; i < arraySongs.length; i++)
-			this.addSong(arraySongs[i]);
+		for (var i in objwAMP.hashPaths)
+		{
+			var obj = objwAMP.GetMetadata(i);
+			obj.path = i;
+			this.arrayIndex.push(obj);
+			this.addSong(obj);
+		}
+		
+		funcGood();
 	}
 	
 	this.addSong = function(objSong)
@@ -972,10 +1474,11 @@ var objwAMP =
 {
 // Private:
 	
-	arrayExtList: new Array(".mp3",".wma",".m4a",".aac",".flac",".ogg",".ra",".ram",".wav",".mp2",".mp1",".mpg",".als",".ors",".mp4",".3gp",".wmv"),
+	arrayExtList: 
+			new Array(".mp3",".wma",".m4a",".aac",".flac",".ogg",".ra",".ram",".wav",".mp2",".mp1",".als"),
 	
 	// this is the current path we are on, set to root dir
-	strCurrentPath: "/media/internal", 
+	strCurrentPath: ["/media/internal", "/media/internal"],
 	
 	// this is an enum to tell whether we are using FileFolder type io or
 	//	full indexing type io
@@ -986,18 +1489,21 @@ var objwAMP =
 	bShuffle: false,
 	bRepeat: false,
 	
+	funcTextBanner: 0,
+	
 	// This will hold the song list for viewing
-	arrayPlaylist: new Array(),
+	arrayPlaylist: [[],[]],
 		
 	objectLsCache: new Object(),
 
 	// this will be true if indexer failed to load
 	bFolderOnly: false,
 	
-	isWebOS: (/webOS/gi).test(navigator.appVersion),
+	isWebOS: ((window.PalmSystem) ? true : false),
 	
-	iSongIndex: 0,
-	iOpenIndex: -1,
+	iSongIndex: [0, 0],
+	iOpenIndex: [-1, -1],
+	iNextIndex: [1, 1],
 	
 	fTransition: 0.0,
 	
@@ -1008,45 +1514,140 @@ var objwAMP =
 	
 	funcImgGenCB: 0,
 	
+	funcUpdatePLCallback: 0,
+	
+	funcPauseCallback: 0,
+	
+	funcNowPlaying: 0,
+	
+	funcSeekFinishFunc: [0, 0],
+	
+	tmoutSonTransDB: 0,
+	tmoutTrebSet: 0,
+	tmoutBassSet: 0,
+	tmoutMidSet: 0,
+	tmoutEQSet: 0,
+	
+	strNewSeekTime: [0, 0],
+	
+	arraySongStartObj: new Array(),
+
+	bTrackNew: [0, 0],
+	
+	objParam: 0,
+	
+	objBufPL: new Object(),
+	
+	tmoutKeepAlive: 0,
+	
+	iBlockCount: 0,
+	
+	iBPM: 0,
+	
+	arrayPLRaw: {},
+	
+	objImageCache: new Object(),
+	
+	iIndexCallbackCnt: 0,
+	
 // Public:
 
-	CheckOS: function()
-	{
+	StatusString: "Attempting To Start Player Plug-In",
 	
-		if (this.isWebOS)
+	BufferPL: function(iIndex, iPos, iArray)
+	{
+		objwAMP.arrayPlaylist[0] = iArray;
+		objwAMP.bBuffer = 1;
+		objwAMP.iIndex = iIndex;
+		objwAMP.iPos = iPos;
+		
+		if (objwAMP.funcUpdatePLCallback)
 		{
-			this.plugIn = document.getElementById('wAMPPlugin');
-			this.plugIn.StartSong = function(str) {objwAMP.StartSong(str);};
-			this.plugIn.FinishReindex = function(str) {objwAMP.FinishReindex(str);};
-			this.plugIn.FinishIndex = function(str) {objwAMP.FinishIndex(str);};
-			this.plugIn.FinishSeek = function(str) {objwAMP.FinishSeek(str);};
+			objwAMP.OpenSong(0, objwAMP.iIndex);
+			objwAMP.Seek(objwAMP.iPos, function() {}, 0);
+			objwAMP.funcUpdatePLCallback(iArray);
 		}
 		else
+			objwAMP.funcUpdatePLCallback = -1;
+	},
+	
+	StartIndex: function()
+	{		
+		this.plugIn.StartIndex(objOptions.timeLastIndex,
+								objOptions.strIndexingDir);
+	},
+	
+	CopyPLForDJ: function()
+	{
+		this.arrayPlaylist[1] = this.arrayPlaylist[0].slice(0);
+	},
+	
+	KeepAlive: function()
+	{
+		clearTimeout(objwAMP.tmoutKeepAlive);
+		
+		parameters =  
 		{
-			this.plugIn = new Object();
-			this.plugIn.StartSong = function() {objwAMP.StartSong();};
-			this.plugIn.FinishReindex = function(str) {objwAMP.FinishReindex(str);};
-			this.plugIn.FinishIndex = function(str) {objwAMP.FinishIndex(str);};
-			this.plugIn.FinishSeek = function(str) {objwAMP.FinishSeek(str);};
+			id: OWNDER_STR,
+			duration_ms: '900000'
+		}
+		
+		CallPalmService('palm://com.palm.power/com/palm/power/activityStart', 
+							parameters,
+							false,
+							function(response)
+							{
+								objwAMP.tmoutKeepAlive = setTimeout(function()
+								{
+									objwAMP.KeepAlive();
+								}, 110000);
+							},
+							function(response)
+							{
+								console.log("Error: " + JSON.stringify(response));
+							});
+	},
+		
+	CheckOS: function(obj)
+	{
+		this.plugIn = obj;
+		
+		this.plugIn.StartSong = function(path, artist, title, iTrack) 
+		{
+			objwAMP.StartSong(path, artist, title, iTrack);
+		};
+		this.plugIn.AddToIndex = function(str, lastMod)
+		{
+			objwAMP.AddToIndex(str, lastMod);
+		};
+		this.plugIn.FinishIndex = function() 
+		{
+			objwAMP.FinishIndex();
+		};
+		this.plugIn.FinishSeek = function(str, iTrack) 
+		{
+			//console.log('FinishSeek:' + str + ' ' + iTrack);
+			objwAMP.FinishSeek(str, iTrack);
+		};
+		
+		if (!this.isWebOS)
+		{
 			this.plugIn.bNextSet = false;
 			
 			this.plugIn.strSongState = "101";
 			
 			this.plugIn.Ping = function () {return 'Pong';};
-								
-			setTimeout(function () 
+											
+			this.plugIn.StartIndex = function() 
 			{
-				objwAMP.plugIn.FinishIndex('{"arrayFileList": [' +
-							'{"name":"kp_et_feat_kw.mp3", "path":"/media/internal/kp_et_feat_kw.mp3", "artist":"Katy Perry", "album":"E.T. (featuring Kanye West)", "genre":"Pop", "title":"E.T. (feat. Kanye West)", "isdir":false},' + 
-							'{"name":"aritd.flac", "path":"/media/internal/aritd.flac", "artist":"Adele", "album":"21", "genre":"Pop", "title":"Rolling In The Deep", "isdir":false},' + 
-							'{"name":"gagaborn.ogg", "path":"/media/internal/gagaborn.ogg", "artist":"Lady Gaga", "album":"Born This Way", "genre":"Pop", "title":"Born This Way", "isdir":false},' +
-							'{"name":"flm.a3c", "path":"/media/internal/flm.a3c", "artist":"Florence + The Machine", "album":"Lungs", "genre":"Alternative Rock", "title":"Howl", "isdir":false},' + 
-							'{"name":"taicrbrh.wma", "path":"/media/internal/taicrbrh.wma", "artist":"Taio Cruz", "album":"Rokstarr", "genre":"Pop", "title":"Break Your Heart", "isdir":false},' +
-							'{"name":"ice_ice_baby.mp3", "path":"/media/internal/ice_ice_baby.mp3", "artist":"Vanilla Ice", "album":"Ice Ice Baby", "genre":"rap", "title":"Ice Ice Baby", "isdir":false},' +
-							'{"name":"queen(I want to break free).mp3", "path":"/media/internal/path5", "artist":"Queen", "album":"Greatest Hits", "genre":"rock", "title":"I Want To Break Free", "isdir": false},' + 	
-							'{"name":"simpson_homer.mp3", "path":"/media/internal/path9", "artist":"", "album":"", "genre":"", "title":"The Simpsons theme", "isdir": false}' +							
-						']}');
-			}, 2000);
+				setTimeout(function () 
+				{
+					objwAMP.plugIn.AddToIndex('test', "dirty");
+					objwAMP.plugIn.FinishIndex();
+				}, 1000);
+			};
+			
+			this.plugIn.SetEQ = function() {};
 			
 			this.plugIn.GetCurrentDirLS = function ()
 			{
@@ -1075,44 +1676,36 @@ var objwAMP =
 						']}';
 			};
 			
-			this.plugIn.RedoIndex = function() 
+			this.plugIn.GetMetadata = function(str)
 			{
-				objwAMP.FinishIndex('{"iIndexingStatus":4, "strCurSearchDir":"Test",' +
-					   '"arrayFileList": [' +
-							'{"name":"ice_ice_baby.mp3", "path":"/media/internal/ice_ice_baby.mp3", "artist":"Vanilla Ice", "album":"alllllvin", "genre":"rap", "title":"Ice Ice Baby", "isdir":false},' +
-							'{"name":"every_rose.ogg", "path":"/media/internal/every_rose.ogg", "artist":"Poison", "album":"alllllvin", "genre":"rock", "title":"Every Rose Has It\'s Thorn", "isdir": false},' +
-							'{"name":"3333333", "path":"/media/internal/the_cave.flac", "artist":"Mumford and Sons", "album":"alllllvin", "genre":"alternative", "title":"The Cave", "isdir": false},' +
-							'{"name":"the_cave.flac", "path":"/media/internal/path4", "artist":"Leonard Skinner", "album":"alllllvin", "genre":"classic rock", "title":"Freebird", "isdir": false},' +
-							'{"name":"5555", "path":"/media/internal", "artist":"Sting", "album":"Sting", "genre":"contemporary", "title":"Fields of Gold", "isdir": false},' +
-							'{"name":"666666666666", "path":"/media/internal/path5", "artist":"Queen", "album":"alllllvin", "genre":"rock", "title":"I Want To Break Free", "isdir": false},' +
-							'{"name":"hhehrtt", "path":"/media/internal/path6", "artist":"Led Zepplin", "album":"", "genre":"classic rock", "title":"Stairway To Heaven", "isdir": false},' +
-							'{"name":"88", "path":"/media/internal/path7", "artist":"Kanasas", "album":"alllllvin", "genre":"classic rock", "title":"Dust in the wind", "isdir": false},' +
-							'{"name":"999999999", "path":"/media/internal/path8", "artist":"Queen", "album":"", "genre":"", "title":"Highlander Theme Song", "isdir": false},' +
-							'{"name":"aaaaaaaa", "path":"/media/internal/path9", "artist":"", "album":"", "genre":"", "title":"The Simpsons theme", "isdir": false},' +
-							'{"name":"hhfdgfdi sdfgh", "path":"/media/internal/path10", "artist":"Britney", "album":"alllllvin", "genre":"pop", "title":"Hit Me Baby One More Time", "isdir": false},' +
-							'{"name":"cccccc", "path":"/media/internal/path11", "artist":"The Killers", "album":"alllllvin", "genre":"pop", "title":"Mr. Brightside", "isdir": false},' +
-							'{"name":"ddddddd", "path":"/media/internal/path12", "artist":"Lady Gaga", "album":"alllllvin", "genre":"pop", "title":"Poker Face", "isdir": false},' +
-							'{"name":"tytttyyty", "path":"/media/internal/path13", "artist":"Cartman", "album":"", "genre":"", "title":"Cartman doing poker face", "isdir": false},' +
-							'{"name":"fff ffff ffff", "path":"/media/internal/path14", "artist":"Bruce", "album":"", "genre":"rock", "title":"Born in the U.S.A.", "isdir": false},' +
-							'{"name":"jjkjkjkkkl jjkjuu", "path":"/media/internal/path15", "artist":"", "album":"alllllvin", "genre":"classical", "title":"Winter", "isdir": false},' +
-							'{"name":"vvfvvfvf", "path":"/media/internal/path16", "artist":"Tori Amos", "album":"alllllvin", "genre":"pop", "title":"Crucify", "isdir": false},' +
-							'{"name":"hhyhyy", "path":"/media/internal/path17", "artist":"", "album":"alllllvin", "genre":"techno", "title":"Crucify (remix)", "isdir": false},' + 
-							'{"name":"xzdffffef snhhn", "path":"/media/internal/path18", "artist":"Groove Coverage", "album":"alllllvin", "genre":"techno", "title":"Poison", "isdir": false},' +
-							'{"name":"adjfk kk", "path":"/media/internal/path19", "artist":"Groove Coverage", "album":"alllllvin", "genre":"techno", "title":"20th Century Digital Girl", "isdir": false}' +
-						']}');
+				return new Object();
 			};
 			
 			this.plugIn.iTestVar = 0;
 			
-			this.plugIn.Open = function()	
+			this.plugIn.Open = function(str, iTrack)	
 			{
 				objwAMP.plugIn.iTestVar = 0;
 				objwAMP.plugIn.bNextSet = false;
 			
 				setTimeout(function() 
-						  {
-							objwAMP.plugIn.StartSong();
-						  }, 100);
+				{
+					var i=0;
+					
+					while (i < OfflineArray.length)
+					{
+						if (str == OfflineArray[i].path)
+						{
+						
+							objwAMP.plugIn.StartSong(OfflineArray[i].path, 
+											OfflineArray[i].title,
+											OfflineArray[i].artist,
+											iTrack);
+							return;
+						}
+						i++;
+					}
+				}, 100);
 			};
 			
 			
@@ -1120,28 +1713,17 @@ var objwAMP =
 			{
 				objwAMP.plugIn.bNextSet = true;
 			};
+			this.plugIn.playonce = 0;
+			
 			this.plugIn.Play = function() 
 			{
-				objwAMP.plugIn.intervalTest = setInterval(function () {							
-							objwAMP.plugIn.iTestVar++;
-							
-							if (objwAMP.plugIn.iTestVar > 280)
-							{
-								if (objwAMP.plugIn.bNextSet == true)
-								{
-									objwAMP.plugIn.StartSong();
-									objwAMP.plugIn.iTestVar = 0;
-									objwAMP.plugIn.strSongState = "101";
-									objwAMP.plugIn.bNextSet = false;
-								}
-								else
-								{
-									objwAMP.plugIn.strSongState = "103";
-								}
-							}
-							
-							//objScrub.setCurTime(objwAMP.plugIn.iTestVar);
-						}, 1000);
+				if (!objwAMP.plugIn.playonce)
+				{
+					console.log("Play Once Play: " + ++objwAMP.plugIn.playonce);
+					objwAMP.plugIn.intervalTest = setInterval(function () {							
+								objwAMP.plugIn.iTestVar++;
+							}, 1000);
+				}
 			};
 			this.plugIn.Pause = function() 
 			{
@@ -1159,89 +1741,51 @@ var objwAMP =
 			this.plugIn.SetVol = function() {};
 			this.plugIn.SetTreble = function() {};
 			this.plugIn.SetBass = function() {};
-			this.plugIn.Seek = function(iTime) {objwAMP.plugIn.iTestVar = iTime;};
+			this.plugIn.SetMid = function() {};
+			this.plugIn.Seek = function(iTime, iTrack) 
+			{
+				objwAMP.plugIn.iTestVar = iTime;
+				setTimeout(function()
+				{
+					objwAMP.FinishSeek(iTime, iTrack);
+				}, 100); ;
+			};
+			this.plugIn.SetMetadataPath = function(str) {};
+			this.plugIn.GetBPM = function(i) {return "100";};
+			this.plugIn.SetNoNext = function(i) {};
+			this.plugIn.GetAvgMagString = function() 
+			{
+				var array = new Array(256);
+				
+				for (var i=0;i<256;i++)
+				{
+					array[i] = 0|(Math.random() * 110);
+				}
+				
+				return array.join('');
+			};
+			this.plugIn.CheckMusicDir = function()
+			{
+				return "1" | 0;
+			};
+			this.plugIn.GetFreqString = function() 
+			{
+				var array = new Array(128);
+				
+				for (var i=0;i<128;i++)
+				{
+					array[i] = 0|(Math.random() * 110);
+				}
+				
+				return array.join('');
+			};
+			
+			this.plugIn.CheckPathForImg = function()
+			{
+				return "-1";
+			}
 		}
-	},
-
-	
-	/*****************************
-	 * Rerun the indexer
-	 *****************************/
-	RedoIndexer: function()
-	{
-		this.plugIn.RedoIndex();
-	},
-	
-	
-	/******************************
-	 * Create the plugin html object code
-	 ******************************/
-	CreatePluginHook: function()
-	{
-	    this.pluginObj = window.document.createElement("object");
-    
-		this.pluginObj.id = "wAMPPlugin";
-		this.pluginObj.type = "application/x-palm-remote";
-		this.pluginObj.setAttribute("style", 
-									"position:fixed; top:470px; left:0px; height:1px; width:1px;");
-		this.pluginObj['x-palm-pass-event'] = true;
-    
-        var param1 = window.document.createElement("param");
-		param1.name = "appid";
-		param1.value = "org.epikmayo.audiophile";
-		
-		var param2 = window.document.createElement("param");
-		param2.name = "exe";
-		param2.value = "wAMP_plugin";
-		
-		this.pluginObj.appendChild(param1);
-		this.pluginObj.appendChild(param2);
-	
-		this.df = window.document.createDocumentFragment();
-		this.df.appendChild(this.pluginObj);
-		
-		console.log("Finished creating plugin obj");
-		
-	},
-	
-	RecreatePluginHook: function()
-	{
-	    this.pluginObj = window.document.createElement("object");
-    
-		this.pluginObj.id = "wAMPPlugin";
-		this.pluginObj.type = "application/x-palm-remote";
-		this.pluginObj.setAttribute("style", 
-									"position:fixed; top:470px; left:0px; height:1px; width:1px;");
-		this.pluginObj['x-palm-pass-event'] = true;
-    
-        var param1 = window.document.createElement("param");
-		param1.name = "appid";
-		param1.value = "org.epikmayo.audiophile";
-		
-		var param2 = window.document.createElement("param");
-		param2.name = "exe";
-		param2.value = "wAMP_plugin";
-		
-		var param3 = window.document.createElement("param");
-		param3.name = "Param1";
-		param3.value = "1";
-		
-
-		this.pluginObj.appendChild(param1);
-		this.pluginObj.appendChild(param2);
-		this.pluginObj.appendChild(param3);
-	
-		this.df = window.document.createDocumentFragment();
-		this.df.appendChild(this.pluginObj);
-		
-		console.log("Finished creating plugin obj");
-		
-	},
-	
-	FinishPluginInit: function()
-	{
-		$('body').append(objwAMP._df);
-	},
+	},	
 	
 	/******************************
 	 * This function is checks whether the plugin has been
@@ -1281,49 +1825,35 @@ var objwAMP =
 		}
 	},
 	
-	RedowAMP: function()
-	{	
-		/*objwAMP.bReinitInProgress = true;
-		console.log("Starting Reinit");
-		$('#wAMPPlugin').remove();
-		objwAMP.RecreatePluginHook();
-		$('body').append(objwAMP.df);
-		
-		this.plugIn = document.getElementById('wAMPPlugin');
-		this.plugIn.StartSong = function(str) {objwAMP.StartSong(str);};
-		this.plugIn.FinishIndex = function(str) {objwAMP.FinishIndex(str);};
-		this.plugIn.FinishSeek = function(str) {objwAMP.FinishSeek(str);};*/
-	},
-	
-/*************************
-Indexer Functions
-
-Possible values for Index Status
-
-var INDEX_NOT_READY_YET = 0;
-var INDEX_ALREADY_RUN 	= 1;
-var INDEX_FAILED_LOAD 	= 3;
-*************************/
-
 	CheckIndex: function(funcIndexStart)
 	{
-		if (objwAMP.funcIndexStart)
-			funcIndexStart(objwAMP.iIndexStatus);
-		else
-			objwAMP.funcIndexStart = funcIndexStart;
+		objwAMP.funcIndexStart = funcIndexStart;
+		objwAMP.hashPaths = {};
+	},
+	
+	AddToIndex: function(str, modstate)
+	{				
+		var objSong = {"path":str,
+					   "dirty": modstate,
+					   "found": 0};
+		
+		objSong.name = str.substr(str.lastIndexOf('/') + 1)
+		
+		objwAMP.hashPaths[str] = objSong;
+		objwAMP.iIndexCallbackCnt++;
 	},
 	
 	/******************************
 	 * Callback for reindex
 	 ******************************/
-	FinishIndex: function(strJSON)
-	{		
-		objwAMP.strIndexJSON = strJSON;
+	FinishIndex: function(strPath)
+	{				
+		//console.log("Finished");
 		
 		setTimeout(function()
 		{
 			objwAMP.IndexerCallbackFinish()
-		}, 1);
+		}, 10);
 	},
 	
 	/******************************
@@ -1331,29 +1861,53 @@ var INDEX_FAILED_LOAD 	= 3;
 	 ******************************/
 	IndexerCallbackFinish: function()
 	{
-
-		// We get here if there was something in the JSON string, so parse it
-		try
+		ProfilerStart("IndexerCallbackFinish");
+		
+		objwAMP.iIndexStatus = objSongIndex.Init(function()
 		{
-			if (objwAMP.strIndexJSON)
-			{
-				this.jsonIndex = JSON.parse(objwAMP.strIndexJSON);
-				objSongIndex.addArray(this.jsonIndex.arrayFileList);
-				objwAMP.iIndexStatus = INDEX_ALREADY_RUN;
-			}
-			else
-				objwAMP.iIndexStatus = INDEX_FAILED_LOAD;
-		} 
-		catch(e) 
+			console.log("Indexer Called Back");
+		
+			objwAMP.funcIndexStart(!INDEX_FAILED_LOAD);
+		},
+		function()
 		{
-			console.log(e);
 			objwAMP.iIndexStatus = INDEX_FAILED_LOAD;
-		}
+		
+			objwAMP.funcIndexStart(INDEX_FAILED_LOAD);		
+		});
 	
-		if (this.funcIndexStart)
-			this.funcIndexStart(objwAMP.iIndexStatus);
+	},
+	
+	SetRecentPlayRaw: function(strRaw)
+	{
+		if (!strRaw)
+			objwAMP.arrayPLRaw = new Array();
 		else
-			this.funcIndexStart = 1;
+			objwAMP.arrayPLRaw = strRaw.split('\\\\');
+	},
+	
+	AddSongToRecentPlay: function(strNewPath)
+	{
+		if (objwAMP.arrayPLRaw.length)
+		{
+			objwAMP.arrayPLRaw = objwAMP.arrayPLRaw.filter(function(element)
+			{
+				return (element != strNewPath);
+			});
+		
+			while (objwAMP.arrayPLRaw.length >= 25)
+				objwAMP.arrayPLRaw.shift();
+				
+		}
+		
+		objwAMP.arrayPLRaw.push(strNewPath);
+		
+		objOptions.UpdateLastPlayed(objwAMP.arrayPLRaw.join('\\\\'), strNewPath);
+	},
+	
+	GetRecentPlay: function()
+	{
+		return objwAMP.arrayPLRaw; 
 	},
 	
 	/******************************
@@ -1362,16 +1916,22 @@ var INDEX_FAILED_LOAD 	= 3;
 	 * Returns: An array of objects which is made up of
 	 *			the songs and dirs in a particular file
 	 ******************************/
-	getDirFileList: function()
+	GetDirFileList: function(iTrackArg)
 	{
+		var iTrack;
+		
+		if (!iTrackArg)
+			iTrack = 0;
+		else
+			iTrack = iTrackArg;
 		
 		try
 		{
 			// Check if we have already visited this dir previously
-			if (this.objectLsCache[this.strCurrentPath])
+			if (this.objectLsCache[this.strCurrentPath[iTrack]])
 			{
 				// If we have, just return what we found before
-				return this.objectLsCache[this.strCurrentPath];
+				return this.objectLsCache[this.strCurrentPath[iTrack]];
 			}
 			else
 			{	
@@ -1388,7 +1948,7 @@ var INDEX_FAILED_LOAD 	= 3;
 			
 				// Have the plugin get the info for the available files
 				//	and pass it to the js app via JSON formatted string
-				var strJSON = this.plugIn.GetCurrentDirLS(this.strCurrentPath);
+				var strJSON = this.plugIn.GetCurrentDirLS(this.strCurrentPath[iTrack]);
 			
 				//this.Log(strJSON);
 			
@@ -1399,14 +1959,15 @@ var INDEX_FAILED_LOAD 	= 3;
 				{
 					var objAppendItem = {
 						isdir : true,
-						name : "No Song Files Found\nClick to return to previous dir",
-						path : this.strCurrentPath.substr(0,this.strCurrentPath.lastIndexOf("/"))
+						name : "No Song Files Found\\nClick to return to previous dir",
+						path : this.strCurrentPath[iTrack]
+										.substr(0,this.strCurrentPath.lastIndexOf("/"))
 					};
 					
 					objCache.Dir.push(objAppendItem);
 					
-					this.objectLsCache[this.strCurrentPath] = objCache;
-					return this.objectLsCache[this.strCurrentPath];
+					this.objectLsCache[this.strCurrentPath[iTrack]] = objCache;
+					return this.objectLsCache[this.strCurrentPath[iTrack]];
 				}
 			
 				// We get here if there was something in the JSON string, so parse it
@@ -1414,7 +1975,7 @@ var INDEX_FAILED_LOAD 	= 3;
 				
 				// If the current directory is not the root dir, then provide
 				//	a method for going up one dir
-				if (this.strCurrentPath !== "/media/internal")
+				if (this.strCurrentPath[iTrack] !== "/media/internal")
 				{
 					var objAppendItem = {
 						artist : "",
@@ -1423,7 +1984,8 @@ var INDEX_FAILED_LOAD 	= 3;
 						title : "",
 						isdir : true,
 						name : "..",
-						path : this.strCurrentPath.substr(0,this.strCurrentPath.lastIndexOf("/"))
+						path : this.strCurrentPath[iTrack]
+										.substring(0,this.strCurrentPath[iTrack].lastIndexOf("/"))
 					};
 					
 					objCache.Dir.push(objAppendItem);
@@ -1457,6 +2019,12 @@ var INDEX_FAILED_LOAD 	= 3;
 							break; 
 						}
 					}
+					
+					jsonFileList.arrayFileList[i].artist = 
+											jsonFileList.arrayFileList[i].path;
+				
+					jsonFileList.arrayFileList[i].title = 
+											jsonFileList.arrayFileList[i].name;
 				
 					if (bIsPlayable)
 						objCache.Playable.push(jsonFileList.arrayFileList[i]);
@@ -1465,13 +2033,75 @@ var INDEX_FAILED_LOAD 	= 3;
 				
 				}
 				
-				this.objectLsCache[this.strCurrentPath] = objCache;
-				return this.objectLsCache[this.strCurrentPath];
+				this.objectLsCache[this.strCurrentPath[iTrack]] = objCache;
+				return this.objectLsCache[this.strCurrentPath[iTrack]];
 			}
 		}
 		catch (err) {console.log(err);}
 		
 	},
+	
+	GetDirOnly: function(path)
+	{	
+		try
+		{
+			// Seperate everything into three arrays, dirs/playbel/unknown
+			var Dir = new Array();
+		
+			// Have the plugin get the info for the available files
+			//	and pass it to the js app via JSON formatted string
+			var strJSON = this.plugIn.GetCurrentDirLS(path);
+		
+			// If our return string is NULL, it means that no sub dirs exist
+			//	and no songs exist in that folder, so create an item to go up
+			//	one dir
+			if (!strJSON)
+			{
+				var objAppendItem = {
+					isdir : true,
+					name : "No Song Files Found\\nClick to return to previous dir",
+					path : path.substr(0,path.lastIndexOf("/"))
+				};
+				
+				Dir.push(objAppendItem);
+			}
+		
+			// We get here if there was something in the JSON string, so parse it
+			var jsonFileList = JSON.parse(strJSON);
+			
+			// If the current directory is not the root dir, then provide
+			//	a method for going up one dir
+			if (path !== "/media/internal")
+			{
+				var objAppendItem = {
+					"isdir" : true,
+					"name" : "..",
+					"path" : path.substring(0,path.lastIndexOf("/"))
+				};
+				
+				Dir.push(objAppendItem);
+			}
+			
+			for (var i=0; i < jsonFileList.arrayFileList.length; i++)
+			{
+				if (jsonFileList.arrayFileList[i].isdir)
+				{
+					Dir.push(jsonFileList.arrayFileList[i]);
+					continue;
+				}
+			}
+			
+			return Dir;
+		}
+		catch (e)
+		{
+			return -1;
+		}
+	},
+	
+	/******************************
+	 * Show spectrum data
+	 *****************************/
 	
 	
 	/******************************
@@ -1479,18 +2109,24 @@ var INDEX_FAILED_LOAD 	= 3;
 	 *
 	 * Returns: A string with the current path
 	 ******************************/
-	getCurrentPath: function()
+	getCurrentPath: function(iTrack)
 	{
-		return this.strCurrentPath;
+		if (!iTrack)
+			iTrqck = 0;
+	
+		return this.strCurrentPath[iTrack];
 	},
 	/******************************
 	 * This function sets the current path for folder ls
 	 *
 	 * Returns: None
 	 ******************************/
-	setCurrentPath: function(strDir)
+	SetCurrentPath: function(strDir, iTrack)
 	{
-		this.strCurrentPath = strDir;
+		if (!iTrack)
+			iTrack = 0;
+	
+		this.strCurrentPath[iTrack] = strDir;
 	},
 	
 	 /******************************
@@ -1516,7 +2152,10 @@ var INDEX_FAILED_LOAD 	= 3;
 				this.bRepeat = false;	
 		}
 		
-		this.SetNextSong();
+		if (objwAMP.checkIfPluginInit())
+			this.SetNextSong();
+		
+		objOptions.UpdateOption(OPT_ID_SHUF_REP, iMode.toString());
 	},
 	GetMode: function()
 	{
@@ -1532,101 +2171,230 @@ var INDEX_FAILED_LOAD 	= 3;
 	 /*******************************
 	 * Tell the plugin to pause
 	 *******************************/
-	pause: function()
+	pause: function(iTrack)
 	{
-		this.plugIn.Pause();
+		if (!iTrack)
+			iTrack = 0;
+			
+		this.plugIn.Pause(iTrack);
 	},
 	 
 	 /*******************************
 	 * Tell the plugin to play
 	 *******************************/
-	play: function()
+	play: function(iTrack)
 	{
-		this.plugIn.Play();
+		if (!iTrack)
+			iTrack = 0;
+	
+		this.plugIn.Play(iTrack);
 	},
 	  
 
 	/*******************************
 	 * This function gets the current state
 	 *******************************/
-	GetState: function()
+	GetState: function(iTrack)
 	{
+		if (!iTrack)
+			iTrack = 0;
+		
 		var objState = new Object;
 	
 		try
 		{
-			objState.CurTime = Number(this.plugIn.GetCurTime());
-			objState.EndTime = Number(this.plugIn.GetEndTime());
+			objState.EndTime = Number(this.plugIn.GetEndTime(iTrack));
+			//console.log(objState.EndTime);
+			objState.CurTime = Number(this.plugIn.GetCurTime(iTrack));
+			//console.log(objState.CurTime);
+			objwAMP.iBPM = objState.BPM = Number(this.plugIn.GetBPM(iTrack));
+			//console.log(objState.BPM);
 		}
-		catch (e)
+		catch(e) 
 		{
 			console.log(e);
-			if (!objwAMP.bReinitInProgress)
-				objwAMP.RedowAMP();
-			return 0;
+			
+			if (isNaN(objState.EndTime))
+			{
+				objState.EndTime = 0;
+				objState.CurTime = 0;
+			}
+			else
+				objState.CurTime = 0;
+			
+			objState.BPM = objwAMP.iBPM;
 		}
-		
+			
+		objSongIndex.SaveCurPos(objState.CurTime);
+	
 		return objState;
 	},
 	 
 	/*******************************
 	 * Set the speed control
 	 *******************************/
-	SetSpeed: function(fSpeed)
+	SetSpeed: function(fSpeed, iTrackNum)
 	{
-		this.plugIn.SetSpeed(fSpeed);
+		//console.log(fSpeed);
+
+		if (!iTrackNum)
+			iTrackNum = 0;
+	
+		this.plugIn.SetSpeed(fSpeed, iTrackNum);
 	},
 	 
 	 /*******************************
 	 * Set the vol control
 	 *******************************/
-	SetVol: function(fVol)
+	SetVol: function(fVol, iTrack)
 	{
-		this.plugIn.SetVol(fVol);
+		//console.log("Vol:" + fVol);
+		
+		this.plugIn.SetVol(fVol, iTrack);
 	},
 	 
 	/*******************************
 	 * Set the treble control
 	 *******************************/
-	SetTreble: function(fTreb)
+	SetTreble: function(fTreb, iTrackNum)
 	{
-		this.plugIn.SetTreble(fTreb);
+		clearTimeout(objwAMP.tmoutTrebSet);
+		
+		objwAMP.tmoutTrebSet = setTimeout(function()
+		{
+			objOptions.UpdateOption(OPT_ID_TREB, 
+									Number(fTreb).toString());
+		
+		}, 300);
+		
+		if (!iTrackNum)
+			iTrackNum = 0;
+		
+		this.plugIn.SetTreble(fTreb * 2, iTrackNum);
 	},
 	 
 	 /*******************************
 	 * Set the bass control
 	 *******************************/
-	SetBass: function(fBass)
-	{
-		this.plugIn.SetBass(fBass);
+	SetBass: function(fBass, iTrackNum)
+	{	
+		clearTimeout(objwAMP.tmoutBassSet);
+		
+		objwAMP.tmoutBassSet = setTimeout(function()
+		{
+			objOptions.UpdateOption(OPT_ID_BASS, 
+									Number(fBass).toString());
+		
+		}, 300);
+	
+		if (!iTrackNum)
+			iTrackNum = 0;
+	
+		this.plugIn.SetBass(fBass * 2, iTrackNum);
 	},
 
 	 /*******************************
 	 * Set the midrange control
 	 *******************************/
-	SetMid: function(fMid)
+	SetMid: function(fMid, iTrackNum)
 	{
-		this.plugIn.SetMid(fMid);
+		clearTimeout(objwAMP.tmoutMidSet);
+		
+		objwAMP.tmoutMidSet = setTimeout(function()
+		{
+			objOptions.UpdateOption(OPT_ID_MID, 
+									Number(fMid).toString());
+		
+		}, 300);
+	
+		if (!iTrackNum)
+			iTrackNum = 0;
+	
+		this.plugIn.SetMid(fMid * 2, iTrackNum);
+	},
+	
+	 /*******************************
+	 * Set an EQ coefficient
+	 *******************************/
+	SetEQCoef: function(iEQFreqID, fCoef)
+	{	
+		clearTimeout(objwAMP.tmoutEQSet);
+	
+		var iToFixed = (255 * fCoef) | 0;
+		
+		objOptions.arrayEQVals[iEQFreqID] = String.fromCharCode(iToFixed);
+		
+		objwAMP.tmoutEQSet = setTimeout(function()
+		{
+			objOptions.UpdateOption(OPT_ID_EQ, 
+									objOptions.arrayEQVals.join(''));
+		
+		}, 300);
+		
+		this.plugIn.SetEQ(objOptions.arrayEQVals.join(''));
+	}, 
+	
+	SetFullEQ: function()
+	{	
+		this.plugIn.SetEQ(objOptions.arrayEQVals.join(''));
 	},
 	
 	 /*******************************
 	 * Seek a part of the song
 	 *******************************/
-	Seek: function(iNewTime, funcFinishFunc)
+	Seek: function(iNewTime, funcFinishFunc, iTrackNum)
 	{
-		this.funcSeekFinishFunc = funcFinishFunc;
-		this.plugIn.Seek(iNewTime);
+		//console.log("Seek:" + iNewTime + " " + iTrackNum);
+		
+		if (!iTrackNum)
+			iTrackNum = 0;
+	
+		this.funcSeekFinishFunc[iTrackNum] = funcFinishFunc;
+		this.plugIn.Seek(iNewTime, iTrackNum);
 	}, 
 
-
+	RegisterPauseFunc: function(funcPauseFunc)
+	{
+		objwAMP.funcPauseCallback = funcPauseFunc;
+	
+	},
 	
 	/*********************************
 	 * Callback function called by the plugin to
 	 *	let the javascript know when a song has started.
 	 *********************************/
-	StartSong: function(strJSON)
+	StartSong: function(path, artist, title, iTrackNumArg)
 	{	
-		objwAMP.strJSON = strJSON;
+		var iTrackNum = iTrackNumArg;
+		
+		if ((!iTrackNum) || isNaN(iTrackNum))
+			iTrackNum = 0;
+		
+		//console.log(path);
+		
+		//console.log(artist);
+		
+		//console.log(title);
+		
+		objwAMP.arraySongStartObj[iTrackNum] = new Object();
+
+		objwAMP.arraySongStartObj[iTrackNum].path = path;
+		
+		if (artist && artist != "0")
+			objwAMP.arraySongStartObj[iTrackNum].artist = artist;
+		else
+			objwAMP.arraySongStartObj[iTrackNum].artist = path;
+		
+		if (title && title != "0")
+			objwAMP.arraySongStartObj[iTrackNum].title = title;
+		else
+		{
+			var iFindName = path.lastIndexOf('/') + 1;
+			
+			objwAMP.arraySongStartObj[iTrackNum].title = path.substr(iFindName);
+		}
+		
+		objwAMP.bTrackNew[iTrackNum] = 1;
 		
 		setTimeout(function()
 		{
@@ -1639,100 +2407,81 @@ var INDEX_FAILED_LOAD 	= 3;
 	 *********************************/
 	AvoidPluginCall: function()
 	{	
-
-		console.log('In Open next song info callback result');
+		objwAMP.KeepAlive();
+		
+		var iTrack = objwAMP.bTrackNew.length;
+		
+		while ((iTrack--) && (!objwAMP.bTrackNew[iTrack])) {};
 	
-		var bJSONParseGood = false
-		
-		if (objwAMP.strJSON)
+		var objSong = objwAMP.arraySongStartObj[iTrack];
+	
+		if (!objSong.path)
 		{
-			try
+			console.log("Handling bad song");
+			
+			var iCheckIndex = this.GetNextIndex(iTrack);
+			
+			if ((objwAMP.iNextIndex[iTrack] == -1) ||
+				(iCheckIndex == -1))
 			{
-				this.objSongInfo = JSON.parse(objwAMP.strJSON);
-				bJSONParseGood = true;
-			}
-			catch(e) {console.log("No luck with JSON: " + objwAMP.strJSON);}
-		}
-		
-		try
-		{
-			if ((bJSONParseGood) && this.objSongInfo["error"])
-			{
-				console.log("Handling Error");
-				this.SetIndex(this.iNextIndex);
-				this.SetIndex(this.GetNextIndex());
-				this.OpenNextSong();
+				if (objwAMP.funcPauseCallback)
+					objwAMP.funcPauseCallback(iTrack);
+					
+				objwAMP.funcTextBanner("Pick Another Song", "", iTrack);
+				
 				return;
 			}
 			
-			if (this.iOpenIndex == -1)
-				this.SetIndex(this.iNextIndex);
-			else
-			{
-				this.SetIndex(this.iOpenIndex);
-				this.iOpenIndex = -1;
-			}
-			
-			this.SetNextSong();
-			var strName;
-			var strArtist;
-			var strAlbum = 0;
-			
-			// Given the choice, use the most recent song metadata info
-			if (bJSONParseGood == true)
-			{
-				if (this.objSongInfo.Metadata.title) 
-					strName = this.objSongInfo.Metadata.title;
-				else
-					strName = this.objSongInfo.name;
-				
-				if (this.objSongInfo.Metadata.artist)
-					strArtist = this.objSongInfo.Metadata.artist;
-				else
-					strArtist = this.objSongInfo.path;
-			
-				if (this.objSongInfo.Metadata.album)
-					strAlbum = this.objSongInfo.Metadata.album;
-			
-			}
-			else
-			{
-			
-				if (this.arrayPlaylist[this.GetIndex()].title)
-					strName = this.arrayPlaylist[this.GetIndex()].title;
-				else
-					strName = this.arrayPlaylist[this.GetIndex()].name;
-				
-				if (this.arrayPlaylist[this.iSongIndex].artist)
-					strArtist = this.arrayPlaylist[this.iSongIndex].artist;
-				else
-					strArtist = this.arrayPlaylist[this.iSongIndex].path;
-					
-				if (this.arrayPlaylist[this.iSongIndex].album)
-					strAlbum = this.arrayPlaylist[this.iSongIndex].album;
-			}
-
-			$('#nameGoesHere').text(strName);
-			$('#artistGoesHere').text(strArtist);
-			
-			objwAMP.funcImgGenCB(strArtist, strAlbum);
-			
-			$('.songlistener').trigger('songtrans');
+			this.SetIndex(this.iNextIndex[iTrack], iTrack);
+			this.SetIndex(this.GetNextIndex(iTrack), iTrack);
+			this.OpenNextSong(iTrack);
+			return;
 		}
-		catch(e) 
+		
+		
+		if (this.iOpenIndex[iTrack] == -1)
+			this.SetIndex(this.iNextIndex[iTrack], iTrack);
+		else
 		{
-			console.log(e);
-			$('#nameGoesHere').text(this.arrayPlaylist[this.GetIndex()].name);
-			$('#artistGoesHere').text(this.arrayPlaylist[this.iSongIndex].path);
-			
-			objwAMP.funcImgGenCB();
+			this.SetIndex(this.iOpenIndex[iTrack], iTrack);
+			this.iOpenIndex[iTrack] = -1;
 		}
+		
+		this.SetNextSong(iTrack);
+		
+		objwAMP.funcTextBanner(objSong.title, objSong.artist, iTrack);
+
+		objSongIndex.SaveCurIndex(this.GetIndex(iTrack));
+
+		objwAMP.AddSongToRecentPlay(objSong.path);
+		
+		if (objwAMP.funcNowPlaying)
+			objwAMP.funcNowPlaying(this.GetIndex(iTrack), iTrack);
+		
+		//console.log("Calling Path from avoid:" + objSong.path);
+		
+		objwAMP.funcImgGenCB(objSong.path);
+	},
+	
+	RegisterTextBanner: function(funcTextBanner)
+	{
+		objwAMP.funcTextBanner = funcTextBanner;
 	},
 	
 	// Function to register call back for show album art
 	RegisterImgGen: function(funcImgGenCB)
 	{
 		objwAMP.funcImgGenCB = funcImgGenCB;
+	},
+	
+	RegisterSongTrans: function(funcSongTransition)
+	{
+		objwAMP.funcSongTransition = funcSongTransition;
+	},
+	
+	RegisterNowPlaying: function(funcNowPlaying)
+	{
+		objwAMP.funcNowPlaying = funcNowPlaying;
 	},
 	
 	/******************************
@@ -1755,128 +2504,282 @@ var INDEX_FAILED_LOAD 	= 3;
 	{
 		this.jsonIndex = JSON.parse(this.strIndexJSON);
 		objSongIndex.addArray(this.jsonIndex.arrayFileList);
-		$('#idButtonGoesHere').show();
+		document.getElementById('idButtonGoesHere').style.display = "block";
 	},
 	
 	
 	/*******************************
 	 * Called after plugin finishes seeking
 	 *******************************/
-	FinishSeek: function(strNewTime)
+	FinishSeek: function(strNewTime, iTrack)
 	{
-		objwAMP.strNewSeekTime = strNewTime;
+		//console.log("Finish Seek:" + strNewTime + " " + iTrack);
+		objwAMP.strNewSeekTime[iTrack] = strNewTime;
 		setTimeout(function()
 		{
-			objwAMP.AvoidSeekPluginCall()
-		}, 10);
+			objwAMP.AvoidSeekPluginCall(iTrack)
+		}, 5);
 	},
 	/*********************************
 	 * Need this to avoid calling the plugin
 	 *  from the plugin callback
 	 *********************************/
-	AvoidSeekPluginCall: function()
+	AvoidSeekPluginCall: function(iTrack)
 	{
-		var iRet = parseFloat(objwAMP.strNewSeekTime);
+		console.log("Finish avoid seek:" + iTrack);
+		
+		if (!iTrack)
+			iTrack = 0;
+		
+		var iRet = parseFloat(objwAMP.strNewSeekTime[iTrack]);
 		if (isNaN(iRet))
 		{
-			console.log(objwAMP.strNewSeekTime);
+			console.log(objwAMP.strNewSeekTime[iTrack]);
 			iRet = 0;
 		}
-		this.funcSeekFinishFunc(iRet);
+		
+		if (this.funcSeekFinishFunc[iTrack])
+			this.funcSeekFinishFunc[iTrack](iRet, iTrack);
 	},
-	
-	
 	
 	/******************************
 	 * Gets the file list based on which option we are using
 	 ******************************/
-	getPlayList: function()
+	GetPlaylist: function(iTrack)
 	{
-		if (!(this.arrayPlaylist))
-			this.arrayPlaylist = new Array();
+		if (!(this.arrayPlaylist[iTrack]))
+			this.arrayPlaylist[iTrack] = new Array();
 	
-		return this.arrayPlaylist
+		return this.arrayPlaylist[iTrack]
 	},
-	/*************************************
-	 * Empty the playlist
-	 *************************************/
-	emptyPlaylist: function()
+	
+	PLSize: function(iTrack)
 	{
-		this.arrayPlaylist = 0;
-		this.SetIndex(0);
-	},
-		
-	setPlayList: function(arraySongs)
-	{
-		this.arrayPlaylist = arraySongs;
+		if (!(this.arrayPlaylist[iTrack]))
+			return 0;
+		else
+			return this.arrayPlaylist[iTrack].length;
 	},
 
-	AddSong: function(objSong, iPosition)
+	RegisterPLCallback: function(funcUpdatePLCallback)
 	{
-		if ((iPosition) && (this.arrayPlaylist))
+		if (this.funcUpdatePLCallback == -1)
 		{
+			objwAMP.OpenSong(0, objwAMP.iIndex);
+			objwAMP.Seek(objwAMP.iPos);	
+			funcUpdatePLCallback(this.arrayPlaylist[0]);
+		}
+		
+		this.funcUpdatePLCallback = funcUpdatePLCallback;
+	},
+	
+	EmptyPlaylist: function(iTrack)
+	{
+		this.arrayPlaylist[iTrack] = new Array();
+		this.SetIndex(0, iTrack);
+		
+		objSongIndex.SaveCurPlaylist(iTrack);
+		if (this.funcUpdatePLCallback)
+			this.funcUpdatePLCallback(this.arrayPlaylist[iTrack],
+									  iTrack);
+	},
+	
+	SetPlaylist: function(iTrack, arraySongs, bSkipDB8Update)
+	{
+		this.arrayPlaylist[iTrack] = arraySongs;
+		
+		try
+		{
+			if (!bSkipDB8Update)
+				objSongIndex.SaveCurPlaylist(iTrack);
+		}
+		catch(e)
+		{
+			document.getElementById('idTellUser').innerHTML = 'Error: There was an error trying to save the playlist. ' +
+					  'The playlist will not be saved on exit at this time. ' +
+					  'Please report the following to blaclynx@yahoo.com:' + 
+						e;
+			document.getElementById('idButtonGoesHere').innerHTML = "Ok";
+			document.getElementById('idDialog').style.display = "block";
+		}
+		
+		try
+		{
+			if (this.funcUpdatePLCallback)
+			{
+				this.funcUpdatePLCallback(this.arrayPlaylist[iTrack],
+										  iTrack);
+			}
+		}
+		catch(e)
+		{
+			document.getElementById('idTellUser').innerHTML = 'Error: There was an error trying to display the playlist. ' +
+					  'Please report the following to blaclynx@yahoo.com:' + 
+						e;
+			document.getElementById('idButtonGoesHere').innerHTML = "Ok";
+			document.getElementById('idDialog').style.display = "block";
+		}		
+		
+		this.SetNextSong(iTrack);
+	},
+
+	MoveSong: function(iTrack, oldPos, newPos)
+	{
+		var tmp = this.arrayPlaylist[iTrack].splice(oldPos, 1);
+		this.arrayPlaylist[iTrack].splice(newPos, 0, tmp[0]);
+		var iCur = this.GetIndex(iTrack);
+		
+		if (iCur == oldPos)
+			this.SetIndex(newPos, iTrack);
+		else if ((iCur >= newPos) && (iCur <= oldPos))
+			this.SetIndex(++iCur, iTrack);
+		else if ((iCur <= newPos) && (iCur >= oldPos))
+			this.SetIndex(--iCur, iTrack);
+		this.SetPlaylist(0, this.arrayPlaylist[iTrack]);
+	},
+	
+	AppendPlaylist: function(arrayNewPL, iTrack, iIntoPnt)
+	{
+		if (iIntoPnt == null)
+		{
+			this.arrayPlaylist[iTrack] = 
+					objwAMP.GetPlaylist(iTrack).concat(arrayNewPL);
+		}
+		else
+		{
+			if (isNaN(iIntoPnt))
+			{
+				console.log("Should not have sent this val:" + iIntoPnt);
+				iIntoPnt = 0;
+			}
+			
+			var arrayCur = objwAMP.GetPlaylist(iTrack);
+			this.arrayPlaylist[iTrack] = 
+					arrayCur.slice(0, iIntoPnt).concat(arrayNewPL,
+													  arrayCur.slice(iIntoPnt));
+
+			var iCur = this.GetIndex(iTrack);													  
+			
+			if (iCur >= iIntoPnt)
+			{
+				this.SetIndex((iCur+arrayNewPL.length), iTrack);
+			}
+		}
+		
+		objSongIndex.SaveCurPlaylist(iTrack);
+		if (this.funcUpdatePLCallback)
+			this.funcUpdatePLCallback(this.arrayPlaylist[iTrack]);
+		this.SetNextSong(iTrack);
+	},
+
+	RemoveSong: function(iIndex, iTrack)
+	{
+		if (!iTrack)
+			iTrack = 0;
+		
+		this.arrayPlaylist[iTrack].splice(iIndex, 1);
+		
+		var iCurSong = this.GetIndex(iTrack);
+		
+		if (iCurSong >= iIndex)
+		{
+			iCurSong--;
+			this.SetIndex(iCurSong, iTrack);
+		}			
+		
+		objSongIndex.SaveCurPlaylist();
+		if (this.funcUpdatePLCallback)
+			this.funcUpdatePLCallback(this.arrayPlaylist[iTrack]);
+		this.SetNextSong(iTrack);
+	},
+	
+	AddSong: function(objSong, iTrack, iPosition)
+	{
+		if ((iPosition != null) && 
+			(this.arrayPlaylist[iTrack]) &&
+			(iPosition < this.arrayPlaylist[iTrack].length))
+		{
+			if (isNaN(iPosition))
+				iPosition = 0;
+			
 			switch (iPosition)
 			{
 			case PLAYLIST_POS_END:
-				this.AddSongToPlaylist(objSong);
+				this.AddSongToPlaylist(objSong, iTrack);
 				break;
 			case PLAYLIST_POS_NEXT:
-				this.AddSongNext(objSong);
+				this.AddSongNext(objSong, iTrack);
 				break
 			default:
-				this.arrayPlaylist.splice(iPosition,
+				this.arrayPlaylist[iTrack].splice(iPosition,
 										  0,
 										  objSong);
-				this.SetNextSong();
+				var iCurSong = this.GetIndex(iTrack);						  
+				if (iPosition <= iCurSong)
+					this.SetIndex(++iCurSong, iTrack);
+				this.SetNextSong(iTrack);
 			}
 		}
 		else
-			AddSongToPlaylist(objSong);
+			this.AddSongToPlaylist(objSong, iTrack);
+		
+		objSongIndex.SaveCurPlaylist(0);
+		
+		if (this.funcUpdatePLCallback)
+			this.funcUpdatePLCallback(this.arrayPlaylist[iTrack]);
 	},
 	
-	AddSongToPlaylist: function(objSong)
+	AddSongToPlaylist: function(objSong, iTrack)
 	{
-		if (!this.arrayPlaylist)
+		if (!this.arrayPlaylist[iTrack])
 		{
-			this.arrayPlaylist = new Array();
-			this.arrayPlaylist.push(objSong);
-			this.OpenSong(0);
+			this.arrayPlaylist[iTrack] = new Array();
+			this.arrayPlaylist[iTrack].push(objSong);
+			this.OpenSong(0, iTrack);
 		}
 		else
-			this.arrayPlaylist.push(objSong);
+			this.arrayPlaylist[iTrack].push(objSong);
 		
-		this.SetNextSong();
+		this.SetNextSong(iTrack);
 	},
 	
-	AddSongNext: function(objSong)
+	AddSongNext: function(objSong, iTrack)
 	{
-		if (!this.arrayPlaylist)
+		if (!this.arrayPlaylist[iTrack])
 		{
-			this.AddSongToPlayList(objSong);
+			this.AddSongToPlayList(objSong, iTrack);
 		}
 		else
 		{
-			var iCurIndex = this.GetIndex();
+			var iCurIndex = this.GetIndex(iTrack);
 		
-			this.arrayPlaylist.splice(iCurIndex + 1,
+			this.arrayPlaylist[iTrack].splice(iCurIndex + 1,
 									0,
 									objSong);
-			this.SetNextSong(iCurIndex + 1);
+			this.SetNextSong(iTrack, iCurIndex + 1);
 		}
 		
 	},
 	
-	AddSongNow: function(objSong)
+	AddSongNow: function(objSong, iTrack)
 	{
-		this.AddSong(objSong, this.GetIndex());
+		this.AddSong(objSong, iTrack, this.GetIndex(iTrack));
 	},
 	
 	SetSongTransition: function (fTransition)
 	{
+		clearTimeout(objwAMP.tmoutSonTransDB);
+		
+		objwAMP.tmoutSonTransDB = setTimeout(function()
+		{
+			objOptions.UpdateOption(OPT_ID_TRANS, 
+									Number(fTransition).toString());
+			objwAMP.SetNextSong(0);
+		}, 400);
 		this.fTransition = Number(fTransition).toFixed(1);
 	},
 	
-	GetSongTransition: function ()
+	GetSongTransition: function()
 	{
 		return this.fTransition;
 	},
@@ -1884,37 +2787,44 @@ var INDEX_FAILED_LOAD 	= 3;
 	/******************************
 	 * Tell the plugin handler which song to start playing
 	 ******************************/
-	SetIndex: function(iIndex)
+	SetIndex: function(iIndex, iTrack)
 	{
-		this.iSongIndex = iIndex;
+		this.iSongIndex[iTrack] = iIndex;
 	},
-	GetIndex: function()
+	GetIndex: function(iTrack)
 	{
-		return this.iSongIndex;
+		return this.iSongIndex[iTrack];
 	},
 	
+	GetCurSongPath: function(iTrack)
+	{
+		return objwAMP.arraySongStartObj[iTrack].path;
+	},
 	 
 	/******************************
 	 * Tell the plugin handler which song to start playing
 	 ******************************/	
-	GetNextIndex: function()
+	GetNextIndex: function(iTrack)
 	{
 	
-		if (!(this.arrayPlaylist))
-			return -1;
+		if (!iTrack)
+			iTrack = 0;
+		
+		if (!(this.arrayPlaylist[iTrack]) || (this.arrayPlaylist[iTrack].length == 0))
+			return -1;	
 	
-		var iRet = this.GetIndex();
+		var iRet = this.GetIndex(iTrack);
 	
 		if (this.bShuffle == true)
-			iRet = Math.floor(Math.random()*this.arrayPlaylist.length);
+			iRet = (Math.random()*this.arrayPlaylist[iTrack].length) | 0;
 		else
 		{
 			iRet++;
 			if (this.bRepeat == true)
-				iRet = iRet % this.arrayPlaylist.length;
+				iRet = iRet % this.arrayPlaylist[iTrack].length;
 			else
 			{
-				if (iRet >= this.arrayPlaylist.length)
+				if (iRet >= this.arrayPlaylist[iTrack].length)
 					return -1;
 			}
 		}
@@ -1925,22 +2835,25 @@ var INDEX_FAILED_LOAD 	= 3;
 	 /******************************
 	 * Tell the plugin handler which song to start playing
 	 ******************************/
-	 getPreviousIndex: function()
+	 getPreviousIndex: function(iTrack)
 	 {
-		if (!(this.arrayPlaylist))
+		if (!iTrack)
+			iTrack = 0;
+		
+		if (!(this.arrayPlaylist[iTrack]) || (this.arrayPlaylist[iTrack].length == 0))
 			return -1;	 
 	 
-		var iRet = this.GetIndex();
+		var iRet = this.GetIndex(iTrack);
 
 		if (this.bShuffle == true)
-			iRet = Math.floor(Math.random()*this.arrayPlaylist.length);
+			iRet = (Math.random()*this.arrayPlaylist[0].length) | 0;
 		else
 		{
 			iRet--;
 			if (iRet < 0)
 			{
 				if (this.bRepeat)
-					iRet = this.arrayPlaylist.length - 1;
+					iRet = this.arrayPlaylist[0].length - 1;
 				else
 					iRet = 0;
 			}
@@ -1954,90 +2867,154 @@ var INDEX_FAILED_LOAD 	= 3;
 	 * Tell the plugin to load the song at the current index
 	 * 	or you can pass it an index variable
 	 *******************************/
-	 OpenSong: function(iIndex)
+	 OpenSong: function(iTrack, iIndex)
 	 {	 
+	 	if (!iTrack)
+			iTrack = 0;
+		
+		if (!(this.arrayPlaylist[iTrack]) || !(this.arrayPlaylist[iTrack].length))
+			return;
+		
 		if (typeof(iIndex) != "undefined")
 		{
-			if (iIndex >= this.arrayPlaylist.length)
-				iIndex = this.arrayPlaylist.length - 1;
-			this.SetIndex(iIndex);
+			if (iIndex >= this.arrayPlaylist[iTrack].length)
+				iIndex = this.arrayPlaylist[iTrack].length - 1;
+			else if (iIndex < 0)
+				iIndex = 0;
+			this.SetIndex(iIndex, iTrack);
 		}
 			
-		this.plugIn.Open(this.arrayPlaylist[this.GetIndex()].path);
-		this.iOpenIndex = this.GetIndex();
+		objwAMP.CallOpenSong(this.arrayPlaylist[iTrack][this.GetIndex(iTrack)].path, iTrack);
+		this.iOpenIndex[iTrack] = this.GetIndex(iTrack);
 	 },
 	
+	CallOpenSong: function(str, iTrack)
+	{
+		if ((typeof str == "string") && 
+					(str.indexOf('/media/internal') != -1))
+		{
+			console.log("Opening: " + str);
+			this.plugIn.Open(str, iTrack);
+		}
+	},
+	
+	CallSetNext: function(str, transition, iTrack)
+	{
+		if (isNaN(transition))
+			transition = 0.0;
+
+		if ((typeof str == "string") && 
+					(str.indexOf('/media/internal') != -1))
+		{
+			console.log("Opening: " + str + " with:" + transition);
+			this.plugIn.SetNext(str, transition, iTrack);
+		}
+		else
+		{
+			this.plugIn.SetNoNext(iTrack);
+		}
+	
+	},
 	
 	/*******************************
 	 * Tell the plugin to use a new next song
 	 *******************************/
-	SetNextSong: function(iIndex)
+	SetNextSong: function(iTrack, iIndex)
 	{	
-		if (!this.arrayPlaylist || !this.arrayPlaylist.length)
+		if (!iTrack)
+			iTrack = 0;
+		
+		if (!this.arrayPlaylist[0] || !this.arrayPlaylist[0].length)
+		{
+			objwAMP.CallSetNext(0, 0, iTrack);
 			return;
+		}
+	
+		if ((this.arrayPlaylist[0].length == 1) &&
+			 (this.bRepeat != true))
+		{
+			objwAMP.CallSetNext(0, 0, iTrack);
+			return;
+		}
 	
 		if (iIndex)
 		{
 			if (iIndex == -1)
+			{
+				this.iNextIndex[iTrack] = -1;
+				objwAMP.CallSetNext(0, 0, iTrack);
 				return;
+			}
+			
+			var iBad = 0;
 			
 			try
 			{
-				this.plugIn.SetNext(this.arrayPlaylist[iIndex].path,
-									this.fTransition);
+				objwAMP.CallSetNext(this.arrayPlaylist[0][iIndex].path,
+									this.fTransition,
+									iTrack);
 			}
 			catch (e)
 			{
 				console.log(e);
-				if (!objwAMP.bReinitInProgress)
-					objwAMP.RedowAMP();
+				iBad = 1;
+				objwAMP.CallSetNext(0, 0, iTrack);
 				return 0;
 			}
 			
-			this.iNextIndex = iIndex;
+			if (!iBad)
+				this.iNextIndex[iTrack] = iIndex;
+				
 			return;
 		}
 	
-		var iNextIndex = this.GetNextIndex();
+		var iNextIndex = this.GetNextIndex(iTrack);
 		
 		if (iNextIndex == -1)
 			return;
 		
-		//console.log("Transition in ***Setnext: " + this.fTransition);
-		
 		try
 		{
-			this.plugIn.SetNext(this.arrayPlaylist[iNextIndex].path, 
-								this.fTransition);
+			if (!this.arrayPlaylist[0][iNextIndex])
+			{
+				objwAMP.CallSetNext(this.arrayPlaylist[0][0].path, 
+									this.fTransition, iTrack);
+			}
+		
+			objwAMP.CallSetNext(this.arrayPlaylist[0][iNextIndex].path, 
+								this.fTransition, iTrack);
 		}
 		catch (e)
 		{
 			console.log(e);
-			if (!objwAMP.bReinitInProgress)
-				objwAMP.RedowAMP();
 			return 0;
 		}					
 							
-		this.iNextIndex = iNextIndex;
+		this.iNextIndex[iTrack] = iNextIndex;
 	},
 
 	
 	 /*******************************
 	 * Tell the plugin to Play the next song
 	 *******************************/
-	 OpenNextSong: function()
+	 OpenNextSong: function(iTrack)
 	 {
-		var iNextIndex = this.GetNextIndex();
+	 	if (!iTrack)
+			iTrack = 0;
+	 
+		var iNextIndex = this.GetNextIndex(iTrack);
+		
+		console.log("Open Next Song:" + iNextIndex);
 		
 		if (iNextIndex == -1)
 		{
-			scenePlay.ForcePause();
+			return -1;
 		}
 		else
 		{
-			this.SetIndex(iNextIndex);
-			this.plugIn.Open(this.arrayPlaylist[this.GetIndex()].path);
-			this.iOpenIndex = this.GetIndex();
+			this.SetIndex(iNextIndex, iTrack);
+			objwAMP.CallOpenSong(this.arrayPlaylist[0][this.GetIndex(iTrack)].path, iTrack);
+			this.iOpenIndex[iTrack] = this.GetIndex(iTrack);
 		}
 
 	},
@@ -2046,19 +3023,137 @@ var INDEX_FAILED_LOAD 	= 3;
 	 /*******************************
 	 * Tell the plugin to play the previous song
 	 *******************************/
-	OpenPrevSong: function()
+	OpenPrevSong: function(iTrack)
 	{
-		var iPrevIndex = this.getPreviousIndex();
+		if (!iTrack)
+			iTrack = 0;
+	
+		var iPrevIndex = this.getPreviousIndex(iTrack);
 	 
 	 	if (iPrevIndex == -1)
 		{
-			scenePlay.ForcePause();
+			return -1;
 		}
 		else
 		{
-			this.SetIndex(iPrevIndex);
-			this.plugIn.Open(this.arrayPlaylist[iPrevIndex].path);
-			this.iOpenIndex = this.GetIndex();
+			this.SetIndex(iPrevIndex, iTrack);
+			objwAMP.CallOpenSong(this.arrayPlaylist[0][iPrevIndex].path, iTrack);
+			this.iOpenIndex[iTrack] = this.GetIndex(iTrack);
 		}
+	},
+	
+	GetAlbumArtist: function(strPath)
+	{
+		this.plugIn.SetMetadataPath(strPath);
+		
+		var str = this.plugIn.GetMetadata(5);
+		if (str == '0')
+			return 0;
+		else
+			return str;
+	},
+	
+	/**********************
+	 * Get metadata for a son
+	 **********************/
+	GetMetadata: function(strPath)
+	{
+		var obj = new Object();
+		
+		//console.log("Getting Metadata for " + strPath);
+		
+		this.plugIn.SetMetadataPath(strPath);
+		
+		obj.name = strPath.lastIndexOf('/') + 1;
+		
+		obj.genre = this.plugIn.GetMetadata(0);
+		if (obj.genre == '0')
+			obj.genre = '[Unknown]';
+		
+		obj.artist = this.plugIn.GetMetadata(1);
+		if (obj.artist == '0')
+			obj.artist = '[Unknown]';
+
+		obj.album = this.plugIn.GetMetadata(2);
+		if (obj.album == '0')
+			obj.album = '[Unknown]';
+		//console.log("Album:" + obj.album);
+		
+		obj.title = this.plugIn.GetMetadata(3);
+		if (obj.title == '0')	
+			obj.title = strPath.substr(obj.name);
+	
+		//console.log("Title:" + obj.title);
+		
+
+		//console.log("Genre:" + obj.genre);
+		
+		obj.track = this.plugIn.GetMetadata(4);
+		if (obj.track == '0')
+			obj.track = 0;
+			
+		//console.log("Track:" + obj.track);
+		
+		obj.albumArtist = this.plugIn.GetMetadata(5);
+		if (obj.albumArtist == '0')
+			obj.albumArtist = 0;
+		
+		return obj;
+	},
+	
+	GetMetadataForPre: function(path)
+	{
+		var obj = new Object();
+		
+		console.log("Getting Metadata for " + strPath);
+		
+		this.plugIn.SetMetadataPath(strPath);	
+		obj.albumArtist = this.plugIn.GetMetadata(5);
+	},
+	
+	SetCrossfade: function(fPaneOneFade)
+	{
+		if (this.plugIn.SetCrossfade)
+			this.plugIn.SetCrossfade(fPaneOneFade);
+	},
+	
+	GetFreqStr: function(iTrack)
+	{
+		if (!iTrack)
+			iTrack = 0;
+	
+		var str = this.plugIn.GetFreqString(iTrack);
+	
+		//console.log("Freq String: " + str.charCodeAt(100));
+	
+		return str;
+	},
+	
+	GetAvgMagStr: function(iTrack)
+	{
+		if (!iTrack)
+			iTrack = 0;
+	
+		var str = this.plugIn.GetAvgMagString(iTrack);
+	
+		//console.log("Freq String: " + str.charCodeAt(100));
+	
+		return str;
+	},
+	
+	CheckForImg: function(strPath)
+	{
+		if (objwAMP.objImageCache[strPath])
+			return objwAMP.objImageCache[strPath];
+			
+		return objwAMP.objImageCache[strPath] = 
+							this.plugIn.CheckPathForImg(strPath);
+	},
+	
+	CheckMusicDir: function(bCreate)
+	{
+		bCreate = bCreate | 0;
+	
+		return (this.plugIn.CheckMusicDir(bCreate) | 0);
 	}
 }
