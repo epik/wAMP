@@ -38,11 +38,11 @@ var MAX_HIST_LIST		= 24;
 
 function FormatHTTP(str)
 {
-	var strPath = "http://";
+	var strPath = "";
 				
-	var i = 7;
+	var i = 0;
 				
-	while (i<str.length)
+	while (i < str.length)
 	{
 		c = str.charAt(i++);
 		(c != ' ') ? (strPath += c) : (strPath += '%20');
@@ -509,7 +509,11 @@ String.prototype.ReplaceAll = function(replace, with_this)
 	return str;
 }
 
-var arrayKeepAlive = new Array();
+var arrayKeepAlive = [];
+var arrayKeepAlive2 = [];
+var arrayKeepAlive3 = [];
+var arrayKeepAlive4 = [];
+var arrayKeepAlive5 = [];
 
 /***************************
  * Call a Palm Service
@@ -554,11 +558,14 @@ var arrayKeepAlive = new Array();
 		};
 
 		objParam = JSON.stringify(objParam);
+		arrayKeepAlive3.push(objParam);
 		reqObject.funcError = funcError;
 		reqObject.funcCallback = funcCallback;
 		reqObject.onservicecallback = function(status) 
 		{
 			//console.log("Service callback:" + reqObject.tempCircRef);
+		
+			clearTimeout(reqObject.ret);
 		
 			try
 			{
@@ -586,13 +593,12 @@ var arrayKeepAlive = new Array();
 			if (reqObject.funcCallback)
 				reqObject.funcCallback(status);
 		};
-		try
-		{
-			reqObject.call(strService, objParam);
-		} catch(e) 
-		{
-			console.log("Call Serv Err:" + e);
-		}
+
+		arrayKeepAlive4.push(reqObject.onservicecallback);
+		
+		arrayKeepAlive5.push(strService);
+		
+		arrayKeepAlive2.push(reqObject.call(strService, objParam));
 	}
 	else
 	{
@@ -625,6 +631,15 @@ function ProfilerTickAndRestart(str)
 }
 
 /********************************
+ * LastFM
+ ********************************/
+var lastfm = new LastFM({
+			apiKey    : '03164f37686e29a8af8c368071204b8a',
+			apiSecret : 'fd6eb5357b415ead8c67793edfb6dd1b'
+		});
+
+
+/********************************
  * Options class
  ********************************/
 // constants for options database
@@ -643,6 +658,10 @@ var OPT_ID_ALBUM_ORD = 12;
 var OPT_ID_LAST_INDEX = 13;
 var OPT_ID_INDEX_DIR = 14;
 var OPT_ID_WAMP_VERSION = 15;
+var OPT_ID_LAST_FM_SESS = 16;
+var OPT_ID_LAST_FM_UNAME = 17;
+var OPT_ID_LAST_FM_PAS_MD = 18;
+var OPT_ID_URL_LAST = 19;
 
 var ORIENTATION_UNLOCKED 	= 0;
 var ORIENTATION_PORTRAIT 	= 1;
@@ -654,7 +673,10 @@ var iLastFMCheckCount = 0;
 
 var objOptions = 
 {
-
+	strLastFMSess: 0,
+	strLastFMUName: "",
+	strLastFMPassMd: "",
+	bFakeLastFMPass: 0,
 	optUseBreadC: true,
 	dbOptions: 0,
 	fBass: 0.5,
@@ -677,6 +699,8 @@ var objOptions =
 	strIndexingDir: "/media/internal",
 	bKeepAlbumOrder: 1,
 	strVersion: 0,
+	arrayURLHist: [],
+	iURLHistPos: -1,
 	arrayEQVals: [String.fromCharCode(127), 
 				  String.fromCharCode(127), 
 				  String.fromCharCode(127), 
@@ -700,6 +724,97 @@ var objOptions =
 			document.getElementById('btnAlbumOrder').innerHTML = 
 											"Keep Album Order: Off";
 			objOptions.UpdateOption(OPT_ID_ALBUM_ORD, "0");
+		}
+	},
+	
+	URLHistAddTo: function()
+	{
+		var strURL = objOptions.urlInput.value;
+		objOptions.iURLHistPos++;
+	
+		if (objOptions.iURLHistPos)
+		{
+			objOptions.backBut.className = "classURLBut classURLButActive";
+			objOptions.arrayURLHist.length = objOptions.iURLHistPos+1;
+		}
+		
+		objOptions.forwardBut.className = "classURLBut";
+				
+		objOptions.funcURLCallBack(objOptions.arrayURLHist[objOptions.iURLHistPos] = strURL);
+	},
+	
+	URLHistBack: function(strURL)
+	{
+		// Uninitialized state (Go has not been hit yet)
+		if (objOptions.iURLHistPos <= -1)
+		{
+			objOptions.iURLHistPos = -1
+			objOptions.backBut.className = "classURLBut";
+			objOptions.arrayURLHist.length = 0;
+			return;
+		}
+		
+		// Move the current pointer back one
+		objOptions.iURLHistPos--;
+		
+		// If we have no history left, update everything to reflect that
+		if (objOptions.iURLHistPos <= 0)
+		{
+			objOptions.iURLHistPos = 0;
+			objOptions.backBut.className = "classURLBut";
+		}
+		
+		// Update the forward button as appropriate
+		if (objOptions.iURLHistPos < (objOptions.arrayURLHist.length-1))
+		{
+			objOptions.forwardBut.className = "classURLBut classURLButActive";
+		}
+		
+		// Load the proper history string		
+		objOptions.funcURLCallBack(objOptions.urlInput.value = objOptions.arrayURLHist[objOptions.iURLHistPos]);
+	},
+	
+	URLHistForward: function(strURL)
+	{
+		objOptions.iURLHistPos++;
+	
+		if (objOptions.iURLHistPos >= objOptions.arrayURLHist.length-1)
+		{
+			objOptions.iURLHistPos = objOptions.arrayURLHist.length-1;
+			objOptions.forwardBut.className = "classURLBut";
+		}
+		
+		if (objOptions.iURLHistPos > 0)
+		{
+			objOptions.backBut.className = "classURLBut classURLButActive";
+		}
+		
+		objOptions.funcURLCallBack(objOptions.urlInput.value = objOptions.arrayURLHist[objOptions.iURLHistPos]);
+	},
+	
+		
+	URLHistSetButtons: function(urlInput, backBut, forwardBut, addBookmarkBut, funcCallBack)
+	{
+		objOptions.urlInput = urlInput;
+		objOptions.backBut = backBut;
+		backBut.addEventListener(START_EV, objOptions.URLHistBack, false);
+		objOptions.forwardBut = forwardBut;
+		forwardBut.addEventListener(START_EV, objOptions.URLHistForward, false);
+		objOptions.addBookmarkBut = addBookmarkBut;
+		objOptions.funcURLCallBack = funcCallBack;
+	},
+	
+	LastFMFixButText: function()
+	{
+		if (objOptions.strLastFMSess != 0)
+		{
+			document.getElementById('btnLastFM').innerHTML = "Sign-Out of Last.fm";
+			$('#idLastFMLogInBtn')[0].innerHTML = 'Sign-Out';
+		}
+		else
+		{
+			document.getElementById('btnLastFM').innerHTML = "Sign-In to Last.fm";
+			$('#idLastFMLogInBtn')[0].innerHTML = 'Sign-In';
 		}
 	},
 	
@@ -729,6 +844,7 @@ var objOptions =
 		document.getElementById('btnCloseOptions').addEventListener(START_EV, function()
 		{
 			document.getElementById('idOptions').style.display = "none";
+			$('#idLastFMShow')[0].className = "classHideLastFM";
 		});
 		
 		document.getElementById('btnSwitchColor').addEventListener(START_EV, function()
@@ -781,6 +897,142 @@ var objOptions =
 				this.innerHTML = "Search Dir For Artwork: Off";
 			}
 		}, false);
+		
+		document.getElementById('idLastFMLogInBtn').addEventListener(START_EV, function()
+		{		
+			if (objOptions.strLastFMSess != 0)
+			{
+				objOptions.strLastFMSess = 0;
+				
+				objOptions.UpdateOption(OPT_ID_LAST_FM_SESS, '');
+				
+				sceneDialog.funcClick = function()
+				{
+					$('#idLastFMShow')[0].className = "classHideLastFM";
+					objOptions.LastFMFixButText();
+				};
+			
+				document.getElementById('idTellUser').innerHTML = 
+						'You have been signed out of Last.fm.';
+			
+				sceneDialog.Open(0, "Ok");
+			}
+			else
+			{
+				var bSavePass = 1;
+				
+				objOptions.strLastFMUName = 
+								document.getElementById('idLastFMUN').value;
+				
+				var checkPass = document.getElementById('idLastFMPass').value;
+				
+				var params;
+				
+				if ((objOptions.bFakeLastFMPass) && (checkPass == 'cakeisgood'))
+				{
+					bNoSavePass = 0;
+					params = {
+						username: objOptions.strLastFMUName, 
+						md5password: objOptions.strLastFMPassMd
+					};
+				}
+				else
+				{
+					objOptions.strLastFMPassMd = checkPass;
+					params = {
+						username: objOptions.strLastFMUName, 
+						password: objOptions.strLastFMPassMd
+					};
+				}
+				
+				lastfm.auth.getMobileSession(params, {success: function(data)
+				{
+					console.log("Good Auth last.fm");
+					objOptions.strLastFMSess = data.session;
+					
+					var str = JSON.stringify(objOptions.strLastFMSess);
+					
+					console.log(str);
+					
+					objOptions.UpdateOption(OPT_ID_LAST_FM_SESS, 
+											str);
+											
+					objOptions.UpdateOption(OPT_ID_LAST_FM_UNAME, 
+											objOptions.strLastFMUName);
+					
+					if (bSavePass)
+					{
+						objOptions.UpdateOption(OPT_ID_LAST_FM_PAS_MD, 
+											md5(objOptions.strLastFMUName + 
+													md5(objOptions.strLastFMPassMd)));
+					}
+					
+					sceneDialog.funcClick = function()
+					{
+						$('#idLastFMShow')[0].className = "classHideLastFM";
+						objOptions.LastFMFixButText();
+					};
+				
+					document.getElementById('idTellUser').innerHTML = 
+							'You should be logged in now to Last.fm and Audiophile will start scrobbling your songs.  You will be automatically logged in every time you start Audiophile (and if you do not want auto login, you will need to program that yourself).  Email blaclyx@yahoo.com if you want help on that.';
+				
+					sceneDialog.Open(0, "Ok");
+				}, error: function(code, message){
+					sceneDialog.funcClick = function()
+					{
+						$('#idLastFMShow')[0].className = "classHideLastFM";
+						objOptions.LastFMFixButText();
+					};
+				
+					document.getElementById('idTellUser').innerHTML = 
+							'Last.fm log-in failed.  Here is why: ' + code + " - " + message;
+				
+					sceneDialog.Open(0, "Ok");
+				}});
+			}
+		});
+		
+		document.getElementById('idLastFMUN').addEventListener('keydown', 
+			function(event)
+			{
+				if (event.keyCode == '13') 
+					event.preventDefault();
+			});
+		
+		document.getElementById('idLastFMUN').addEventListener('keyup', 
+			function(event)
+			{
+				if (event.keyCode == '13')
+					event.preventDefault();
+			});
+		
+		document.getElementById('idLastFMUN').addEventListener(START_EV, 
+			function(event)
+			{
+				if (window.PalmSystem)
+					window.PalmSystem.keyboardShow(2);
+			});
+			
+		document.getElementById('idLastFMPass').addEventListener('keydown', 
+			function(event)
+			{
+				if (event.keyCode == '13') 
+					event.preventDefault();
+			});
+		
+		document.getElementById('idLastFMPass').addEventListener('keyup', 
+			function(event)
+			{
+				if (event.keyCode == '13')
+					event.preventDefault();
+			});
+		
+		document.getElementById('idLastFMPass').addEventListener(START_EV, 
+			function(event)
+			{
+				if (window.PalmSystem)
+					window.PalmSystem.keyboardShow(2);
+			});
 	},
 	
 	IndexDirVis: function()
@@ -804,14 +1056,23 @@ var objOptions =
 	
 	PickNextSkin: function()
 	{
-		document.getElementById('idShowImgBG').style.display = 'none';
 
-		this.skinNum = ++this.skinNum % arraySkins.length;		
-		
-		//console.log(this.skinNum);
-		
-		this.UpdateOption(OPT_ID_SKIN, this.skinNum);
-		this.SetSkin();
+		document.getElementById('idShowImgBG').style.display = 'none';
+	
+		this.skinNum = ++this.skinNum % arraySkins.length;	
+	
+		if (this.skinNum)
+		{
+			document.getElementById('idPlayer').style.backgroundImage = "none";
+			this.UpdateOption(OPT_ID_SKIN, this.skinNum);
+			this.SetSkin();
+		}
+		else
+		{
+			document.getElementById('idPlayer').style.cssText = "";
+			document.getElementById('idTitleOne').style.cssText = "";
+			document.getElementById('idArtistOne').style.cssText = "";
+		}
 	},
 	
 	BGSetProper: function(strTest)
@@ -861,6 +1122,8 @@ var objOptions =
 		document.getElementById('idYouTube').style.top = "0px";
 		
 		document.getElementById('idPlayer').style.backgroundColor = "transparent";
+		document.getElementById('idPlayer').style.backgroundImage = "none";
+		
 		document.getElementById('idDJPlayer').style.backgroundColor = "transparent";
 		
 		document.getElementById('btnYTubeUnMute').className = "";
@@ -886,6 +1149,7 @@ var objOptions =
 			document.removeEventListener(START_EV, 
 								objOptions.HandleTap, 
 								true);
+			document.getElementById('idPlayer').style.backgroundImage = "";
 		}
 		
 		document.getElementById('idPlayer').style.backgroundColor = "transparent";
@@ -961,7 +1225,8 @@ var objOptions =
 			document.getElementById('idYouTube').style.top = '';
 			document.removeEventListener(START_EV, 
 								objOptions.HandleTap, 
-								true);			
+								true);
+			document.getElementById('idPlayer').style.backgroundImage = "";								
 		}
 		
 		document.getElementById('idPlayer').style.backgroundColor = 
@@ -1170,6 +1435,14 @@ var objOptions =
 			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
 							[OPT_ID_WAMP_VERSION, WAMP_VERSION]);
 			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
+							[OPT_ID_LAST_FM_SESS, ""]);
+			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
+							[OPT_ID_LAST_FM_UNAME, ""]);
+			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
+							[OPT_ID_LAST_FM_PAS_MD, ""]);	
+			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
+							[OPT_ID_URL_LAST, ""]);
+			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
 							[OPT_ID_SHUF_REP, "0"]);							
 		});
 		objOptions.bBgActive = false;
@@ -1310,16 +1583,41 @@ var objOptions =
 											case OPT_ID_WAMP_VERSION:
 												objOptions.strVersion = row['val'];
 												break;
+											case OPT_ID_LAST_FM_SESS:
+												objOptions.strLastFMSess = row['val'];
+												if (objOptions.strLastFMSess)
+												{
+													objOptions.strLastFMSess = 
+																JSON.parse(objOptions.strLastFMSess);
+												}
+												break;
+											case OPT_ID_LAST_FM_UNAME:
+												objOptions.strLastFMUName = row['val'];
+												var dom = document.getElementById('idLastFMUN');
+												dom.value = objOptions.strLastFMUName;
+												break;
+											case OPT_ID_LAST_FM_PAS_MD:
+												objOptions.strLastFMPassMd = row['val'];
+												var dom = document.getElementById('idLastFMPass');
+												if (objOptions.strLastFMPassMd != '')
+												{
+													objOptions.bFakeLastFMPass = 1;
+													dom.value = "cakeisgood";
+												}
+												break;
+											case OPT_ID_URL_LAST:
+												document.getElementById('idURLFilter').value = row['val'];
+												break;
 											}
 										}
 										objOptions.iFinishedLoadingDB = 1;
-										
 									}
 								}
 								catch(e)
 								{
 									console.log(e);
 								}
+								objOptions.LastFMFixButText();
 								sceneSplash.LoadSplash();
 							},
 							function(transaction, error) 
@@ -1526,6 +1824,14 @@ var objOptions =
 			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
 							[OPT_ID_INDEX_DIR, "/media/internal"]);
 			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
+							[OPT_ID_LAST_FM_SESS, ""]);
+			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
+							[OPT_ID_LAST_FM_UNAME, ""]);
+			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
+							[OPT_ID_LAST_FM_PAS_MD, ""]);
+			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
+							[OPT_ID_URL_LAST, ""]);							
+			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
 							[OPT_ID_WAMP_VERSION, "0"]);
 			sql.executeSql("INSERT INTO 'audio_opt' (optID,val) VALUES (?, ?)", 
 							[OPT_ID_HEADPHONE_IN, "0"],
@@ -1574,6 +1880,9 @@ var objOptions =
 			return b.playCount-a.playCount;
 		});
 	
+		if (arrayToSort.length > 25)
+			arrayToSort = arrayToSort.slice(0,25);
+		
 		funcCallback(arrayToSort);
 	},
 
@@ -1766,7 +2075,10 @@ var objSongIndex =
 		objSongIndex.funcGood = funcGood;
 		objSongIndex.funcError = funcError;
 		
-		objSongIndex.FirstStageInit();
+		setTimeout(function()
+		{
+			objSongIndex.FirstStageInit();
+		}, 1);
 	},
 			
 
@@ -2083,13 +2395,12 @@ var objSongIndex =
 			return;
 		}
 		
-		
 		CallPalmService('palm://com.palm.db/putKind',
 				objSongIndex.SongSchema,
 				false,
 				function(ret)
 				{
-					//console.log("Path kind registered" + JSON.stringify(ret));
+					console.log("Path kind registered" + JSON.stringify(ret));
 					objSongIndex.bKindRegistered = 1;
 					objSongIndex.ThirdStageInit();
 				},
@@ -2135,7 +2446,7 @@ var objSongIndex =
 							false,
 							function(response)
 							{
-								//console.log("Return from first cust find");
+								console.log("Return from first cust find");
 								
 								objSongIndex.arrayCurFiles = response.results;
 								objSongIndex.next = response.next;
@@ -2237,47 +2548,22 @@ var objSongIndex =
 	
 		var iFront = objSongIndex.arrayExisting.length;
 		
-		var arrayDeleteSongs = [];
-		
 		while (iFront--)
 		{
 			var objFromBefore = objSongIndex.arrayExisting[iFront];
-			objFromBefore.found = 1;
 			var objSong = objwAMP.hashPaths[objFromBefore.path];
 			
-			if (objSong)
+			if ((objSong) && (objSong.dirty == "clean"))
 			{
-				if (objSong.dirty == "clean")
-					objwAMP.hashPaths[objFromBefore.path] = objFromBefore;
-				else
-				{
-					objSong._id = objFromBefore._id;
-					objSong.playCount = objFromBefore.playCount;
-					objSong.lastPlayed = objFromBefore.lastPlayed;
-				}
+				objFromBefore.found = 1;
+				objwAMP.hashPaths[objFromBefore.path] = objFromBefore;
 			}
-			else
-				arrayDeleteSongs.push(objFromBefore._id);
 		}
-		
-		var parameters = { "ids": arrayDeleteSongs}
-		
-		CallPalmService('palm://com.palm.db/del', 
-				parameters,
-				false,
-				function(response)
-				{
-				},
-				function(error)
-				{
-					console.log(JSON.stringify(error));
-				});
 		
 		objSongIndex.arrayExisting = 0;
 		
 		setTimeout(function()
 		{
-			StatusPill.ProcessMode();
 			objSongIndex.GetMetadataFromPlugin();
 		}, 1);
 	},
@@ -2286,113 +2572,120 @@ var objSongIndex =
 	{	
 		ProfilerTickAndRestart("GetMetadataFromPlugin");
 		
-		var arrayUpdate = [];
-		var arrayAdd = [];
+		objSongIndex.fakeForIn = [];
 		
-		var cnt = 1;
+		objSongIndex.cnt = 0;
 		
 		for (var i in objwAMP.hashPaths)
+			objSongIndex.fakeForIn.push(i);
+		
+		if (objSongIndex.fakeForIn.length)
+			setTimeout(objSongIndex.WorkAroundScriptTimeout, 1);
+		else
+			setTimeout(objSongIndex.SkipToEnd, 1);
+	},
+			
+	WorkAroundScriptTimeout: function()
+	{
+		var objSong = objwAMP.hashPaths[objSongIndex.fakeForIn[objSongIndex.cnt++]];
+		
+		objwAMP.funcUpdateMetaData(objSongIndex.cnt, objSongIndex.fakeForIn.length, objSong.path);
+		
+		while (objSong.found)
 		{
-			var objSong = objwAMP.hashPaths[i];
-			
-			
-			
-			if (!objSong.found)
-			{	
-				try
-				{
-					var objTemp = objwAMP.GetMetadata(objSong.path);
-					
-					objSong.artist = objTemp.artist;
-					objSong.albumArtist = objTemp.albumArtist;
-					objSong.title = objTemp.title;
-					objSong.genre = objTemp.genre;
-					objSong.album = objTemp.album;
-					objSong.track = objTemp.track;
-					
-					var bFound = 0;
-						
-					if (objOptions.bCheckDir)
-					{
-						var path = objSong.path;
-						
-						var str = objwAMP.CheckForImg(path.substring(0,
-												path.lastIndexOf('/')));
-						
-						if (str != "-1")
-						{
-							str = path.substring(0, path.lastIndexOf('/')) +
-														"/" + str;
-						
-							bFound = 1;
-
-							objSong.imgSmall = str;
-							objSong.imgThumb = str;
-							objSong.imgLarge = str;
-
-						}
-					}
-					
-					if (!bFound)
-					{
-						objSong.imgSmall = "res/player/noimgsm.png";
-						objSong.imgThumb = "res/player/noimgthm.png";
-						objSong.imgLarge = "res/player/spinimg.png";
-					}
-				
-					objSongIndex.CleanSong(objSong);
-					objSong.dirty = "clean";
-
-					if (objSong._id)
-						arrayUpdate.push(objSong);
-					else
-						arrayAdd.push(objSong);
-					
-					// TODO: Need to add a batch update
-				}
-				catch (e)
-				{
-					console.log(strJSON);
-					console.log(e);
-				}
-			}
-				
 			objSongIndex.arrayIndex.push(objSong);
+			if (objSongIndex.cnt >= objSongIndex.fakeForIn.length)
+			{
+				setTimeout(objSongIndex.SkipToEnd, 1);
+				return;
+			}
+		
+			objSong = objwAMP.hashPaths[objSongIndex.fakeForIn[objSongIndex.cnt++]];
+			objwAMP.funcUpdateMetaData(objSongIndex.cnt, objSongIndex.fakeForIn.length, objSong.path);
 		}
+		
+		if (!objSong.found)
+		{	
+			try
+			{
+				var objTemp = objwAMP.GetMetadata(objSong.path);
+				
+				//console.log("Returned from GetMetadata");
+				
+				objSong.artist = objTemp.artist;
+				objSong.albumArtist = objTemp.albumArtist;
+				objSong.title = objTemp.title;
+				objSong.genre = objTemp.genre;
+				objSong.album = objTemp.album;
+				objSong.track = objTemp.track;
+				
+				var bFound = 0;
+					
+				if (objOptions.bCheckDir)
+				{
+					var path = objSong.path;
+					
+					var str = objwAMP.CheckForImg(path.substring(0,
+											path.lastIndexOf('/')));
+					
+					if (str != "-1")
+					{
+						str = path.substring(0, path.lastIndexOf('/')) +
+													"/" + str;
+					
+						bFound = 1;
+
+						objSong.imgSmall = str;
+						objSong.imgThumb = str;
+						objSong.imgLarge = str;
+
+					}
+				}
+				
+				if (!bFound)
+				{
+					objSong.imgSmall = "res/player/noimgsm.png";
+					objSong.imgThumb = "res/player/noimgthm.png";
+					objSong.imgLarge = "res/player/spinimg.png";
+				}
+			
+				objSongIndex.CleanSong(objSong);
+				objSong.dirty = "clean";
+				
+				// TODO: Need to add a batch update
+			}
+			catch (e)
+			{
+				console.log(strJSON);
+				console.log(e);
+			}
+		}
+		
+		//console.log("About to push");
+		
+		objSongIndex.arrayIndex.push(objSong);
+		
+		//console.log("Pushed");
+	
+		if (objSongIndex.cnt < objSongIndex.fakeForIn.length)
+			setTimeout(objSongIndex.WorkAroundScriptTimeout, 1);
+		else
+			setTimeout(objSongIndex.SkipToEnd, 1);
+	},
+		
+		
+	SkipToEnd: function()
+	{
+		console.log("Finished :-) :-) :-) :-)");
 		
 		objwAMP.hashPaths = 0;
 		
-		var arrayAdd = arrayAdd.map(function(x)
-		{
-			x._kind = SongSchema_ID;
-			return x;
-		});
+		console.log("About to run DB8 stuff");
 		
-		var parameters = {"operations" : [
-				{"method": "merge",
-					"params": {
-						"objects": arrayUpdate
-					}
-				},
-				{"method": "put",
-				"params": {
-					"objects": arrayAdd
-				}
-			}]};
-
-		CallPalmService('palm://com.palm.db/batch', 
-				parameters,
-				false,
-				function(response)
-				{
-					objOptions.LoadPLDB();
-				},
-				function(response)
-				{
-					console.log("error");
-					objOptions.LoadPLDB();
-				});
-		
+		setTimeout(function(){
+			objOptions.LoadPLDB();
+		}, 1);
+	
 	},
 	
 	FinishedAddingSongs: function()
@@ -2646,6 +2939,7 @@ var objSongIndex =
 		{
 			objSongIndex.funcGood();
 		}, 10);
+		objSongIndex.RefreshSongKind();
 	},
 	
 	
@@ -2747,6 +3041,61 @@ var objSongIndex =
 			objSong.imgLarge = "res/player/spinimg.png"; 
 		else
 			objSong.imgLarge = strLarge;
+	},
+	
+	RefreshSongKind: function(arrayPathIndex)
+	{
+		var parameters = {"id":SongSchema_ID};
+		
+		CallPalmService("palm://com.palm.db/delKind",
+				parameters,
+				false,
+				function()
+				{
+					console.log("Here after songscheme delKind");
+					
+					CallPalmService('palm://com.palm.db/putKind',
+							objSongIndex.SongSchema,
+							false,
+							function()
+							{
+								console.log("Here after songscheme Put Kind");
+							
+								var arrayStandIn = objSongIndex.arrayIndex.map(function(x)
+								{
+									x._kind = SongSchema_ID;
+									return x;
+								});
+								
+								//console.log(JSON.stringify(arrayStandIn));
+								
+								var parameters = {
+									"objects": arrayStandIn
+								};
+										
+								CallPalmService('palm://com.palm.db/put', 
+												parameters,
+												false,
+												function(response)
+												{
+													//console.log("Success:" + JSON.stringify(response));
+												},
+												function(response)
+												{
+													console.log('error:' + JSON.stringify(response));
+												});
+								
+							},
+							function(response)
+							{
+								console.log('error:' + JSON.stringify(response));
+							});	
+				},
+				function(response)
+				{
+					console.log('error:' + JSON.stringify(response));
+				});
+	
 	},
 	
 	CleanSong: function(objSong)
@@ -2929,6 +3278,8 @@ var objwAMP =
 	objImageCache: new Object(),
 	
 	iIndexCallbackCnt: 0,
+	iIndexPLCnt: 0,
+	arrayFoundPLs: [],
 	
 // Public:
 
@@ -3144,7 +3495,7 @@ var objwAMP =
 				
 				return array.join('');
 			};
-			this.plugIn.CheckMusicDir = function()
+			this.plugIn.CheckDir = function()
 			{
 				return "1" | 0;
 			};
@@ -3227,14 +3578,28 @@ var objwAMP =
 	
 	AddToIndex: function(str, modstate)
 	{				
-		var objSong = {"path":str,
-					   "dirty": modstate,
-					   "found": 0};
+		var ext = str.lastIndexOf('.');
 		
-		objSong.name = str.substr(str.lastIndexOf('/') + 1)
+		ext = str.substr(ext+1);
 		
-		objwAMP.hashPaths[str] = objSong;
-		objwAMP.iIndexCallbackCnt++
+		if (ext.toLowerCase() == 'm3u')
+		{
+			objwAMP.iIndexPLCnt++;
+			objwAMP.arrayFoundPLs.push(str);
+		}
+		else
+		{
+			var objSong = {"path":str,
+						   "dirty": modstate,
+						   "found": 0};
+			
+			objSong.name = str.substr(str.lastIndexOf('/') + 1)
+			
+			objwAMP.hashPaths[str] = objSong;
+			objwAMP.iIndexCallbackCnt++;
+		}
+		
+		objwAMP.funcUpdateFoundCount(objwAMP.iIndexCallbackCnt, objwAMP.iIndexPLCnt);
 		
 	},
 	
@@ -3245,7 +3610,7 @@ var objwAMP =
 	{				
 		//console.log("Finished");
 		
-		objwAMP.funcUpdateFoundCount(objwAMP.iIndexCallbackCnt);
+		objwAMP.funcUpdateFoundCount(objwAMP.iIndexCallbackCnt, objwAMP.iIndexPLCnt);
 		
 		setTimeout(function()
 		{
@@ -3259,6 +3624,11 @@ var objwAMP =
 	IndexerCallbackFinish: function()
 	{
 		ProfilerStart("IndexerCallbackFinish");
+		
+		objwAMP.quickNameLookUp = {};
+		
+		for (i in objwAMP.hashPaths)
+			objwAMP.quickNameLookUp[objwAMP.hashPaths[i].name] = i;
 		
 		objwAMP.iIndexStatus = objSongIndex.Init(function()
 		{
@@ -3287,7 +3657,7 @@ var objwAMP =
 	
 	AddSongToRecentPlay: function(strNewPath)
 	{		
-		objOptions.UpdateLastPlayed(strNewPath);
+		//objOptions.UpdateLastPlayed(strNewPath);
 	},
 	
 	GetRecentPlay: function()
@@ -3733,6 +4103,8 @@ var objwAMP =
 	{
 		//console.log("Seek:" + iNewTime + " " + iTrackNum);
 		
+		paneScrub.iLastFmCntDn = 100;
+		
 		if (!iTrackNum)
 			iTrackNum = 0;
 	
@@ -3767,17 +4139,24 @@ var objwAMP =
 
 		objwAMP.arraySongStartObj[iTrackNum].path = path;
 		
+		objwAMP.arraySongStartObj[iTrackNum].scrobbleThis = 1;
+		
 		if (artist && artist != "0")
 			objwAMP.arraySongStartObj[iTrackNum].artist = artist;
 		else
+		{
 			objwAMP.arraySongStartObj[iTrackNum].artist = path;
+			objwAMP.arraySongStartObj[iTrackNum].scrobbleThis = 0;	
+		}
 		
 		if (title && title != "0")
+		{
 			objwAMP.arraySongStartObj[iTrackNum].title = title;
+		}
 		else
 		{
 			var iFindName = path.lastIndexOf('/') + 1;
-			
+			objwAMP.arraySongStartObj[iTrackNum].scrobbleThis = 0;
 			objwAMP.arraySongStartObj[iTrackNum].title = path.substr(iFindName);
 		}
 		
@@ -3848,6 +4227,19 @@ var objwAMP =
 		//console.log("Calling Path from avoid:" + objSong.path);
 		
 		objwAMP.funcImgGenCB(objSong.path);
+		
+		if (objwAMP.arraySongStartObj[iTrack].scrobbleThis)
+		{
+			paneScrub.bLastFmDirty = 1;
+			paneScrub.iLastFmCntDn = 100;
+			paneScrub.strLastFmTitle = objSong.title;
+			paneScrub.strLastFmArtist = objSong.artist;
+		}
+		else
+		{
+			paneScrub.bLastFmDirty = 0;
+			paneScrub.iLastFmCntDn = 1;
+		}
 	},
 	
 	RegisterTextBanner: function(funcTextBanner)
@@ -4285,15 +4677,12 @@ var objwAMP =
 	CallOpenSong: function(str, iTrack, bIsSafeish)
 	{
 		if ((typeof str == "string") && 
-					(str.indexOf('/media/internal') != -1))
+			((str.indexOf("/media/internal") == 0) ||
+			 (str.indexOf("http") == 0) ||
+			 (str.indexOf("file") == 0)))
 		{
 			console.log("Opening: " + str);
 			this.plugIn.Open(str, iTrack);
-		}
-		else if(bIsSafeish)
-		{
-			console.log("Trying Out Network Stuff: " + str);
-			this.plugIn.Open(str, iTrack);	
 		}
 	},
 	
@@ -4302,16 +4691,10 @@ var objwAMP =
 		if (isNaN(transition))
 			transition = 0.0;
 
-		if ((typeof str == "string") && 
-					(str.indexOf('/media/internal') != -1))
+		if (typeof str == "string")
 		{
 			console.log("Opening: " + str + " with:" + transition);
 			this.plugIn.SetNext(str, transition, iTrack);
-		}
-		else if(bIsSafeish)
-		{
-			console.log("Trying Out Network Stuff: " + str + " with:" + transition);
-			this.plugIn.SetNext(str, transition, iTrack);	
 		}
 		else
 		{
@@ -4558,17 +4941,38 @@ var objwAMP =
 	{
 		bCreate = bCreate | 0;
 	
-		return (this.plugIn.CheckMusicDir(bCreate) | 0);
+		return (this.plugIn.CheckDir("/media/internal/music", 1, bCreate) | 0);
 	},
 
-	ProcessXMLPl: function(xml)
+	CheckFile: function(strFile)
 	{
-		objwAMP.funcURLCallB(xml);
+		return (this.plugIn.CheckDir(strFile, 0, 0) | 0);
 	},
 	
-	HandleUrl: function(url, iTrack, funcCallBack)
+	ProcessXMLPl: function(xml)
 	{
-		objwAMP.funcURLCallB = funcCallBack;
+		objwAMP.funcURLCallB(xml, objwAMP.HandleURL);
+	},
+	
+	ProcessM3UPl: function(m3u)
+	{
+		objwAMP.funcM3U(m3u, objwAMP.HandleURL);
+	},
+	
+	ProcessError: function(a, b, c)
+	{
+		console.log("Error:" + a + b + c);
+	},
+	
+	HandleUrl: function(url, 
+						iTrack, 
+						funcCallBackXML,
+						funcM3U,
+						funcCallBackSong)
+	{
+		objwAMP.funcURLCallB = funcCallBackXML;
+		objwAMP.HandleURL = url;
+		objwAMP.funcM3U = funcM3U;
 		
 		var retVal = [];
 		
@@ -4594,6 +4998,22 @@ var objwAMP =
 				success: objwAMP.ProcessXMLPl
 			});
 			return 0;
+		case "m3u":
+			console.log("Getting to the right AJAX call");
+			$.ajax({
+				type: "GET",
+				url: url,
+				success: objwAMP.ProcessM3UPl,
+				error: objwAMP.ProcessError
+			});
+			return 0;			
+		case "mp3":
+		case "flac":
+		case "aac":
+		case "wma":
+		case "m4a":
+		case "ra":
+			funcCallBackSong(FormatHTTP(url));
 		}
 		
 		return -1;

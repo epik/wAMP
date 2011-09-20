@@ -1,0 +1,1 @@
+palm-log -d usb --system-log-level=info

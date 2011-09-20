@@ -614,18 +614,23 @@ PDL_bool StartIndex(PDL_JSParameters *parms)
 	return PDL_TRUE;
 }
 
-PDL_bool CheckMusicDir(PDL_JSParameters *parms)
+
+PDL_bool CheckDir(PDL_JSParameters *parms)
 {
-	int32_t iForce = PDL_GetJSParamInt(parms, 0);
+	const char *cstrPath = PDL_GetJSParamString(parms, 0);
+
+	int32_t iDir = PDL_GetJSParamInt(parms, 1);
+
+	int32_t iForce = PDL_GetJSParamInt(parms, 2);
+
+	ReportError3("CheckDir with: %s : %i : %i", cstrPath, iDir, iForce);
 
 	PDL_Err err;
 
 	bool retVal;
 
-	if (iForce)
-		retVal = g_Indexer.CheckForDirMusic(true);
-	else
-		retVal = g_Indexer.CheckForDirMusic();
+	retVal = g_Indexer.CheckForDir(cstrPath, iDir, iForce);
+
 
 	ReportError("Back From retval");
 
@@ -708,7 +713,7 @@ int Register()
 	err = PDL_RegisterJSHandler("GetFreqString", GetFreqString);
 	err = PDL_RegisterJSHandler("GetAvgMagString", GetAvgMagString);
 	err = PDL_RegisterJSHandler("CheckPathForImg", CheckPathForImg);
-	err = PDL_RegisterJSHandler("CheckMusicDir", CheckMusicDir);
+	err = PDL_RegisterJSHandler("CheckDir", CheckDir);
 
 	err = PDL_JSRegistrationComplete();
 	if (err != PDL_NOERROR)

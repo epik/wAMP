@@ -1,1 +1,1 @@
-palm-package audiophile.application
+palm-package audiophile.wamp

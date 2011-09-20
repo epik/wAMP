@@ -15,6 +15,9 @@
 	<script type="text/javascript" src="jquery/jquery-1.6.js"></script>	
 	<script type="text/javascript" src="jquery/iscroll-lite.js"></script>
 	<script type="text/javascript" src="wamp/mode.js"></script>
+	<script type="text/javascript" src="scripts/lastfm.api.js"></script>
+	<script type="text/javascript" src="scripts/lastfm.api.md5.js"></script>
+	<script type="text/javascript" src="scripts/lastfm.api.cache.js"></script>	
 	<script type="text/javascript">
 var arraySkins = [{'background':"", 'title':"", 'artist':""}, 
 			  {'background':"#A2A2A2", 'title':"#DDDDDD", 'artist':"#BBBBBB"},
@@ -384,7 +387,7 @@ var win;
 			{			
 				window.PalmSystem.stageReady();	
 				
-				console.log("STARTING!!!!!!!!!!!!!!!!!!!!!!!");
+				//console.log("STARTING!!!!!!!!!!!!!!!!!!!!!!!");
 				
 				window.PalmSystem.setManualKeyboardEnabled(true);
 				
@@ -531,8 +534,8 @@ var win;
 	<div id="idDJAd">Please Donate<br>AudiophileHD Pro</div>
 	
 	<div id="idLastFMShow" class="classHideLastFM">
-	Login to  last.fm<p align="left">User Name: <br><INPUT type="text" STYLE="color: #FFFFFF; font-family: Verdana; font-weight: bold; font-size: 12px; background-color: #666;" size="20" maxlength="30"><p align="left">Password: <br><INPUT type="text" STYLE="color: #FFFFFF; font-family: Verdana; font-weight: bold; font-size: 12px; background-color: #666;" size="20" maxlength="30">
- <br><p align="left"><input type="Submit" value="Submit" />
+	Login to  last.fm<p align="left">User Name: <br><INPUT id="idLastFMUN" type="text" STYLE="color: #FFFFFF; font-family: Verdana; font-weight: bold; font-size: 12px; background-color: #666;" size="20" maxlength="30"><p align="left">Password: <br><INPUT id="idLastFMPass" type="password" STYLE="color: #FFFFFF; font-family: Verdana; font-weight: bold; font-size: 12px; background-color: #666;" size="20" maxlength="30">
+ <br><p align="left"><div id="idLastFMLogInBtn" class="classFilterBtn">Log-In</div>
 	</div>
 	
 	<div id="idEQPane">
@@ -695,6 +698,7 @@ var win;
 				<div id="idPLOptRec" class="classOpBut">Show Recently Played</div>
 				<div id="idPLOptFreq" class="classOpBut">Show Most Frequent</div>
 				<div id="idPLInternet" class="classOpBut">Internet</div>
+				<div id="idPLPlaylists" class="classOpBut">Playlists</div>
 			</div>
 		</div>
 		
@@ -928,12 +932,13 @@ var win;
 				
 				<div id="idInternet" class="classPickerCat">
 					<div id="idURLInput" class="classSearchInput">
-						<div id="idInternetBack" class="classURLBut"><</div>
-						<div id="idInternetForward" class="classURLBut">></div>
+						<div id="idInternetBack" class="classURLBut"></div>
+						<div id="idInternetForward" class="classURLBut"></div>
+						<div id="idInternetBookMark" class="classURLBut"></div>
 						<form id="idNeedFormForInternet">
-							<input type="search" name="name" id="idURLFilter" value="http://dl.dropbox.com/u/12521579/playlist.xml"  />
+							<input type="search" name="name" id="idURLFilter" value="http://www.archive.org/download/bt2001-12-21.shnf/bt2001-12-21.shnf_64kb.m3u"  />
 						</form>
-						<div id="idInternetGo" class="classURLBut">Go</div>
+						<div id="idInternetGo" class="classURLBut classURLButActive"></div>
 					</div>
 					<div id="idInternetWrapper" class="classWrapper">
 						<div id="idInternetScroller" class="classScroller">
@@ -941,6 +946,8 @@ var win;
 							</ul>
 						</div>
 					</div>
+					<div id="idAddXMLPL" class="classFilterBtn">Add All To Playlist</div>
+					<div id="idOpenLink">Please wait while your link loads.</div>
 				</div>
 				
 			</div>

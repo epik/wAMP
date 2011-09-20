@@ -38,29 +38,37 @@ function LastFM(options){
 	var internalCall = function(params, callbacks, requestMethod){
 		/* Cross-domain POST request (doesn't return any data, always successful). */
 		if(requestMethod == 'POST'){
-			/* Create iframe element to post data. */
+			$.ajax({
+				type: "POST",
+				url: apiUrl,
+				success: callbacks.success,
+				error: callbacks.error,
+				data: params
+			});
+			
+			/*// Create iframe element to post data.
 			var html   = document.getElementsByTagName('html')[0];
 			var iframe = document.createElement('iframe');
 			var doc;
 
-			/* Set iframe attributes. */
+			// Set iframe attributes.
 			iframe.width        = 1;
 			iframe.height       = 1;
 			iframe.style.border = 'none';
 			iframe.onload       = function(){
-				/* Remove iframe element. */
+				// Remove iframe element. 
 				//html.removeChild(iframe);
 
-				/* Call user callback. */
+				// Call user callback. 
 				if(typeof(callbacks.success) != 'undefined'){
 					callbacks.success();
 				}
 			};
 
-			/* Append iframe. */
+			// Append iframe. 
 			html.appendChild(iframe);
 
-			/* Get iframe document. */
+			// Get iframe document. 
 			if(typeof(iframe.contentWindow) != 'undefined'){
 				doc = iframe.contentWindow.document;
 			}
@@ -71,26 +79,25 @@ function LastFM(options){
 				doc = iframe.contentDocument.document;
 			}
 
-			/* Open iframe document and write a form. */
+			// Open iframe document and write a form. 
 			doc.open();
 			doc.clear();
 			doc.write('<form method="post" action="' + apiUrl + '" id="form">');
 
-			/* Write POST parameters as input fields. */
+			// Write POST parameters as input fields. 
 			for(var param in params){
 				doc.write('<input type="text" name="' + param + '" value="' + params[param] + '">');
 			}
 
-			/* Write automatic form submission code. */
+			// Write automatic form submission code. 
 			doc.write('</form>');
 			doc.write('<script type="application/x-javascript">');
 			doc.write('document.getElementById("form").submit();');
 			doc.write('</script>');
 
-			/* Close iframe document. */
-			doc.close();
+			// Close iframe document. 
+			doc.close();*/
 		}
-		/* Cross-domain GET request (JSONP). */
 		else{
 			/* Get JSONP callback name. */
 			var jsonp = 'jsonp' + new Date().getTime() + jsonpCounter;
@@ -340,7 +347,8 @@ function LastFM(options){
 			/* Set new params object with authToken. */
 			params = {
 				username  : params.username,
-				authToken : md5(params.username + md5(params.password))
+				authToken : (params.password ? md5(params.username + md5(params.password)) :
+								params.md5password)
 			};
 
 			signedCall('auth.getMobileSession', params, null, callbacks);

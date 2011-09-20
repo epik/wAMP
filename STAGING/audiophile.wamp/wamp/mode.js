@@ -8,9 +8,9 @@ var OWNER_MODE = 1;
 var ADVANCE_OPT = 1;
 
 // "v1" means a clean install
-var WAMP_VERSION = "v2";
+var WAMP_VERSION = "v2.1";
 
-var SongSchema_ID = (OWNER_MODE ? "com.epikwarlord.pathindex:2" : "com.epik.pathindex:2");
+var SongSchema_ID = (OWNER_MODE ? "com.epikwarlord.pathindex2:1" : "com.epik.pathindex2:1");
 var SearchSchema_ID = (OWNER_MODE ? "com.epikwarlord.searchindex:1" : "com.epik.searchindex:1");
 var OWNDER_STR = (OWNER_MODE ? "com.epikwarlord.audiophilehdpro" : "com.epik.audiophilehd");
 

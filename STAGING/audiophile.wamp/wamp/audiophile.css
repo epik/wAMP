@@ -329,7 +329,8 @@ body
 	left: 2px;
 	width: 130px;
 	height: 30px;
-	background-color: #333;
+	background: url(../res/index/buttonimgdark.png);
+	-webkit-border-radius: 0.5em;
 	color: #DDD;
 	text-align: center;
 	padding-top: 10px;
@@ -343,13 +344,14 @@ body
 #textFolder
 {
 	position: absolute;
+	-webkit-border-radius: 0.5em;
 	top: 2px;
 	margin-top: 10px;
 	padding-top: 10px;
-	left: 145px;
+	left: 150px;
 	height: 30px;
-	width: 275px;
-	background: none;
+	width: 265px;
+	background: white;
 	overflow: hidden;
 	font-weight: bold;
 	white-space: nowrap;
@@ -707,6 +709,7 @@ body
 	margin-left: 10px;
 	font-weight: bold;
 	border: 1px solid #DDD;
+	z-index: 9999;
 }
 
 #idUseContinueBtn
@@ -717,6 +720,7 @@ body
 	background-color: #888;
 	display: none;
 	border: 1px solid #333;
+	z-index: 9999;
 }
 
 #idIndexFldSel
@@ -779,7 +783,7 @@ body
 { 
 position: absolute; 
 left: 100px;
-top: 200px;
+top: 100px;
 background-color:#000; padding:43px 30px 43px 30px; color:#fff; margin-top:0px; margin-left:4px; width:170px; height:200px; border-radius:15px; border: 3px solid #fff;	-webkit-transition-property: -webkit-transform;
 	-webkit-transition-duration: 400ms;
 	z-index: 3000;

@@ -1700,7 +1700,8 @@ var paneScrub =
 	//	mouse down
 	bPlayerMv: 0,
 	tmoutPlayerMv: 0,
-	
+	iLastFmCntDn: 1,
+	bLastFmDirty: 0,
 	bDJModeOn: 0,
 	
 	// Used to track the relative upper left cornor of the
@@ -2314,6 +2315,33 @@ var paneScrub =
 										{
 											paneScrub.UpdateState();
 										}, STATE_WAIT_PERIOD);
+		}
+		
+		if ((objOptions.strLastFMSess) && (paneScrub.bLastFmDirty))
+		{
+			if (paneScrub.iLastFmCntDn)
+				paneScrub.iLastFmCntDn--;
+			else
+			{
+				var param = {"track": paneScrub.strLastFmTitle,
+							"timestamp": ((new Date()).getTime()/1000)|0,
+							"artist": paneScrub.strLastFmArtist
+							};
+				
+				lastfm.track.scrobble(param, 
+							objOptions.strLastFMSess, 
+							{
+								success: function(data, textStatus, jqXHR){
+									console.log("success");
+								}, error: function(jqXHR, textStatus, errorThrown){
+									console.log("Last.fm scrobble error: " + jqXHR.responseText);
+								}
+							});
+			
+			
+				paneScrub.iLastFmCntDn = 1;
+				paneScrub.bLastFmDirty = 0;
+			}	
 		}
 		
 		paneScrub.iOneState = 0;
@@ -2966,10 +2994,14 @@ var paneIndex =
 		paneSongList.Show(FOLDER_SB);
 	},
 	
-	DrawList: function(arraySongList)
+	DrawList: function(arraySongList, bPLs)
 	{
 		paneSongList.Empty();
-		paneSongList.BuildRecentList(arraySongList);
+		
+		if (bPLs)
+			paneSongList.BuildPLs(arraySongList);
+		else
+			paneSongList.BuildRecentList(arraySongList);
 	
 		document.getElementById('idListWrapper').className +=
 								' classShowPickedCat classTopLevelPickedCat ';
@@ -3144,6 +3176,10 @@ var panePlaylist =
 							//console.log("Keyboard Should Show");
 							window.PalmSystem.keyboardShow(7);
 						}
+					}
+					else if (domTarget.id == 'idPLPlaylists')
+					{
+						paneIndex.DrawList(objwAMP.arrayFoundPLs, 1);
 					}
 				}
 				
@@ -3821,6 +3857,46 @@ var paneSongList =
 	//*********************/
 	InitMyPane: function()
 	{
+		var funcURLCallback = function(strUrl)
+		{	
+			$('#idLoadIndicator')[0].style.display = "block";
+			
+			$.ajax({
+				url: strUrl,
+				type:'HEAD',
+				error: function()
+				{
+					sceneDialog.funcClick = function()
+					{
+						$('#idLoadIndicator')[0].style.display = "none";
+					};
+				
+					document.getElementById('idTellUser').innerHTML = 
+							"Unable to open link, please check to make sure you entered it correctly.";
+				
+					sceneDialog.Open(0, "Ok");
+				},
+				success: function()
+				{
+					objOptions.UpdateOption(OPT_ID_URL_LAST, strUrl);
+					
+					$('#idOpenLink')[0].style.display = "block";
+					objwAMP.HandleUrl(document.getElementById('idURLFilter').value,
+								  0, 
+								  xmlfunc, 
+								  m3uFunc, 
+								  musFunc);
+				}
+			});
+		
+		}
+		
+		objOptions.URLHistSetButtons(document.getElementById('idURLFilter'),
+							document.getElementById('idInternetBack'),
+							document.getElementById('idInternetForward'),
+							document.getElementById('idInternetBookMark'),
+							funcURLCallback);
+		
 		paneSongList.arrayQuickScrDom[0] = 
 					document.getElementById('idFastScrollR');
 		
@@ -4428,7 +4504,152 @@ var paneSongList =
 				if (domTarget.nodeName != 'LI')
 					return;
 				
-				var iIndex = Number(domTarget.id.substr(4));
+				var iIndex;
+				
+				if (domTarget.id.indexOf('PL_') == 0)
+				{
+					console.log("Getting this far");
+					
+					var m3uFunc = function(m3u, url)
+					{
+						
+						var listData = [];
+						var pathParent = url.substr(0, url.lastIndexOf('/')+1);
+						 
+						var lines = m3u.split("\n");
+						var index = 0;
+						var songData = null, displayName = null;
+						for (var length = lines.length;index < length;index++) 
+						{
+							var line = lines[index].replace(/^\s+/, '').replace(/\s+$/, '');
+							if (line.length > 0)
+							{
+								if (line == "#EXTM3U") 
+									continue;
+								else if (line.indexOf("#EXTINF:") == 0) 
+								{
+									var extinf = line.replace("#EXTINF:",'');
+									var parts = extinf.split(",");
+									var songLength = parseInt(parts[0]);
+									if (songLength)
+										songData = {length: songLength};
+
+									var parsedDisplayName = 
+												parts.splice(1,parts.length - 1).join(",").replace(/^\s+/, '').replace(/\s+$/, '');
+									if (parsedDisplayName.length > 0)
+										displayName = parsedDisplayName;
+								}
+								else if (line.charAt(0) != '#')
+								{ 
+						
+									var path="", i=0, check=1;
+									while (i < line.length)
+									{
+										var char = line.charAt(i++);
+							
+										if (char == '\\')
+											path += '/';
+										else
+											path += char;
+									}
+						
+									if (path.charAt(1) == ':')
+									{
+										var name = path.substr(path.lastIndexOf('/')+1);
+								
+										path = objwAMP.quickNameLookUp[name];
+										if (!path)
+										{
+											songData = null;
+											displayName = null;
+											continue;
+										}
+									}
+									else if (path.indexOf('http://') == 0)
+									{
+										path = FormatHTTP(path);
+										check = 0;
+									}
+									else if (path.charAt(0) == '.')
+									{
+										if (path.charAt(1) == '.')
+										{
+											path = path.substr(2);
+											path = pathParent.substring(0, path.lastIndexOf('/')) + path;
+										}
+										else
+										{
+											path = path.substr(2);
+											path = pathParent + path;	
+										}
+									}
+									else if (path.charAt(0) != '/')
+										path = pathParent + path;
+							
+									// Check to see if the path works
+									if (check)
+									{
+										if (!objwAMP.CheckFile(check))
+										{
+											var name = path.substr(path.lastIndexOf('/')+1);
+											
+											path = objwAMP.quickNameLookUp[name];
+											if (!path)
+											{
+												songData = null;
+												displayName = null;
+												continue;
+											}
+										}
+									}
+							
+									if (!displayName)
+										displayName = path.substr(path.lastIndexOf('/')+1);
+							
+									console.log(path);
+							
+									listData.push({path: path, artist: path, title: displayName})
+									
+									songData = null;
+									displayName = null;
+								}
+							}
+						}
+
+						paneSongList.remoteXML = listData;
+						
+						var str = "";
+						
+						objwAMP.EmptyPlaylist(0);
+						
+						for (var i=0; i<listData.length; i++)
+						{
+							var iIndexPath = objSongIndex.objQuickIndexLoc[listData[i].path]; 
+						
+							objwAMP.AddSong(objSongIndex.arrayIndex[iIndexPath], 0);
+						}
+						
+						objwAMP.OpenSong(0, 0);
+						paneSongList.Close();
+						paneControls.PlayPauseChange(PLAYER_PLAY_STATE);
+						
+						$('#idLoadIndicator')[0].style.display = "none";
+						$('#idOpenLink')[0].style.display = "none";
+						paneSongList.Close();
+						paneControls.PlayPauseChange(PLAYER_PLAY_STATE);
+					};
+					
+					iIndex = Number(domTarget.id.substr(3));
+					var path = 'file://' + objwAMP.arrayFoundPLs[iIndex];
+					
+					console.log(path);
+					
+					objwAMP.HandleUrl(path, 0, 0, m3uFunc);
+					
+					return;
+				}
+				
+				iIndex = Number(domTarget.id.substr(4));
 				
 				objwAMP.EmptyPlaylist(0);
 				objwAMP.AddSong(objSongIndex.arrayIndex[iIndex], 0);
@@ -4738,59 +4959,98 @@ var paneSongList =
 				var songData = null, displayName = null;
 				for (var length = lines.length;index < length;index++) 
 				{
-					var line = lines[index].strip();
+					var line = lines[index].replace(/^\s+/, '').replace(/\s+$/, '');
 					if (line.length > 0)
 					{
-						if (line == "#EXTM3U") continue;
-						else if (line.indexOf("#EXTINF:") == 0) {
-						var extinf = line.gsub(/^#EXTINF\:/,'');
-						var parts = extinf.split(",");
-          var songLength = parseInt(parts[0]);
-          if (songLength)
-            songData = {length: songLength}
+						if (line == "#EXTM3U") 
+							continue;
+						else if (line.indexOf("#EXTINF:") == 0) 
+						{
+							var extinf = line.replace("#EXTINF:",'');
+							var parts = extinf.split(",");
+							var songLength = parseInt(parts[0]);
+							if (songLength)
+								songData = {length: songLength};
 
-          var parsedDisplayName = parts.splice(1,parts.length - 1).join(",").strip();
-          if (parsedDisplayName.length > 0)
-            displayName = parsedDisplayName;
-        }
-        else if (line.charAt(0) != '#')
-		{ 
-			
-			var path="", i=0;
-			while (i < line.length)
-			{
-				var char = line.charAt(i++);
+							var parsedDisplayName = 
+										parts.splice(1,parts.length - 1).join(",").replace(/^\s+/, '').replace(/\s+$/, '');
+							if (parsedDisplayName.length > 0)
+								displayName = parsedDisplayName;
+						}
+						else if (line.charAt(0) != '#')
+						{ 
 				
-				if (char == '\\')
-					path += '/';
-				else
-					path += char;
-			}
-			
-			if (path.charAt(1) == ':')
-			{
-				displayName = path = path.substr(path.lastIndexOf('/')+1);
+							var path="", i=0, check=1;
+							while (i < line.length)
+							{
+								var char = line.charAt(i++);
+					
+								if (char == '\\')
+									path += '/';
+								else
+									path += char;
+							}
 				
-				// do something to find the file
-				
-				displayName = null;
-				continue;
-			}
-			else if (path.indexOf('http://') == 0)
-				path = FormatHTTP(path);
-			else if (path.charAt(0) != '/')
-				path = pathParent + path;
-			
-			if (!displayName)
-				displayName = path.substr(path.lastIndexOf('/')+1);
-			
-			listData.push({path: path, artist: path, title: displayName})
-          
-          songData = null;
-          displayName = null;
-        }
-      }
-    }
+							if (path.charAt(1) == ':')
+							{
+								var name = path.substr(path.lastIndexOf('/')+1);
+						
+								path = objwAMP.quickNameLookUp[name];
+								if (!path)
+								{
+									songData = null;
+									displayName = null;
+									continue;
+								}
+							}
+							else if (path.indexOf('http://') == 0)
+							{
+								path = FormatHTTP(path);
+								check = 0;
+							}
+							else if (path.charAt(0) == '.')
+							{
+								if (path.charAt(1) == '.')
+								{
+									path = path.substr(2);
+									path = pathParent.substring(0, path.lastIndexOf('/')) + path;
+								}
+								else
+								{
+									path = path.substr(2);
+									path = pathParent + path;	
+								}
+							}
+							else if (path.charAt(0) != '/')
+								path = pathParent + path;
+					
+							// Check to see if the path works
+							if (check)
+							{
+								if (!objwAMP.CheckFile(check))
+								{
+									var name = path.substr(path.lastIndexOf('/')+1);
+									
+									path = objwAMP.quickNameLookUp[name];
+									if (!path)
+									{
+										songData = null;
+										displayName = null;
+										continue;
+									}
+								}
+							}
+					
+							if (!displayName)
+								displayName = path.substr(path.lastIndexOf('/')+1);
+					
+							listData.push({path: path, artist: path, title: displayName})
+							
+							songData = null;
+							displayName = null;
+						}
+					}
+				}
 
 				paneSongList.remoteXML = listData;
 				
@@ -4799,65 +5059,88 @@ var paneSongList =
 				for (var i=0; i<listData.length; i++)
 				{
 					str += '<li id="xml_' + i +
-								 '" class="xmltarget">' + arrayNew[i].title + '</li>';
+								 '" class="xmltarget">' + 
+									listData[i].title + '</li>';
 				}
+				
+				$('#idLoadIndicator')[0].style.display = "none";
+				$('#idOpenLink')[0].style.display = "none";
 				
 				document.getElementById('idInternetUL').innerHTML = str;
 				paneSongList.InternetScrollBox.RecalcBottom();
 			};
 		
 		var xmlfunc = function(xml)
-					{
-						var arrayNew = [];
-						
-						$(xml).find("track").each(function () {
-							var children = this.childNodes;
-							var song = {};
-							
-							for (var i=0;i<children.length;i++)
-							{
-								if (children[i].nodeType != 1)
-									continue;
-								
-								if (children[i].tagName == "title")
-									song.title = children[i].textContent;
-								else if (children[i].tagName == "artist")
-									song.artist = children[i].textContent;
-								else if (children[i].tagName == "location")
-									song.path = FormatHTTP(children[i].textContent);
-							}
-							
-							if (song.path)
-							{
-								if (!song.title)
-									song.title = song.path.substr(song.path.lastIndexOf('/') + 1);
-							
-								if (!song.artist)
-									song.artist = song.path;
-							
-								arrayNew.push(song);
-							}
-						});
-						
-						paneSongList.remoteXML = arrayNew;
-						
-						var str = "";
-						
-						for (var i=0; i<arrayNew.length; i++)
-						{
-							str += '<li id="xml_' + i +
-								 '" class="xmltarget">' + arrayNew[i].title + '</li>';
-						}
-						
-						document.getElementById('idInternetUL').innerHTML = str;
-						paneSongList.InternetScrollBox.RecalcBottom();
-					};
+			{
+				var arrayNew = [];
+				
+				$(xml).find("track").each(function () {
+					var children = this.childNodes;
+					var song = {};
 					
+					for (var i=0;i<children.length;i++)
+					{
+						if (children[i].nodeType != 1)
+							continue;
+						
+						if (children[i].tagName == "title")
+							song.title = children[i].textContent;
+						else if (children[i].tagName == "artist")
+							song.artist = children[i].textContent;
+						else if (children[i].tagName == "location")
+							song.path = FormatHTTP(children[i].textContent);
+					}
+					
+					if (song.path)
+					{
+						if (!song.title)
+							song.title = song.path.substr(song.path.lastIndexOf('/') + 1);
+					
+						if (!song.artist)
+							song.artist = song.path;
+					
+						arrayNew.push(song);
+					}
+				});
+				
+				paneSongList.remoteXML = arrayNew;
+				
+				var str = "";
+				
+				for (var i=0; i<arrayNew.length; i++)
+				{
+					str += '<li id="xml_' + i +
+						 '" class="xmltarget">' + arrayNew[i].title + '</li>';
+				}
+				
+				$('#idLoadIndicator')[0].style.display = "none";
+				$('#idOpenLink')[0].style.display = "none";
+				
+				document.getElementById('idInternetUL').innerHTML = str;
+				paneSongList.InternetScrollBox.RecalcBottom();
+			};
+		
 		var musFunc = function(mus)
 		{
 			objwAMP.DirectOpen(mus, 0);
 			paneControls.PlayPauseChange(PLAYER_PLAY_STATE);
+			
+			$('#idLoadIndicator')[0].style.display = "none";
+			$('#idOpenLink')[0].style.display = "none";
 		};
+		
+		var funcHandleInternet = function()
+		{
+			objOptions.URLHistAddTo();
+			return;
+		};
+				
+		document.getElementById('idAddXMLPL').addEventListener(START_EV, 
+			function(event)
+			{
+				if (paneSongList.remoteXML && paneSongList.remoteXML.length)
+					objwAMP.AppendPlaylist(paneSongList.remoteXML, 0);
+			});
 		
 		document.getElementById('idURLFilter').addEventListener('keydown', 
 			function(event)
@@ -4872,7 +5155,8 @@ var paneSongList =
 				if (event.keyCode == '13')
 				{
 					event.preventDefault();
-					objwAMP.HandleUrl(this.value,0, xmlfunc, musFunc);
+					
+					funcHandleInternet();
 				}
 			});
 		
@@ -4886,7 +5170,7 @@ var paneSongList =
 		document.getElementById('idInternetGo').addEventListener(START_EV, 
 			function(event)
 			{				
-				objwAMP.HandleUrl(document.getElementById('idURLFilter').value,0, xmlfunc);
+				funcHandleInternet();
 			});
 		
 		document.getElementById('idListFilter').addEventListener('keydown', 
@@ -5737,6 +6021,23 @@ var paneSongList =
 			paneSongList.ListScrollBox.YScrollTo(0);
 		}
 
+	},
+	
+	BuildPLs: function(arrayPLs)
+	{
+		var strHTML = "";
+		var i = 0;
+		while(i<arrayPLs.length)
+		{
+			var iPL = arrayPLs[i];
+			
+			strHTML += '<li id="PL_' + i + '" class="classtitlePL">' + (i+1) + '.&nbsp ';
+			strHTML += iPL + '</li>';
+			
+			i++;
+		}
+	
+		document.getElementById('idListUL').innerHTML = strHTML;	
 	},
 	
 	BuildRecentList: function(arrayRecent)
@@ -7314,29 +7615,38 @@ var sceneSplash =
 						
 			setTimeout(funcHideIndex, 2000);
 			
-			paneSongList.BuildSongListDiv();
-			
-			document.getElementById('idPickerNotReady').style.display = "none";
-		
-			switch (paneIndex.iCurActive)
+			setTimeout(function()
 			{
-			case GENRE_SB:
-				paneIndex.DrawGenre();
-				break;
-			case TITLE_SB:
-				paneIndex.DrawTitle();
-				break;
-			case ARTIST_SB:
-				paneIndex.DrawArtist();
-				break;
-			case ALBUM_SB:
-				paneIndex.DrawAlbum();
-			}
+				console.log("In this one?");
+				
+				paneSongList.BuildSongListDiv();
+				
+				document.getElementById('idPickerNotReady').style.display = "none";
+			
+				switch (paneIndex.iCurActive)
+				{
+				case GENRE_SB:
+					paneIndex.DrawGenre();
+					break;
+				case TITLE_SB:
+					paneIndex.DrawTitle();
+					break;
+				case ARTIST_SB:
+					paneIndex.DrawArtist();
+					break;
+				case ALBUM_SB:
+					paneIndex.DrawAlbum();
+				}
+			}, 1);
 		}		
 		else
 		{
 			sceneSplash.ShowPlayer();
-			paneSongList.BuildSongListDiv();
+			setTimeout(function()
+			{
+				console.log("In this one");
+				paneSongList.BuildSongListDiv();
+			}, 1);
 		}
 	},
 
@@ -7580,7 +7890,7 @@ var sceneSplash =
 					{
 						var iIndex = Number(domTarget.id.substr(5));
 						
-						objwAMP.SetCurrentPath(paneSongList.objFile.Dir[iIndex].path)
+						objwAMP.SetCurrentPath(sceneSplash.Dir[iIndex].path)
 					
 						document.getElementById('idFolderUL').innerHTML = "";
 						paneSongList.UseScrollBox.YScrollTo(0);
@@ -7706,13 +8016,13 @@ var sceneSplash =
 			{
 				sceneSplash.FinishIndex(iIndexStatus);
 			},
-			function(iCount)
+			function(iSongCount, iPLCount)
 			{
-				setTimeout(StatusPill.FindingMode(iCount), 1);
+				setTimeout(StatusPill.FindingMode(iSongCount, iPLCount), 1);
 			},
-			function(iProcessed, iTotal)
+			function(iPos, iTot, strPath)
 			{
-				StatusPill.ProcessMode(iProcessed, iTotal);
+				StatusPill.ProcessMode(iPos, iTot, strPath);
 			});
 			
 		

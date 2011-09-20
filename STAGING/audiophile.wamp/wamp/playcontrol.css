@@ -60,14 +60,14 @@
 .classButCue
 {
 	position: absolute;
+		background-image: url(../res/playcontrols/cue.png);
 	width: 60px;
 	height: 42px;
 	padding-top: 23px;
-	color: #333;
+	color: #999;
 	font-weight: bold;
-	border:2px solid #999;
+	border:0px solid #999;
 	-webkit-border-radius:3px; 
-	background-color: #e6e6e6;
 	text-align:center;
 }
 

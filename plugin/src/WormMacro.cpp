@@ -16,7 +16,7 @@ const int16_t NUM_EXTEN = 18;
 const char *g_pcExten[] = {"ra", "3gp", "aac", "als",
 						"m4a", "mp1", "mp2", "mp3",
 						"mpg", "ogg", "ors", "ram",
-						"wav", "wma", "flac"};
+						"wav", "wma", "flac", "m3u"};
 
 
 
@@ -51,7 +51,7 @@ int QuickExtCheck(const char *filename)
         	lcStr[0] = tolower(*ext);
         }
 
-        for (int32_t i = 0; i<15; i++)
+        for (int32_t i = 0; i<16; i++)
         {
         	if (strcmp(lcStr, g_pcExten[i]) == 0)
             	return 1;

@@ -43,13 +43,13 @@ void FileList::AddNodeLite(FileEntry *pNode, uint32_t uiHash)
 }
 
 
-bool WormIndexer::CheckForDirMusic(bool bCreate)
+bool WormIndexer::CheckForDir(const char *cstrDir, int32_t bCheckFolder, int32_t bCreate)
 {
 	ReportError("In Check Dir For Music");
 
 	if (bCreate)
 	{
-		if (!FMGUI_MkDir(HOME_DIR "/music"))
+		if (!FMGUI_MkDir(cstrDir)) //HOME_DIR "/music"))
 			return true;
 		else
 			return false;
@@ -59,15 +59,20 @@ bool WormIndexer::CheckForDirMusic(bool bCreate)
 		ReportError("About to run stat");
 		struct stat sb;
 
-		if (stat(HOME_DIR "/music", &sb) == -1)
+		if (stat(cstrDir, &sb) == -1)
 			return false;
 
 		ReportError("Got a stat result");
 
-		if ((sb.st_mode & S_IFDIR)==S_IFDIR)
-			return true;
+		if (bCheckFolder)
+		{
+			if ((sb.st_mode & S_IFDIR)==S_IFDIR)
+				return true;
+			else
+				return false;
+		}
 		else
-			return false;
+			return true;
 	}
 }
 

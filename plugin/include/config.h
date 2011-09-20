@@ -25,7 +25,7 @@
 // Define this to turn on the WormDebug options.
 // More granular options should be tweeked from WormDebug.h
 #ifdef DEBUG_CODE
-//#define DEBUG 1
+#define DEBUG 1
 #endif
 
 #define BUILD_FOR_TOUCHPAD

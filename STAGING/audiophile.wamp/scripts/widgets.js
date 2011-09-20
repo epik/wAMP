@@ -78,14 +78,15 @@ var StatusPill =
 		setTimeout(function() {StatusPill.Animate();}, 100);
 	},
 	
-	FindingMode: function(iFound)
-	{
-		this.divPill.innerHTML = "Finding Files: Found " + iFound + " Music Files";
+	FindingMode: function(iSongFound, iPLFound)
+	{		
+		this.divPill.innerHTML = "Finding Files: Found " + iSongFound + 
+							" Music Files : " + iPLFound + " Playlists";
 	},
 	
-	ProcessMode: function()
+	ProcessMode: function(iPos, iTot, strPath)
 	{		
-		this.divPill.innerHTML = "Getting Metadata";
+		this.divPill.innerHTML = "Getting Metadata: " + iPos + "/" + iTot + " " + strPath;
 	},
 	
 	Stop: function()

@@ -282,7 +282,7 @@ public:
 
 	void RunIndexer();
 
-	bool CheckForDirMusic(bool bCreate = false);
+	bool CheckForDir(const char *cstrDir, int32_t bCheckForFolder, int32_t bCreate = 0);
 
 	char *GetDirFileList(const char *cstrDirName);
 

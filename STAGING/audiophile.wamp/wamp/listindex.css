@@ -229,6 +229,11 @@ z-index: 9999;
 	margin: 0px;
 }
 
+#idInternetWrapper
+{
+	z-index: 200;
+}
+
 #idTheIndexerHasFinished
 {
 	position: absolute;
@@ -456,7 +461,7 @@ div.listItemHeader
 	z-index: 503;
 }
 
-#idTitleScroller, #idSearchScroller, #idListScroller, #idInternetScroller
+#idTitleScroller, #idSearchScroller, #idListScroller
 {
 	position: relative;
 	margin: 0;
@@ -763,12 +768,54 @@ li.classMarkAsFav > div.classCatImgBox
 	position: relative;
 	display: inline;
 	float: left;
+	padding-top: 6px;
 	width: 36px;
-	height: 36px;
-	background-color: #456;
-	border: 1px solid #999;
-	margin: 0px 0px 3px 1px;
+	height: 30px;
+	font-weight: bold;
+	font-size: 20px;
+	border: 0px solid #999;
+	margin: 4px 0px 3px 1px;
 	text-align: center;
+}
+
+#idInternetScroller
+{
+	position: relative;
+	margin: 0;
+	list-style:none;
+	width: 100%;
+	text-align: left;
+	font-size: 16px;
+	color: #000;
+	overflow: hidden;
+	z-index: 0;
+	white-space:nowrap;
+	border-bottom: 0px solid #000;
+}
+
+#idInternetBookMark
+{
+	background: url(../res/buttons/bookbtn.png) no-repeat;
+}
+
+#idInternetBack
+{
+	background: url(../res/buttons/backbtn.png) no-repeat;
+}
+
+#idInternetForward
+{
+	background: url(../res/buttons/forwardbtn.png) no-repeat;
+}
+
+#idInternetGo
+{
+	background: url(../res/buttons/gobtn.png) no-repeat;
+}
+
+.classURLButActive
+{
+	color: #333;
 }
 
 #idNeedFormForInternet
@@ -776,13 +823,10 @@ li.classMarkAsFav > div.classCatImgBox
 	position: relative;
 	display: inline;
 	float: left;	
-	width: 510px;
+	width: 485px;
 	height: 38px;
 	margin: 0px 1px;
 	background-color: #FFF;
-	background-position: 484px 8px;
-	background-repeat: no-repeat;
-	background-image: url(../res/icon-refresh-black.png);
 } 
 
 #idURLFilter
@@ -831,6 +875,15 @@ li.classMarkAsFav > div.classCatImgBox
 	z-index: 502;
 }
 
+#idAddXMLPL
+{
+	left: 500px;
+	top: 500px;
+	background-image: url(../res/index/buttonimg.png);
+    color:#000;
+	z-index: 502;
+}
+
 #idFolderWrapper.classTopLevelPickedCat #idPlayDirBtn
 {
 	display: block;
@@ -867,15 +920,28 @@ li.classMarkAsFav > div.classCatImgBox
 /*************************
  * Buttons for Pickerpane
  *************************/
+ #idLastFMLogInBtn
+ {
+ 	position: absolute;
+	background-image: url(../res/index/buttonimg.png);
+	color: black;
+	width: 91px;
+	height: 31px;
+	right: 70px;
+	top: 210px;	
+	z-index: 502;
+}
+ 
  #idbtnbuttonbg
  {
  	position: absolute;
-	background-image: url(../res/index/buttonbg.png);
+	background: url(../res/index/buttonbg.png) no-repeat;
 	width: 46px;
 	height: 242px;
 	right: 25px;
 	top: 8px;	
 	z-index: 502;
+	-webkit-border-radius:6px;
 }
 
  #idbtnbuttonSecbg
@@ -889,6 +955,7 @@ li.classMarkAsFav > div.classCatImgBox
 	z-index: 502;
 	padding-top: 10px;
 	padding-left: 5px;
+	-webkit-border-radius:10px;
 }
  
 #idbtnalbum
@@ -977,7 +1044,7 @@ li.classMarkAsFav > div.classCatImgBox
 	z-index: 999;
 	top: 0px;
 	left: 0px;
-	height: 218px;
+	height: 268px;
 	width: 240px;
 	-webkit-border-radius: 1em;
 	background-color: #888;
@@ -1467,3 +1534,17 @@ li.classUniSubPan
 }
 
 /****************** Network URL stuff *************/
+#idOpenLink
+{
+	display: none;
+	position: absolute;
+	left: 20px;
+	right: 20px;
+	top: 20px;
+	height: 300px;
+	color: red;
+	font-size: 25px;
+	width: 500px;
+	padding-top: 100px;
+	text-align: center;
+}
